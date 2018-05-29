@@ -1,0 +1,66 @@
+
+h3	Illegal instructions
+	Illegals
+
+p	List of all illegal Z80 opcodes. The Z80 cpu does not trap undefined opcodes but 'just does something' instead. For many undocumented opcodes it is well known what they do, and sometimes it is something useful.
+p	Undocumented opcodes after a combination of index register plus prefix 0xCB behave differently on different CPU brands.
+p	On CPUs like the Z180 / HD64180 which trap illegal opcodes these instructions cannot be used. 
+
+
+pre	sll	R				R = b c d e h l (hl) a
+	 
+    out (c),0xFF		for NMOS CPUs
+	out (c),0 			for CMOS CPUs
+	in  f,(c)       
+	in  (c) 			syntax variant
+	 
+	inc R				R = xh, xl, yh, yl or syntax variant: ixh, ixl, iyh, iyl
+	dec R			
+	ld 	R,N			
+	add a,R
+	adc a,R     
+	sub a,R		
+	sbc a,R		
+	and a,R      
+	xor a,R
+	or  a,R         
+	cp  a,R         
+	 
+	ld	R1,R2			R1 = b c d e xh xl a  and  R2 = xh or xl
+	ld	R1,R2			R1 = b c d e yh yl a  and  R2 = yh or yl
+	ld	R1,R2			R1 = xh or xl  and  R2 = b c d e xh xl a
+	ld	R1,R2			R1 = yh or yl  and  R2 = b c d e yh yl a
+	 
+	--ixcbr2:
+	 
+	rlc	(RR+dis),R		RR = ix iy,  R = b c d e h l a
+	rrc	(RR+dis),R
+	rl	(RR+dis),R
+	rr	(RR+dis),R
+	sla	(RR+dis),R
+	sra	(RR+dis),R
+	sll	(RR+dis),R
+	srl	(RR+dis),R
+	 
+	bit	N,(RR+dis),R	RR = ix iy,  R = b c d e h l a
+	res	N,(RR+dis),R
+	set	N,(RR+dis),R
+	 
+	--ixcbxh:
+	 
+	rlc	R				R = xh xl yh yl or ixh, ixl, iyh, iyl
+	rrc	R
+	rl	R
+	rr	R
+	sla	R
+	sra	R
+	srl	R
+	 
+	bit	N,R				R = xh xl yh yl or ixh, ixl, iyh, iyl
+	res	N,R
+	set	N,R
+	
+
+
+
+

@@ -1,0 +1,166 @@
+
+waitmap access pattern for all z80 opcodes
+	
+note: machine cycles are aligned to the first wait test in the M1 machine cycle, so shifted by 1 cycle compared to official Zilog documentation. But this matches better with the observed opcode timings on real machines, which would otherwise test the wait signal in the first cpu clock cycle of the *next* instruction. (e.g. all relative branches)
+
+
+
+
+
+    Instruction			Breakdown
+    -----------			---------
+	
+unprefixed opcodes:
+	
+	NOP			pc:4
+	LD r,r' 
+	alo A,r 
+	INC/DEC r 
+	EXX 
+	EX AF,AF' 
+	EX DE,HL 
+	DAA 
+	CPL 
+	CCF	SCF 
+	DI	EI 
+	RLA	RRA		
+	RLCA	RRCA 
+	JP (HL)
+
+	INC/DEC dd		pc:6
+	LD SP,HL
+
+	ADD HL,dd		pc:11
+
+	LD r,n			pc:4, pc+1:3
+	alo A,n
+
+	LD r,(ss)		pc:4, ss:3
+	LD (ss),r
+
+	alo A,(HL)		pc:4, hl:3
+
+	INC/DEC (HL)		pc:4, hl:3,1, hl:3
+
+	LD (HL),n		pc:4, pc+1:3, hl:3
+
+	LD A,(nn)		pc:4, pc+1:3, pc+2:3, nn:3
+	LD (nn),A
+
+	LD HL,(nn)		pc:4, pc+1:3, pc+2:3, nn:3, nn+1:3
+	LD (nn),HL
+
+	LD dd,nn		pc:4, pc+1:3, pc+2:3
+	JP nn 
+	JP cc,nn
+
+	POP dd			pc:4, sp:3, sp+1:3
+	RET 
+
+	RET cc			pc:5, [sp:3, sp+1:3]
+
+	PUSH dd			pc:5, sp-1:3, sp-2:3
+	RST n
+
+	CALL nn			pc:4, pc+1:3, pc+2:3, [pc+2:1, sp-1:3, sp-2:3]
+	CALL cc,nn     
+
+	JR n			pc:4, pc+1:3, [pc+1:1x5]
+	JR cc,n        
+
+	DJNZ n			pc:5, pc+1:3, [pc+1:1x5]
+
+!	HALT			N * pc:4
+
+	IN A,(n)		pc:4, pc+1:3, IO
+	OUT (n),A
+
+!	EX (SP),HL		pc:4, sp:3, sp+1:3,1, sp+1:3, sp:3,1x2
+
+
+opcodes after CB:
+
+	sro r			pc:4, pc+1:4
+	BIT b,r 
+	SET/RES b,r 
+
+	BIT b,(HL)		pc:4, pc+1:4, hl:3,1
+
+	SET/RES b,(HL)		pc:4, pc+1:4, hl:3,1, hl:3
+	sro (HL)
+
+
+opcodes after DD or FD (IX/IY register):
+
+	LD r,(ii+n)		pc:4, pc+1:4, pc+2:3, pc+2:1x5, ii+n:3
+	LD (ii+n),r    
+	alo A,(ii+n)
+    
+	LD (ii+n),n		pc:4, pc+1:4, pc+2:3, pc+3:3,1x2, ii+n:3			
+
+	INC/DEC (ii+n)		pc:4, pc+1:4, pc+2:3, pc+2:1x5, ii+n:3,1, ii+n:3
+
+!	BIT b,(ii+n)		pc:4, pc+1:4, pc+2:3, pc+3:3,1x2, ii+n:3,1		
+
+	SET b,(ii+n)		pc:4, pc+1:4, pc+2:3, pc+3:3,1x2, ii+n:3,1, ii+n:3
+	RES b,(ii+n)   
+	sro (ii+n)
+
+
+opcodes after ED:
+
+	LD A,I                  pc:4, pc+1:5
+	LD A,R 
+	LD I,A 
+	LD R,A
+
+	NOPD                    pc:4, pc+1:4
+	NEG 
+	IM 0/1/2 
+
+	ADC HL,dd		pc:4, pc+1:11
+	SBC HL,dd
+
+	LD dd,(nn)		pc:4, pc+1:4, pc+2:3, pc+3:3, nn:3, nn+1:3
+	LD (nn),dd
+
+	RETI			pc:4, pc+1:4, sp:3, sp+1:3
+	RETN
+
+	RLD                     pc:4, pc+1:4, hl:3,1x4, hl:3
+	RRD
+
+	IN r,(C)		pc:4, pc+1:4, IO
+	OUT (C),r
+
+	LDI/LDIR		pc:4, pc+1:4, hl:3, de:3,1x2, [de:1x5]
+	LDD/LDDR       
+
+	CPI/CPIR		pc:4, pc+1:4, hl:3,1x5, [hl:1x5]
+	CPD/CPDR       
+                
+	INI/INIR		pc:4, pc+1:5, IO, hl:3, [hl:1x5]
+	IND/INDR
+
+	OUTI/OTIR		pc:4, pc+1:5, hl:3, IO, [hl:1x5]
+	OUTD/OTDR
+	
+	
+	
+	
+	
+
+
+
+			
+
+
+
+
+
+
+
+
+
+				
+

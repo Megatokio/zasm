@@ -1,0 +1,64 @@
+\chapter{The Core Task}
+\label{chp:coretask}
+
+This chapter describes the core task.  This is the task that deals
+with doing all of the things that the ISR doesn't have time to do,
+or doesn't need to do as often.  For example, checking I/O.
+
+This task will eventually be replaced with the GUI task.  This task occupies
+task slot 0.  This leaves 3 task slots to be used by user code.
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Core Runtime Loop}
+
+This loop will be run by the OS, and will eventually contain things
+like timer and message distribution, as well as joystick
+movement-to-position as well as IO-to-click message handlers.
+
+<<.coretask implementation>>=
+.coretask:
+	; set up sprite 1 as the flying llama
+	ld	ix, #(sprtbase)
+	ld	a, #(LlamaFS*sprtMult)
+	ld	sprtIndex(ix), a
+	ld	a, #(3)			; decent llama color
+	ld	sprtColor(ix), a
+
+	;; set up sprite 2 and 3
+	ld	ix, #(sprtbase)
+	ld	a, #4		;(hardcoded for now)
+	ld	2+sprtIndex(ix), a
+	ld	4+sprtIndex(ix), a
+	ld	a, #(3)		;0x12
+	ld	2+sprtColor(ix), a
+	ld	4+sprtColor(ix), a
+
+foo:
+	; do a lissajous on the screen with the first sprite (arrow cursor)
+	;; X
+	ld	ix, #(spritecoords)
+	ld	bc, (timer)
+	rlc	c	; *2 
+	rlc	c	; *2 
+	call	sine
+	rrca
+	and	#0x7f
+	add	#0x40
+	ld	sprtIndex(ix), a
+	;; Y
+	ld	bc, (timer)
+	;rlc	c
+	call	cosine
+	rrca
+	and	#0x7f
+	add	#0x40
+	ld	sprtColor(ix), a
+
+	; try to hug a screen refresh
+	ld	bc, #1
+	call	sleep
+
+	jp	foo
+	halt
+@

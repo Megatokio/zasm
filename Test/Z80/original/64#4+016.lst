@@ -1,0 +1,438 @@
+              	; --------------------------------------
+              	; zasm: assemble "64#4+016.asm"
+              	; date: 2018-05-18 20:49:25
+              	; --------------------------------------
+
+
+              	#!/usr/local/bin/zasm -o original/
+              	; -----------------------------------------------------------------------------
+              	; 64#4 - 4x8 FONT DRIVER FOR 64 COLUMNS (c) 2007, 2011
+              	;
+              	; Original by Andrew Owen (657 bytes)
+              	; Optimized by Crisis (602 bytes)
+              	; Reimplemented by Einar Saukas (494 bytes)
+              	
+              	; pasmo -1 -v --tapbas 64#4+016.asm  64#4+016.tap 64#4+016.symbol
+              	; -----------------------------------------------------------------------------
+              	
+4000:         	        org     16384            ; Screen invoked channel
+              		 	           	 ;[CHANGE HERE TO CHOOSE ANOTHER ADDRESS]
+              	
+0004:         	STR_NUM EQU     4               ; stream #4 [CHANGE HERE TO CHOOSE ANOTHER
+              	                                ;   STREAM NUMBER]
+01D2:         	leng	EQU	last - CH_DATA  ; length of 64#4 routine itself
+01CD:         	leg	equ	leng-5
+              	; -----------------------------------------------------------------------------
+              	; CREATE CHANNEL AND ATTACH STREAM
+              	; Based on code by Ian Beardsmore from Your Spectrum issue 7, September 1984.
+              	
+4000: 2A535C  	        ld      hl, (0x5c53)    ; store system variable PROG in DE
+4003: 2B      	        dec     hl
+              	;ld de,CH_DATA
+              	;ld (de),h
+              	;inc de
+              	;ld (de),l
+              	;ex de,hl ; store PROG-1 into HL
+4004: 01D201  	        ld      bc, leng    ; allocate 5+leng bytes for channel below BASIC area
+4007: C5      	        push    bc
+4008: CD5516  	        call    0x1655          ; call the MAKE-ROOM routine
+400B: C1      	        pop     bc
+              	
+400C: 21EE41  	        ld      hl, CH_DATA+leng-1
+400F: EDB8    	        lddr                    ; copy CH_DATA to new channel space
+4011: 2A4F5C  	        ld      hl, (0x5c4f)    ; store system variable CHANS in HL
+4014: EB      	        ex      de, hl
+4015: 23      	        inc     hl
+4016: 23      	        inc     hl              ; now HL = allocated address + 1
+4017: ED52    	        sbc     hl, de          ; calculate offset between start of channels
+              	                                ;   area and start of the new channel space
+              	                                ;   (notice the carry flag was already cleared
+              	                                ;   from executing CALL 0x1655 earlier)
+4019: 221E5C  	        ld      (STR_OFF), hl   ; attach stream by storing channel address
+              	                                ;   offset in streams table
+401C: C9      	        ret
+              	
+5C1E:         	STR_OFF EQU 0x5c10+((STR_NUM+3)*2) ; address of channel offset in streams table
+401D:         	CH_DATA:
+401D: 2240    	        defw    CH_ADDR         ; (dummy?) address of the PRINT # routine
+401F: C415    	        defw    0x15c4          ; address of the INPUT # routine
+4021: 53      	        defb    'S'             ; channel type 'S'
+4022:         	inbet  equ $
+              	; -----------------------------------------------------------------------------
+              	; CHANNEL WRAPPER FOR THE 64-COLUMN DISPLAY DRIVER
+              	; Based on code by Tony Samuels from Your Spectrum issue 20, November 1985.
+              	
+              	;org CH_ADDR	; <-- kio 2015-01-06: replaced with label definition
+4022:         	CH_ADDR:	; <-- not shure about this
+              	
+              	;dump inbet
+4022: 0600    	        ld      b, 0            ; save a few bytes later using B instead of 0
+4024: 219C40  	        ld      hl, AT_FLAG     ; initial address of local variables
+4027: 35      	        dec     (hl)            ; check AT_FLAG value by decrementing it
+              	;---Changed by C.Born august 2014
+4028: 2809    	        jr      z, GET_COL      ; expecting the AT column?
+402A: CB7E    		bit 7,(hl)
+402C: 200F    		jr  nz, CHK_AT		; expecting a regular character?
+              	;---- end change by C.Born august 2014
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE STANDARD INVERSE (use INVERSE 1 for inversed characters)
+              	;
+              	; #ifdef _STANDARD_INVERSE
+              	;        dec     (hl)            ; check AT_FLAG value by decrementing it again
+              	;        jr      nz, GET_ROW     ; expecting the AT row?
+              	;        and     a               ; check INVERSE parameter
+              	;        jr      z, SET_INV      ; specified INVERSE zero?
+              	;        ld      a, 0x2f         ; opcode for 'CPL'
+              	;SET_INV:
+              	;        ld      (INV_C), a      ; either 'NOP' or 'CPL'
+              	;        ret
+              	; #endif _STANDARD_INVERSE
+              	; -----------------------------------------------------------------------------
+              	
+402E:         	GET_ROW:
+402E: FE18    	        cp      24              ; specified row greater than 23?
+4030: 3008    	        jr      nc, ERROR_B     ; error if so
+4032: 23      	        inc     hl              ; dirty trick to store new row into AT_ROW
+4033:         	GET_COL:
+4033: FE40    	        cp      64              ; specified column greater than 63?
+4035: 3003    	        jr      nc, ERROR_B     ; error if so
+4037: 23      	        inc     hl
+4038: 77      	        ld      (hl), a         ; store new column into AT_COL
+4039: C9      	        ret
+              	
+403A:         	ERROR_B:
+403A: 70      	        ld      (hl), b         ; reset AT_FLAG
+403B: CF      	        rst     8               ; error "B Integer out of range"
+403C: 0A      	        defb    10
+              	
+403D:         	CHK_AT:
+403D: FE16    	        cp      0x16            ; specified keyword 'AT'?
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE STANDARD INVERSE (use INVERSE 1 for inversed characters)
+              	;
+              	; #ifdef _STANDARD_INVERSE
+              	;        jr      nz, CHK_INV     ; continue otherwise
+              	;        ld      (hl), 3         ; change AT_FLAG to expect row value next time
+              	;        ret
+              	;CHK_INV:
+              	;        cp      0x14            ; specified keyword 'INVERSE'?
+              	; #endif _STANDARD_INVERSE
+              	; -----------------------------------------------------------------------------
+              	
+403F: 2003    	        jr      nz, CHK_CR      ; continue otherwise
+4041: 3602    	        ld      (hl), 2         ; change AT_FLAG to expect row value next time
+4043: C9      	        ret                     ;   (or to expect INVERSE parameter next time)
+              	
+4044:         	CHK_CR:
+4044: 34      	        inc     (hl)            ; increment AT_FLAG to restore previous value
+4045: 23      	        inc     hl              ; now HL references AT_COL address
+4046: FE0D    	        cp      0x0d            ; specified carriage return?
+4048: 2849    	        jr      z, NEXT_ROW     ; change row if so
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE FAST COMMA (jump directly to next column multiple of 16)
+              	;
+              	; #ifdef _FAST_COMMA
+              	;        cp      0x06            ; specified comma?
+              	;        jr      nz, DRIVER      ; continue otherwise
+              	;        ld      a, (hl)
+              	;        or      0x0f            ; change column to destination minus 1
+              	;        ld      (hl),a
+              	;        jr      END_LOOP + 1    ; increment column and row if needed
+              	; #endif _FAST_COMMA
+              	; -----------------------------------------------------------------------------
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE STANDARD COMMA (print spaces until column multiple of 16)
+              	;
+              	; #ifdef _STANDARD_COMMA
+              	;        cp      0x06            ; specified comma?
+              	;        jr      nz, DRIVER      ; continue otherwise
+              	;LOOP:   ld      a, 32           ; print space
+              	;        call    DRIVER
+              	;        ret     c               ; stop if row changed (reached column zero)
+              	;        ld      a, (hl)
+              	;        and     0x0f
+              	;        ret     z               ; stop if reached column 16, 32 or 48
+              	;        jr      LOOP            ; repeat otherwise
+              	; #endif _STANDARD_COMMA
+              	; -----------------------------------------------------------------------------
+              	
+              	; -----------------------------------------------------------------------------
+              	; 64-COLUMN DISPLAY DRIVER
+              	
+404A:         	DRIVER:
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE ZX81 INVERSE (add 128 to get inversed characters)
+              	;
+              	; #ifdef _ZX81_INVERSE
+              	;        push    hl              ; save AT_COL address for later
+              	;        ld      hl, INV_C
+              	;        ld      (hl), b         ; opcode for 'NOP'
+              	;        rla                     ; highest bit indicating inversed character?
+              	;        jr      nc, SKIP_INV    ; skip otherwise
+              	;        ld      (hl), 0x2f      ; opcode for 'CPL'
+              	;SKIP_INV:
+              	;        rrca                    ; restore character value without highest bit
+              	;        pop     hl              ; restore AT_COL address
+              	; #endif _ZX81_INVERSE
+              	; -----------------------------------------------------------------------------
+              	
+404A: E5      	        push    hl              ; save AT_COL address for later
+404B: 5F      	        ld      e, a            ; store character value in E
+404C: 4E      	        ld      c, (hl)         ; store current column in BC
+              	
+              	; Check if character font must be rotated, self-modifying the code accordingly
+              	
+404D: A9      	        xor     c               ; compare BIT 0 from character value and column
+404E: 1F      	        rra
+404F: 3EF3    	        ld      a, 256-(END_LOOP-SKIP_RLC) ; instruction DJNZ skipping rotation
+4051: 3002    	        jr      nc, NOT_RLC             ; decide based on BIT 0 comparison
+4053: 3EEF    	        ld      a, 256-(END_LOOP-INIT_RLC) ; instruction DJNZ using rotation
+4055:         	NOT_RLC:
+4055: 328D40  	        ld      (END_LOOP - 1), a       ; modify DJNZ instruction directly
+              	
+              	; Check the half screen byte to be changed, self-modifying the code accordingly
+              	
+4058: CB39    	        srl     c               ; check BIT 0 from current column
+405A: 3E0F    	        ld      a, %00001111    ; mask to change left half of the screen byte
+405C: 3001    	        jr      nc, SCR_LEFT    ; decide based on odd or even column
+405E: 2F      	        cpl                     ; mask to change right half of the screen byte
+405F:         	SCR_LEFT:
+405F: 328640  	        ld      (SCR_MASK + 1), a   ; modify screen mask value directly
+4062: 2F      	        cpl
+4063: 328240  	        ld      (FONT_MASK + 1), a  ; modify font mask value directly
+              	
+              	; Calculate location of the first byte to be changed on screen
+              	; The row value is a 5 bits value (0-23), here represented as %000RRrrr
+              	; The column value is a 6 bits value (0-63), here represented as %00CCCCCc
+              	; Formula: 0x4000 + ((row & 0x18) << 8) + ((row & 0x07) << 5) + (col >> 1)
+              	
+4066: 23      	        inc     hl              ; now HL references AT_ROW address
+4067: 7E      	        ld      a, (hl)         ; now A = %000RRrrr
+4068: CD9E0E  	        call    0x0e9e          ; now HL = %010RR000rrr00000
+406B: 09      	        add     hl, bc          ; now HL = %010RR000rrrCCCCC
+406C: EB      	        ex      de, hl          ; now DE = %010RR000rrrCCCCC
+              	
+              	; Calculate location of the character font data in FONT_ADDR
+              	; Formula: FONT_ADDR + 7 * INT ((char-32)/2) - 1
+              	
+406D: 60      	        ld      h, b            ; now HL = char
+406E: CB3D    	        srl     l               ; now HL = INT (char/2)
+4070: 4D      	        ld      c, l            ; now BC = INT (char/2)
+4071: 29      	        add     hl, hl          ; now HL = 2 * INT (char/2)
+4072: 29      	        add     hl, hl          ; now HL = 4 * INT (char/2)
+4073: 29      	        add     hl, hl          ; now HL = 8 * INT (char/2)
+4074: ED42    	        sbc     hl, bc          ; now HL = 7 * INT (char/2)
+4076: 012E40  	        ld      bc, FONT_ADDR - 0x71
+4079: 09      	        add     hl, bc          ; now HL = FONT_ADDR + 7 * INT (char/2) - 0x71
+              	
+              	; Main loop to copy 8 font bytes into screen (1 blank + 7 from font data)
+              	
+407A: AF      	        xor     a               ; first font byte is always blank
+407B: 0608    	        ld      b, 8            ; execute loop 8 times
+407D:         	INIT_RLC:
+407D: 07      	        rlca                    ; switch position between bits 0-3 and bits 4-7
+407E: 07      	        rlca
+407F: 07      	        rlca
+4080: 07      	        rlca
+4081:         	SKIP_RLC:
+              	
+              	; -----------------------------------------------------------------------------
+              	; UNCOMMENT TO ENABLE EITHER STANDARD OR ZX81 INVERSE
+              	;
+              	; #ifdef _STANDARD_INVERSE || _ZX81_INVERSE
+              	;INV_C:  nop                     ; either 'NOP' or 'CPL'
+              	; #endif _STANDARD_INVERSE || _ZX81_INVERSE
+              	; -----------------------------------------------------------------------------
+              	
+4081:         	FONT_MASK:
+4081: E6F0    	        and     %11110000       ; mask half of the font byte
+4083: 4F      	        ld      c, a            ; store half of the font byte in C
+4084: 1A      	        ld      a, (de)         ; get screen byte
+4085:         	SCR_MASK:
+4085: E60F    	        and     %00001111       ; mask half of the screen byte
+4087: B1      	        or      c               ; combine half screen and half font
+4088: 12      	        ld      (de), a         ; write result back to screen
+4089: 14      	        inc     d               ; next screen location
+408A: 23      	        inc     hl              ; next font data location
+408B: 7E      	        ld      a, (hl)         ; store next font byte in A
+408C: 10EF    	        djnz    INIT_RLC        ; repeat loop 8 times
+408E:         	END_LOOP:
+              	
+408E: E1      	        pop     hl              ; restore AT_COL address
+408F: 34      	        inc     (hl)            ; next column
+4090: CB76    	        bit     6, (hl)         ; column lower than 64?
+4092: C8      	        ret     z               ; return if so
+4093:         	NEXT_ROW:
+4093: 70      	        ld      (hl), b         ; reset AT_COL
+4094: 23      	        inc     hl              ; store AT_ROW address in HL
+4095: 34      	        inc     (hl)            ; next row
+4096: 7E      	        ld      a, (hl)
+4097: FE18    	        cp      24              ; row lower than 23?
+4099: D8      	        ret     c               ; return if so
+409A: 70      	        ld      (hl), b         ; reset AT_ROW
+409B: C9      	        ret                     ; done!
+              	
+              	; -----------------------------------------------------------------------------
+              	; LOCAL VARIABLES
+              	
+409C:         	AT_FLAG:
+409C: 00      	        defb    0               ; flag to control processing keyword 'AT'
+              	                                ;   value 2 if received 'AT', expecting row
+              	                                ;   value 1 if received row, expecting column
+              	                                ;   value 0 if expecting regular character
+409D:         	AT_COL:
+409D: 00      	        defb    0               ; current column position (0-31)
+409E:         	AT_ROW:
+409E: 00      	        defb    0               ; current row position (0-23)
+              	
+              	; -----------------------------------------------------------------------------
+              	; HALF WIDTH 4x8 FONT designed by Andrew Owen
+              	; Top row is always zero and not stored (96 chars x 7 / 2 = 336 bytes)
+              	
+409F:         	FONT_ADDR:
+409F: 02020202	        defb    0x02, 0x02, 0x02, 0x02, 0x00, 0x02, 0x00        ; !
+40A3: 000200  	
+40A6: 52570202	        defb    0x52, 0x57, 0x02, 0x02, 0x07, 0x02, 0x00        ;"#
+40AA: 070200  	
+40AD: 25716232	        defb    0x25, 0x71, 0x62, 0x32, 0x74, 0x25, 0x00        ;$%
+40B1: 742500  	
+40B4: 22422040	        defb    0x22, 0x42, 0x20, 0x40, 0x50, 0x30, 0x00        ;&'
+40B8: 503000  	
+40BB: 14224141	        defb    0x14, 0x22, 0x41, 0x41, 0x41, 0x22, 0x14        ;()
+40BF: 412214  	
+40C2: 20702257	        defb    0x20, 0x70, 0x22, 0x57, 0x02, 0x00, 0x00        ;*+
+40C6: 020000  	
+40C9: 00000007	        defb    0x00, 0x00, 0x00, 0x07, 0x00, 0x20, 0x20        ;,-
+40CD: 002020  	
+40D0: 01010202	        defb    0x01, 0x01, 0x02, 0x02, 0x04, 0x24, 0x00        ;./
+40D4: 042400  	
+40D7: 22565252	        defb    0x22, 0x56, 0x52, 0x52, 0x52, 0x27, 0x00        ;01
+40DB: 522700  	
+40DE: 27511221	        defb    0x27, 0x51, 0x12, 0x21, 0x45, 0x72, 0x00        ;23
+40E2: 457200  	
+40E5: 57545671	        defb    0x57, 0x54, 0x56, 0x71, 0x15, 0x12, 0x00        ;45
+40E9: 151200  	
+40EC: 17216152	        defb    0x17, 0x21, 0x61, 0x52, 0x52, 0x22, 0x00        ;67
+40F0: 522200  	
+40F3: 22552553	        defb    0x22, 0x55, 0x25, 0x53, 0x52, 0x24, 0x00        ;89
+40F7: 522400  	
+40FA: 00002200	        defb    0x00, 0x00, 0x22, 0x00, 0x00, 0x22, 0x02        ;:;
+40FE: 002202  	
+4101: 00102740	        defb    0x00, 0x10, 0x27, 0x40, 0x27, 0x10, 0x00        ;<=
+4105: 271000  	
+4108: 02452112	        defb    0x02, 0x45, 0x21, 0x12, 0x20, 0x42, 0x00        ;>?
+410C: 204200  	
+410F: 23557577	        defb    0x23, 0x55, 0x75, 0x77, 0x45, 0x35, 0x00        ;@A
+4113: 453500  	
+4116: 63546454	        defb    0x63, 0x54, 0x64, 0x54, 0x54, 0x63, 0x00        ;BC
+411A: 546300  	
+411D: 67545654	        defb    0x67, 0x54, 0x56, 0x54, 0x54, 0x67, 0x00        ;DE
+4121: 546700  	
+4124: 73446445	        defb    0x73, 0x44, 0x64, 0x45, 0x45, 0x43, 0x00        ;FG
+4128: 454300  	
+412B: 57527252	        defb    0x57, 0x52, 0x72, 0x52, 0x52, 0x57, 0x00        ;HI
+412F: 525700  	
+4132: 35151655	        defb    0x35, 0x15, 0x16, 0x55, 0x55, 0x25, 0x00        ;JK
+4136: 552500  	
+4139: 45474545	        defb    0x45, 0x47, 0x45, 0x45, 0x45, 0x75, 0x00        ;LM
+413D: 457500  	
+4140: 62555555	        defb    0x62, 0x55, 0x55, 0x55, 0x55, 0x52, 0x00        ;NO
+4144: 555200  	
+4147: 62555565	        defb    0x62, 0x55, 0x55, 0x65, 0x45, 0x43, 0x00        ;PQ
+414B: 454300  	
+414E: 63545261	        defb    0x63, 0x54, 0x52, 0x61, 0x55, 0x52, 0x00        ;RS
+4152: 555200  	
+4155: 75252525	        defb    0x75, 0x25, 0x25, 0x25, 0x25, 0x22, 0x00        ;TU
+4159: 252200  	
+415C: 55555555	        defb    0x55, 0x55, 0x55, 0x55, 0x27, 0x25, 0x00        ;VW
+4160: 272500  	
+4163: 55552522	        defb    0x55, 0x55, 0x25, 0x22, 0x52, 0x52, 0x00        ;XY
+4167: 525200  	
+416A: 73122222	        defb    0x73, 0x12, 0x22, 0x22, 0x42, 0x72, 0x03        ;Z[
+416E: 427203  	
+4171: 46422222	        defb    0x46, 0x42, 0x22, 0x22, 0x12, 0x12, 0x06        ;\]
+4175: 121206  	
+4178: 20500000	        defb    0x20, 0x50, 0x00, 0x00, 0x00, 0x00, 0x0f        ;^_
+417C: 00000F  	
+417F: 20100305	        defb    0x20, 0x10, 0x03, 0x05, 0x05, 0x03, 0x00        ;£a
+4183: 050300  	
+4186: 40406354	        defb    0x40, 0x40, 0x63, 0x54, 0x54, 0x63, 0x00        ;bc
+418A: 546300  	
+418D: 10103255	        defb    0x10, 0x10, 0x32, 0x55, 0x56, 0x33, 0x00        ;de
+4191: 563300  	
+4194: 10207325	        defb    0x10, 0x20, 0x73, 0x25, 0x25, 0x43, 0x06        ;fg
+4198: 254306  	
+419B: 42406652	        defb    0x42, 0x40, 0x66, 0x52, 0x52, 0x57, 0x00        ;hi
+419F: 525700  	
+41A2: 14043516	        defb    0x14, 0x04, 0x35, 0x16, 0x15, 0x55, 0x20        ;jk
+41A6: 155520  	
+41A9: 60202527	        defb    0x60, 0x20, 0x25, 0x27, 0x25, 0x75, 0x00        ;lm
+41AD: 257500  	
+41B0: 00006255	        defb    0x00, 0x00, 0x62, 0x55, 0x55, 0x52, 0x00        ;no
+41B4: 555200  	
+41B7: 00006355	        defb    0x00, 0x00, 0x63, 0x55, 0x55, 0x63, 0x41        ;pq
+41BB: 556341  	
+41BE: 00005366	        defb    0x00, 0x00, 0x53, 0x66, 0x43, 0x46, 0x00        ;rs
+41C2: 434600  	
+41C5: 00207525	        defb    0x00, 0x20, 0x75, 0x25, 0x25, 0x12, 0x00        ;tu
+41C9: 251200  	
+41CC: 00005555	        defb    0x00, 0x00, 0x55, 0x55, 0x27, 0x25, 0x00        ;vw
+41D0: 272500  	
+41D3: 00005525	        defb    0x00, 0x00, 0x55, 0x25, 0x25, 0x53, 0x06        ;xy
+41D7: 255306  	
+41DA: 01027234	        defb    0x01, 0x02, 0x72, 0x34, 0x62, 0x72, 0x01        ;z{
+41DE: 627201  	
+41E1: 24222221	        defb    0x24, 0x22, 0x22, 0x21, 0x22, 0x22, 0x04        ;|}
+41E5: 222204  	
+41E8: 56A90604	        defb    0x56, 0xa9, 0x06, 0x04, 0x06, 0x09, 0x06        ;~©
+41EC: 060906  	
+41EF:         	last equ $
+              	; -----------------------------------------------------------------------------
+              	; NOTE: Other choices for 4x8 fonts designed by Einar Saukas available on tape!
+              	; -----------------------------------------------------------------------------
+***ERROR*** No such file or directory: file = "/pub/Develop/Projects/zasm-4.0/Test/Z80/original/64#4+016." (fd108)
+
+
+; +++ segments +++
+
+#CODE          = $4000 = 16384,  size = $01EF =   495
+
+; +++ global symbols +++
+
+AT_COL    = $409D = 16541          64#4+016.asm:282 (unused)
+AT_FLAG   = $409C = 16540          64#4+016.asm:277
+AT_ROW    = $409E = 16542          64#4+016.asm:284 (unused)
+CHK_AT    = $403D = 16445          64#4+016.asm:103
+CHK_CR    = $4044 = 16452          64#4+016.asm:122
+CH_ADDR   = $4022 = 16418          64#4+016.asm:60
+CH_DATA   = $401D = 16413          64#4+016.asm:50
+DRIVER    = $404A = 16458          64#4+016.asm:160 (unused)
+END_LOOP  = $408E = 16526          64#4+016.asm:258
+ERROR_B   = $403A = 16442          64#4+016.asm:98
+FONT_ADDR = $409F = 16543          64#4+016.asm:291
+FONT_MASK = $4081 = 16513          64#4+016.asm:246
+GET_COL   = $4033 = 16435          64#4+016.asm:91
+GET_ROW   = $402E = 16430          64#4+016.asm:87 (unused)
+INIT_RLC  = $407D = 16509          64#4+016.asm:231
+NEXT_ROW  = $4093 = 16531          64#4+016.asm:264
+NOT_RLC   = $4055 = 16469          64#4+016.asm:189
+SCR_LEFT  = $405F = 16479          64#4+016.asm:198
+SCR_MASK  = $4085 = 16517          64#4+016.asm:250
+SKIP_RLC  = $4081 = 16513          64#4+016.asm:236
+STR_NUM   = $0004 =     4          64#4+016.asm:15
+STR_OFF   = $5C1E = 23582          64#4+016.asm:49
+_end      = $41EF = 16879          64#4+016.asm:11 (unused)
+_size     = $01EF =   495          64#4+016.asm:11 (unused)
+inbet     = $4022 = 16418          64#4+016.asm:54 (unused)
+last      = $41EF = 16879          64#4+016.asm:340
+leg       = $01CD =   461          64#4+016.asm:18 (unused)
+leng      = $01D2 =   466          64#4+016.asm:17
+
+
+total time: 0.0067 sec.
+1 error

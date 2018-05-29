@@ -1,0 +1,104 @@
+/* style sheet (c) 2003-2015 kio@little-bat.de */
+
+/* ---- CLEAN ----
+*/
+body,iframe,object,
+p,pre,h1,h2,h3,h4,h5,h6,ul,ol,li,div,table,tr,td,th
+{	font-family:Arial,sans-serif; font-weight:normal; font-size:11pt; line-height:1.2em;
+	text-align:left; vertical-align:top; color:black;
+	padding:0px; margin:0px; border:0px none black; text-indent:0px; }
+
+span,b,i { padding:0px; margin:0px; border:0px; }
+
+/* ---- DEFAULT ----
+*/
+body { padding:8px; background-color:#EEEEEE; background-image:url(hdgr.jpg); }
+
+h1,h2,h3,h4	{ margin-top:1.5em; margin-bottom:0.5em; font-weight:bold; text-align:center; }
+h5,h6   	{ margin-top:1.5em; margin-bottom:0.5em; font-weight:bold; text-align:left; }
+p,pre,li,ol,ul 		{ margin-top:0.5em; margin-bottom:0.5em; }
+pre,tt				{ font-family:Monaco,monospace; }
+
+
+/* ----	BODY ----
+*/
+h2	{ font-size:160%; margin-top:3em; border-top:3px solid; padding-top:0.2em; }
+h3	{ font-size:140%; margin-top:2em; border-top:2px solid; padding-top:0.2em; }
+h4	{ font-size:120%; margin-top:1.5em; }
+h5	{ font-size:100%; margin-top:1.5em; }
+h6	{ font-size:80%;  margin-top:1.0em; }
+
+tt	{ color:#000033; font-size:80%;  }
+pre	{ color:#000033; padding-left:0.2em; padding-top:1em; padding-bottom:1em; font-size:80%; background-color:#ffffff;
+					 width:100%; max-width:100%; white-space: pre-wrap; }
+ul	{ 				 padding-left:1.5em; list-style:outside disc; }
+ol	{ 				 padding-left:1.5em; list-style:outside decimal; }
+
+.c	{ text-align:center; }
+.b	{ font-weight:bold;  }
+.i	{ font-style:italic; }
+.u	{text-decoration:underline;}
+.strike {text-decoration:line-through;}
+.center	{text-align:center;}
+.small  {font-size:66%;}
+
+/* ---- HEAD ----
+*/
+h1.titel 	{ font-size:160%; margin:0em; padding:0.25em; border:none; background-color:#99ff99; }
+h1.head   	{ font-size:160%; margin:0em; padding:0.25em; border:none; background-color:#99ff99; }
+p.pglinks_o { text-align:center; margin:1em; }
+h2.head,
+h3.head   	{ font-size:140%; margin:0em; margin-bottom:1em; margin-top:1em; padding:0.25em; border:none; background-color:#ccffcc; }
+h4.head,
+h5.head,
+h6.head  	{ font-size:120%; margin:0em; padding:0.5em;  border:none; background-color:transparent; }
+
+
+/* ---- TOC ----
+*/
+div.toc		{ background:white; padding:0.25em; margin-bottom:1em; margin-top:1em; }
+div.toc p	{ text-align:center; font-weight:bold; margin:0em; }
+
+
+/* ----	FOOT ----
+*/
+p.pglinks_u { text-align:center; margin:1em; }
+p.foot		{ text-align:center; margin-top:4em;margin-bottom:400px; }
+
+
+/* ---- POPUP BOX WITH CROSS REFERENCES ----
+*/
+.LL			{ visibility:hidden; position:absolute; background:white; font-style:italic;
+			  padding:0.2em; line-height:1.2em; z-index:50; }
+
+
+/* ---- LINKS ----
+*/
+a 			{ text-decoration:none; color:#333399; }
+.magenta .L { text-decoration:none; color:#aa00ff; }
+.magenta .L:hover 	{ text-decoration:underline; }
+pre a 		{ text-decoration:none; color:#0000bb; }
+h1 a 		{ text-decoration:none; color:#000000; }
+h2 a 		{ text-decoration:none; color:#000000; }
+p a			{ text-decoration:none; color:#333399; }
+a:link    	{ }
+a:visited 	{ }
+a:hover	  	{ text-decoration:underline; }
+a:active  	{ text-decoration:underline; color:#cc3333; }
+
+
+/* ---- COLORS ----
+*/
+
+.left	{float:left;  margin-right:0.75em; margin-bottom:0.25em; }
+.right	{float:right; margin-left:0.5em;   margin-bottom:0.25em; }
+.clear	{clear:both; }
+.red	{color:#cc3333;}
+.blue	{color:#3333cc;}
+.green	{color:green;}
+.orange	{color:#cc6600;}
+.cyan	{color:#00aaaa;}
+.magenta {color:#cc00cc;}
+.grey   {color:#888888;}
+.white  {background-color:#ffffff;}
+.bgltgrn {background-color:#ddffdd;}

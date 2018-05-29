@@ -1,0 +1,50 @@
+\chapter{Task 1: TBD Example}
+\label{chp:task1}
+
+This chapter implements a simple task which will be loaded into the system
+as task number [[1]].
+
+<<Task 1 implementation>>=
+	;; Task 1 - TBD
+; header
+<<Task 1 header>>
+
+; routines
+<<Task 1 process routine>>
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Header}
+
+<<Task 1 header>>=
+t1header:
+        .byte   0xc9, 0x4a, 0x73, 0x4c  ; cookie
+        .byte   0x01                    ; version
+        .byte   0x04                    ; requested timeslices
+	.word	t1name			; name
+        .word   t1process               ; process function
+
+t1name:
+	.byte	6			; strlen
+        .asciz  "Task 1"                ; name
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Process routine}
+
+<<Task 1 process routine>>=
+t1process:
+	ld      hl, #(colram)   ; base of color ram
+	ld      a, #0x01        ; clear the screen to blue
+	ld      b, #0x04        ; 256*4 = 1k
+	call    memsetN
+
+	ld      hl, #(colram)   ; base of color ram
+	ld      a, #0x09        ; clear the screen to red
+	ld      b, #0x04        ; 256*4 = 1k
+	call    memsetN
+
+	jp	t1process
+	halt
+@

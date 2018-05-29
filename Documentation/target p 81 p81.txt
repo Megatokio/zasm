@@ -1,0 +1,55 @@
+
+h3	#target .P, .81 and .P81
+	p, 81, p81
+	
+p.magenta <i>this format is not yet well tested. If there are problems please send an email to <a href="mailto:kio@little-bat.de">Kio</a>.</i>
+
+p	This creates a tape file for use with a ZX81 emulator. The tape file will be loaded to the ram start + 9 at address $4009. 
+
+p	"p" can be used instead of "81". This will create a target file with extension "p" or "81" respectively, which are fully identical. ".p81" files also include the program name which must be written using the ZX81 character set.
+
+p	Code may be stored in one or more #code segments. However, the first segment must be at least 0x403B - 0x4009 bytes long and contain the system variables. (except for the first 9 bytes which are not saved.)
+
+
+
+pre	#target	81
+	#charset ZX81
+	#code <name>,<start>,<len>
+		...
+
+p	or:
+
+pre	#target	p81
+	#charset ZX81
+	#code	_PROGNAME
+		dm	"progname" | $80		; zasm converts the characters to charset ZX81!
+	#code 	_RAM, 0x4009, _ram_end - 0x4009
+		...
+
+p	See the ZX81 .p template file: <a target="image" href="../Examples/template_p.asm">template_p.asm</a> 
+	
+p	The tape data is always loaded to $4009, so this is the only choice for the <start> address in the #code directive. The <size> may be any value up to a maximum of $C000 minus $09, but most ZX81 had at most 16 kB ram if extended with an external memory expansion, only 1 kB if none. (The TS1000 had whoopy 2k!)
+
+p	The ram starts with system variables from $4009 to $403C, which must be set to proper values. The variable E_LINE at the address $4014, which contains the end of ram address, is checked by the assembler. 
+
+P	This file also contains the screen file, which basically means, that the video memory must contain 25 HALT opcodes if the file was saved in SLOW mode.
+
+h6	Here are few important variables:
+
+pre	$4014	defines the end address (used to calculate the file length)
+	$4029	points to the next executed (autostarted) BASIC line
+	$403B	bit 6 indicates if program runs in SLOW or FAST mode 
+	$403C++	may be misused for whatever purpose
+
+p	zasm has a convenient assembler directive to translate from the ascii (or utf-8) characters in your source file to the non-ascii character set of the ZX81:
+
+pre	#charset ZX81
+
+p	You can include c sources in your assembler file, but there are two pitfalls:
+
+p	You can use the character set translation of zasm to translate strings in your c source as well. But unluckily character literals are not exported as character literals by the c compiler sdcc but as their ascii code and zasm has no chance to detect this. So character literals in your c source are not translated.
+
+p	Second, character 0x00 is used in c sources as a string end indicator, but it is also a valid character for the ZX81: the space. So you'll have to think of a way to work around this problem.
+
+
+	

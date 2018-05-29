@@ -1,0 +1,147 @@
+; tab-8
+
+
+; ------------------------------------------------------------
+;	max(hl,de) -> hl
+;	
+;	in:	hl, de
+;	out:	hl = max
+;	mod:	--
+; ------------------------------------------------------------
+
+max		and	a
+		sbc	hl,de
+		jr	c,max1
+		add	hl,de		
+		ret
+max1		ld	hl,de
+		ret
+			
+
+; ------------------------------------------------------------
+;	min(hl,de) -> hl
+;	
+;	in:	hl, de
+;	out:	hl = min
+;	mod:	--
+; ------------------------------------------------------------
+
+min:		and	a
+		sbc	hl,de
+		jr	nc,max1
+		add	hl,de
+		ret
+
+
+; ------------------------------------------------------------
+;	Random number generator
+;
+;	in:	rnd_seed
+;	out:	hl
+;	mod:	af,bc
+; ------------------------------------------------------------
+
+rnd_seed	data	3
+
+;	Benutzt den Schieberegister-Algorithmus des AY-Soundchips
+;
+;	chl formen ein Shiftregister ((17 Bit))
+;	chl' = chl<<1 + ( chl.bit(16) ^ chl.bit(14) )
+
+rnd:		ld	hl,(rnd_seed)
+		ld	a,(rnd_seed+2)
+		ld	c,a		; seed = chl   ((lower 17 bit))
+		
+		ld	b,16		; generate 16 new bits
+
+	; calculate 1 bit:
+rnd1		ld	a,h
+		rlc	a
+		rlc	a
+		xor	c
+		rrc	a		; cy = neues bit
+
+		adc	hl,hl		; shift chl left, padding new bit
+		ld	a,c
+		adc	a,a
+		ld	c,a
+			
+		djnz	rnd1		; next bit
+
+	; hl = seed = result
+		ld	(rnd_seed),hl
+		ld	a,c
+		ld	(rnd_seed+2),a
+		ret			
+
+
+; ------------------------------------------------------------
+;	multiply unsigned hl*de -> dehl
+;
+;	in:	hl, de
+;	out:	hl, de
+;	mod:	a, bc
+; ------------------------------------------------------------
+
+mult:		ld	a,16
+		ld	bc,de       ; bc will be added to hlde depending on bits in hl
+		ld	de,0        ; hlde := 0       (ok, hl isn't already 0 ...)
+mult1		ex	hl,de
+		add	hl,hl       ; de*2
+		ex	hl,de
+		adc	hl,hl       ; hlde*2
+		jr	nc,mult2
+		ex	hl,de
+		add	hl,bc
+		jr	nc,mult3
+		inc	de
+mult3		ex	hl,de
+mult2		dec	a
+		jr	nz,mult1
+		ex	hl,de
+		ret
+
+
+; ------------------------------------------------------------
+;	divide unsigned hl/de -> hl rem de
+;
+;	in:	hl, de
+;	out:	hl, de
+;	mod:	a, bc
+; ------------------------------------------------------------
+
+divide:		ld	a,16
+		ld	bc,hl
+		ld	hl,0        ; hlbc := hl
+
+div2		sll	c           ; c := 2*c+1
+		rl	b           ; bc := 2*bc+1
+		adc	hl,hl       ; hlbc := 2*hlbc+1
+            
+		sbc	hl,de       ; subtract (test)
+		jr	nc,div1     ; worked!
+		dec	c           ; else clear bit 0 of result
+		add	hl,de       ; and undo sub
+div1		dec	a
+		jr	nz,div2
+            
+		ex	hl,de       ; de := rem
+		ld	hl,bc       ; hl := quot
+		ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

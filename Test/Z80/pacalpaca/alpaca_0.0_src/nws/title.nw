@@ -1,0 +1,25 @@
+\documentclass[oneside]{book}
+\usepackage{alpaca}
+
+\usepackage{noweb}
+\usepackage{graphicx, rotating}
+\pagestyle{noweb}
+\noweboptions{smallcode}
+
+\newtheorem{question}{Question}
+\newtheorem{answer}{Answer}[question]
+
+\begin{document}
+@
+
+\begin{titlepage}
+\title{The \OS Operating System\\
+        for Z-80 based computers\\
+	\textbf{Draft 0.8}}
+\author{Scott~``Jerry''~Lawrence\\
+        \texttt{alpaca@umlautllama.com}
+}
+\end{titlepage}
+
+\maketitle
+\tableofcontents

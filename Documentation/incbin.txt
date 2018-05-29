@@ -1,0 +1,19 @@
+
+h3	incbin
+
+
+pre		incbin <filename>
+
+p	Inserts a binary file. The file name must be given as an absolute path or relatively to the current source file.
+p	The file's contents are just copied into the code segment verbatim.
+
+h5	Examples:
+
+pre		incbin "image.gif"    	; file in same directory
+		incbin "./image.gif"  	; file in same directory
+		incbin "pics/g1.gif"  	; file in subdirectory "pics/"
+
+p	This pseudo instruction does the same as the assembler directive #insert:
+
+pre	#insert "image.gif"     	; file in same directory
+

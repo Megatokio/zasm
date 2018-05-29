@@ -1,0 +1,149 @@
+
+
+; ----------------------------------------------------
+;	Skip opcode
+;
+;	in:	hl -> opcode
+;	out:	hl -> next opcode
+;	mod:	af
+; ----------------------------------------------------
+
+z80_op_skip:
+		call	z80_op_length
+		add	l
+		ld	l,a
+		ret	nc
+		inc	h
+		ret
+
+
+
+; ----------------------------------------------------
+;	Calculate length of opcode
+;				(c) 1995-2005 kio !
+;				1995-06-30 (c version)
+;				2005-01-01 (z80 version)
+;	IX/IY before IX/IY/ED have no effect and are reported as length 1
+;
+;	in:	hl -> opcode
+;	out:	a = length
+;	mod:	af
+; ----------------------------------------------------
+
+z80_op_len0	defm	"1311112111111121231111212111112123311121213111212331112121311121"	; 0x00 - 0x3F
+z80_op_len3	defm	"1133312111303321113231211132302111313121113130211131312111313021"	; 0xC0 - 0xFF; prefixes are 0
+
+
+z80_op_length:
+		ld	a,(hl)		; op1
+		cp	$40		
+		jr	nc,zop1
+		
+	; 0x00 - 0x3f: various length
+	
+zop00		push	hl
+		ld	hl,z80_op_len0
+zop0		add	l
+		ld	l,a
+		jr	nc,$+3
+		inc	h
+		ld	a,(hl)
+		sub	'0'
+		pop	hl
+		ret
+
+	; 0x40 .. 0xFF
+
+zop1		cp	$c0
+		jr	nc,zop8
+		ld	a,1		; 0x40 - 0x7f: ld r,r:  all 1
+		ret			; 0x80 - 0xBF: ari a,r: all 1
+
+	; 0xc00 - 0xff
+		
+zop8		cp	$cb		; cb: all 2 bytes
+		jr	z,zop_2		
+
+		cp	$ed		; ed: 2 or 4 bytes
+		jr	nz,zop2
+		inc	hl
+		ld	a,(hl)		; op2
+		dec	hl
+		and	$c7
+		cp	$43
+		jr	nz,zop_2
+zop_4		ld	a,4
+		ret
+
+zop2		cp	$dd		
+		jr	z,zop3		; IX
+		cp	$fd
+		jr	z,zop3		; IY
+
+	; 0xc0 - 0xff: various length
+	
+zop03		push	hl
+		ld	hl,z80_op_len3 - $c0
+		jr	zop0
+
+	; IX or IY
+
+zop3		inc	hl
+		ld	a,(hl)		; op2
+		dec	hl
+
+		cp	$40
+		jr	nc,zop4
+		
+	; $00..$3F: wie ohne prefix, nur immer 1 mehr für den prefix, und bei (hl) +1 für dis
+	
+		cp	$34		
+		jr	c,zop5		
+		cp	$36		
+		jr	c,zop_3		; inc(hl), dec(hl)
+		jr	z,zop_4		; ld(hl),N
+zop5		call	zop00
+		inc	a
+		ret
+	
+zop4		cp	$c0
+		jr	nc,zop6
+
+	; 0x40 - 0xbf: ld und ari group: wie ohne pfx, nur immer +1 für pfx, und bei (hl) +1 für dis
+	
+		cp	$70
+		jr	c,zop7
+
+		cp	$76
+		jr	z,zop_2
+
+		cp	$78
+		jr	c,zop_3
+		
+zop7		and	7
+		cp	6
+		jr	nz,zop_2
+zop_3		ld	a,3
+		ret
+zop_2		ld	a,2
+		ret
+		
+	; $c0 - $ff: wie ohne pfx, nur immer +1 für pfx; except $cb: all 4.
+	; note: entries for prefixes are 0 giving a total of 1, just to skip the useless prefix
+	
+zop6		cp	$cb
+		jr	z,zop_4
+		call	zop03
+		inc	a
+		ret
+
+
+
+
+
+
+
+
+
+
+

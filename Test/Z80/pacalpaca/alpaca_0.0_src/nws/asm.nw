@@ -1,0 +1,248 @@
+\chapter{The .asm File}
+
+This is where we gather together all of the asm blocks defined
+above into two cohesive .asm files.
+
+\section{Pac-Man ASM}
+
+<<pacalpaca.asm>>=
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; PacAlpaca.asm
+;
+;  ALPACA: A Multitasking operating system for Pac-Man Z80 arcade hardware
+;
+<<commontop.asm>>
+<<PAC Global Constants>>
+<<commonbottom.asm>>
+@
+
+
+\section{Pengo ASM}
+
+<<pengoalpaca.asm>>=
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; PengoAlpaca.asm
+;
+;  ALPACA: A Multitasking operating system for Pengo Z80 arcade hardware
+;
+<<commontop.asm>>
+<<PENGO Global Constants>>
+<<commonbottom.asm>>
+@
+
+
+\section{Common Top}
+
+<<commontop.asm>>=
+;  Written by 
+;	Scott "Jerry" Lawrence
+; 	alpaca@umlautllama.com
+;
+;  This source file is covered by the LGPL:
+;
+<<license short version>>
+;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;           This file is machine generated.  Do not edit it by hand!
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+	.title alpaca
+	.module alpaca
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; some constants:
+@
+
+\section{Common Bottom}
+
+<<commonbottom.asm>>=
+
+; constants for the task system
+<<Task Constants>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; RAM allocation:
+<<Task RAM>>
+<<Timer RAM>>
+<<Rand RAM>>
+<<Message RAM>>
+<<Semaphore RAM>>
+<<Task Stack RAM>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; area configuration
+; we want absolute dataspace, with this area called "CODE"
+.area	.CODE (ABS)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; RST functions
+
+; RST 00
+<<RST 00 implementation>>
+
+; RST 08
+<<RST 08 implementation>>
+
+; RST 10
+<<RST 10 implementation>>
+
+; RST 18
+<<RST 18 implementation>>
+
+; RST 20
+<<RST 20 implementation>>
+
+; RST 28
+<<RST 28 implementation>>
+
+; RST 30
+<<RST 30 implementation>>
+
+; RST 38
+<<RST 38 implementation>>
+
+; NMI
+<<NMI implementation>>
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; interrupt service routine:
+<<Interrupt Service Routine implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; the core OS stuff:
+    ; initialization and splash screen
+<<.start implementation>>
+
+    ; the core task
+<<.coretask implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; some helpful utility functions
+
+; memset256
+<<Utils memset256 implementation>>
+
+
+; memsetN
+<<Utils memsetN implementation>>
+
+
+; clear screen
+<<Utils cls implementation>>
+
+; clear screen (gui tile version)
+<<Utils guicls implementation>>
+
+
+; rand
+<<Utils rand implementation>>
+
+
+; sine
+<<Utils sine implementation>>
+
+; cosine
+<<Utils cosine implementation>>
+
+
+; text justification
+<<Utils textcenter implementation>>
+
+<<Utils textright implementation>>
+
+
+; xy2offs
+<<Utils xy2offsB implementation>>
+
+<<Utils xy2offsAC implementation>>
+
+
+; putstr 
+<<Utils putstrA implementation>>
+
+<<Utils putstrB implementation>>
+
+<<Utils putstrC implementation>>
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; semaphore control
+
+; lock semaphore
+<<Semaphore lock implementation>>
+
+; release semaphore
+<<Semaphore release implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; task exec, kill, and sleep routines
+
+<<Exec start implementation>>
+
+<<Exec kill implementation>>
+
+
+<<Exec sleep implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; The tasks
+
+; task list -- list of all available tasks
+<<Task List>>
+
+
+;;;;;;;;;;;;;;;;;;;;
+; task number 0
+<<Task 0 implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;
+; task number 1
+<<Task 1 implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;
+; task number 2
+<<Task 2 implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;
+; task number 3
+<<Task 3 implementation>>
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; The Data
+
+; splash strings
+<<Init splash data>>
+
+; Some tables for the Task Switcher
+<<Task Switch ROM>>
+
+; The sine table
+<<Utils sine table>>
+
+; The XY-offset table
+<<Utils scroffs table>>
+
+; The Region A and C offset table
+<<Utils acoffs table>>
+
+@
+
+

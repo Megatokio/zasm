@@ -1,0 +1,15 @@
+\chapter{Memory Management}
+\label{chp:memorymanagement}
+
+This chapter describes how all of the memory management (allocation and 
+free) is performed within the system.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Memory Maintenance Structures}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Memory Acquisition (malloc)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Memory Release (free)}
+

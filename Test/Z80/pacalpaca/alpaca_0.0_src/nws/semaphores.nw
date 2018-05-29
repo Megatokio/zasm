@@ -1,0 +1,119 @@
+\chapter{Semaphores}
+\label{chp:semaphores}
+
+This chapter describes how the semaphores are managed in \OS.
+
+THESE DON'T SEEM TO WORK PROPERLY YET.
+
+NOTE: We also should disable task switching and/or interrupts when
+we're locking a semaphore.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{RAM allocation}
+
+For now, each semaphore is a single byte.  We have 16 allocated
+for the system, which should be more than enough for four tasks.
+
+These are located at [[semabase]] in ram.
+
+<<Semaphore RAM>>=
+	    ; semaphores
+	semabase	= (ram + 0x0ce0)
+	semamax		= (semabase + 0x0F)
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Locking a Semaphore}
+
+An attempt to lock a semaphore that is already locked will result
+in the task blocking until the semaphore is released.
+
+We'll do some rudimentary range limiting on [[A]] by anding the
+passed-in semaphore number in the accumulator with [[0x0F]], since
+we only have 16 semaphores.
+
+We then will load [[HL]] with the base address of the semaphore ram,
+then add in the above offset onto it.
+
+Once it is released, it will re-set the semaphore, then return to
+the task.
+
+<<Semaphore lock implementation>>=
+    ;; semalock	- lock a semaphore
+	;		in	a	which semaphore to lock
+	;		out	-
+	;		mod	-
+semalock:
+	    ; set aside registers
+	push	af
+	push	bc
+	push	hl
+	    ; set up the address
+	and	#0x0f		; limit A to 0..15
+	ld	c, a		; c is the current semaphore number
+	ld	b, #0x00	; make sure that b=0   (bc = 0x00SS)
+	ld	hl, (semabase)	; hl = base address
+	add	hl, bc		; hl = address of this semaphore
+.sl2:
+	bit	1, (hl)
+	jr	NZ, .sl2	; while it's set, loop
+	    ; set the bit
+	set	1, (hl)		; lock the semaphore
+	    ; restore registers
+	pop	hl
+	pop	bc
+	pop	af
+	    ; return
+	ret
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Releasing a Semaphore}
+
+Releasing a semaphore is even easier than locking one.
+
+Just like the above, we'll do some rudimentary range limiting on
+[[A]] by anding the passed-in semaphore number in the accumulator
+with [[0x0F]], since we only have 16 semaphores.
+
+We then will load [[HL]] with the base address of the semaphore ram,
+then add in the above offset onto it.
+
+Then we simply clear the bit.
+
+We can eventually combine the two of these if we want, to save a
+few bytes.  Even easier, just after the [[res]] we can jump to just
+after the [[set]] in the above routine... that will save 1 or 2
+bytes, but increase obfuscation quite a bit, so we won't do that
+just yet...
+
+
+<<Semaphore release implementation>>=
+    ;; semarel - release a semaphore
+	;		in	a	which semaphore to release
+	;		out	-
+	;		mod	-
+semarel:
+	    ; set aside registers
+	push	af
+	push	bc
+	push	hl
+	    ; set up the address
+	and	#0x0F		; limit A to 0..15
+	ld	c, a		; c is the current semaphore number
+	ld	b, #0x00	; b=0   (bc = 0x000S)
+	ld	hl, (semabase)	; hl = base address
+	add	hl, bc		; hl = address of this semaphore
+	    ; clear the semaphore
+	res	1, (hl)		; clear the bit
+	    ; restore registers
+	pop	hl
+	pop	bc
+	pop	af
+	    ; return
+	ret
+@

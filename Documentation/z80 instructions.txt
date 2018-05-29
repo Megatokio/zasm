@@ -1,0 +1,103 @@
+
+h3	Z80 instructions
+
+p	List of all Z80 opcodes, which were not already present in the Intel 8080. These are all instructions which use the index registers and the second register set, the relative jumps and the 0xCB and 0xED prefixed opcodes.
+
+pre	ex af,af'    
+	exx          
+	djnz DIS     
+	jr 	DIS       
+	jr 	nz,DIS    
+	jr 	z,DIS     
+	jr 	nc,DIS    
+	jr 	c,DIS     
+	 
+	rlc	R			R = B C D E H L (HL) A
+	rrc	R
+	rl	R
+	rr	R
+	sla	R
+	sra	R
+	srl	R
+	 
+	bit	N,R
+	res	N,R
+	set	N,R
+	 
+    in 	R,(c) 	  	R = B C D E H L A
+    out (c),R 
+	 
+    in 	f,(c)
+	 
+    sbc hl,RR		RR = BC DE HL SP
+    adc hl,RR
+    ld 	(NN),RR
+    ld 	RR,(NN) 
+	 
+    neg        
+    retn       
+    im 	N			N = 0 1 2
+    ld 	i,a     
+    ld 	r,a     
+    ld 	a,i     
+    ld 	a,r     
+    reti       
+    rrd        
+    rld        
+	 
+	ldi  
+	cpi  
+	ini  
+    outi 
+    ldd  
+    cpd  
+    ind  
+    outd 
+    ldir 
+    cpir 
+    inir 
+    otir 
+    lddr 
+    cpdr 
+    indr 
+    otdr 
+	 
+	ld 	RR,NN     	RR = IX IY
+	add hl,RR		
+	inc RR			
+	dec RR			
+	ld 	(NN),RR		   
+	ld 	RR,(NN)   
+	pop  RR	
+	push RR	
+	ex 	(sp),RR
+	ld 	sp,RR 
+	 
+	inc R			R = (IX+N) (IY+N)
+	dec R			
+	ld 	R,N			
+	add a,R
+	adc a,R     
+	sub a,R		
+	sbc a,R		
+	and a,R      
+	xor a,R
+	or  a,R         
+	cp  a,R         
+	 
+	ld	R1,R2		R1 = B C D E H L A  and  R2 = (IX+N) (IY+N)
+	ld	R1,R2		R1 = (IX+N) (IY+N)  and  R2 = B C D E H L A
+
+
+
+
+	
+
+
+	
+
+
+
+
+
+

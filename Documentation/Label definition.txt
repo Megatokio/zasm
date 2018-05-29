@@ -1,0 +1,161 @@
+
+//-----------------------------------------------------------------
+h3	Label definition
+	label
+
+pre	<name>[:][:] [<instruction>]
+	<name>[:][:] equ  <value>
+	<name>[:][:] =    <value>
+	<name>[:][:] set  <value>
+	<name>[:][:] defl <value>
+	#define <name>    <value>
+
+
+p	Label names may be of any length. Upper or lower case is distinguished. The label name may be followed by one or two colons ':'. 
+
+p	Normally, label definitions must start in column 1 and instructions must be indented with some spaces. The assembler decides based on the starting column of a name whether it is a label definition or an instruction. 
+p	Any name which starts in column 1 and is not an assembler directive (which always starts with a hash '#') or a comment (which always starts with a semicolon ';') is treated as a label definition.
+p	unless --dotnames is also set, pseudo instructions starting with a dot are also recognized in column 1.
+
+h5	--reqcolon
+
+p	If the source is assembled with command line option '--reqcolon', then one colon is <b>required</b> after the label name. This allows label definitions to start in any column, either in column 1 as usual or indented with some spaces and tabs, and it allows instructions to start in column 1. The assembler decides based on the existance or absence of a colon whether it is a label definition or an instruction. 
+	Note: even with --reqcolon no colon is required after labels defined with 'equ' and similar.
+	
+p	Recommendation: Start label definitions in column 1, indent instructions with one or two tabs and put a colon after label definitions.
+
+h5	--dotnames
+
+p	Normally label names cannot start with a dot. Names starting with a dot were introduced by some assemblers to easily distinguish betwen label names, instructions and assembler pseudo instructions, so these could be written in column 1 if the programmer desired so. Having seen that, some people immediately developed the need to start their label names with a dot as well…
+
+p	Recommendation: Don't start label names with a dot.
+
+h5	--casefold
+
+p	Normally label names are case sensitive or people just tend to just write them allways in the same way.
+p	If an older source does not distinguish between uppercase and lowercase writing of label names, then you can use this option to tell zasm to ignore upper and lower case as well.
+p	Note: instruction and register names are always case insensitive.
+p	This option is implied by --asm8080.
+
+p	Recommendation: Don't use this option unless required.
+
+
+
+h4	Types of labels
+
+ul	Program labels
+ul	named values
+ul	redefinable named values
+
+
+h5	Program labels
+
+pre	<name>[:][:] [<instruction>]
+
+p	Program labels basically are what we just talked about: A name put in front of an instruction to give the current code position a name so that it can be used in a later call or jp statement.
+
+pre	foo:	jp	_bar
+
+p	This defines a program label named 'foo' and the instruction jumps to a label named '_bar' which is likely a program label as well.
+p	The address of the current instruction can also be referenced as '$', so in some easy cases you don't need to define a label.
+p	If you request that your list file includes accumulated cpu cycles, then the counter is reset at every program label definition.
+
+
+h5	Named values
+	equ
+
+pre	<name>[:][:] equ  <value>
+	<name>[:][:] =    <value>
+	#define <name>    <value>
+
+p	Frequently you start your source with a bunch of definitions for constant values, like printing control codes or port addresses. These definitions require the keyword 'equ' after the label, in exchange a colon after the label name is never required, even with --reqcolon, but may be present. 
+
+pre	foo		equ	255 -1
+	bar		equ	255 -2
+	shelf	=	0xffff
+	#define foobar foo & bar
+
+p	Most assemblers require keyword 'equ', some use '='. The use of 'equ' is recommended. 
+p	Additionally zasm supports the use of the c preprocessor-style definition using '#define'.
+
+
+h5	Redefinable named values
+
+pre	<name>[:][:] set  <value>
+	<name>[:][:] defl <value>
+
+
+	
+p	Especially for use in macros it is possible to define labels which can be redefined to another value. These definitions require the keyword 'set' or 'defl' after the label, in exchange a colon after the label name is never required, even with --reqcolon, but may be present. 
+	Note: don't confuse the 'set' pseudo instruction with the Z80's 'set' instruction!
+
+p	This defines a macro which counts the occurances of something:
+	Note: the final count is only valid after the last use of this macro in your source!
+
+pre	foo		set	0
+			macro COUNT
+	foo		set foo+1
+			endm
+
+p	Use of a redefinable label in place of a program label:
+	Note: forward jumping can't be implemented this way!
+
+pre			macro WAIT &N
+			ld  	b,&N
+	foo		defl	$
+			call	wait_1ms
+			djnz	foo
+			endm
+			
+p	The value is valid from the position where it was defined to the position where it is redefined or the end of the source. References to this label <b>before</b> it's first definition are illegal!
+
+
+h5	global labels
+
+p	Labels are defined in the current 'scope', which is either the default global scope or, after #local, a local scope.
+
+p	Normally labels defined after #local are only known in the local scope:
+
+pre	#local
+	foo:	nop	
+			...
+			jr	foo
+	#endlocal
+	
+p	You can also define global labels inside a local scope: 
+	Just put two colons '::' after the label name or use the pseudo instruction '.globl':
+
+pre	#local
+			.globl	bar
+	foo::	nop				; global
+			...
+	bar:	nop				; global
+			...
+	shelf::	equ	foo+1		; global
+	#endlocal
+
+
+h5	Reusable labels
+
+p	zasm supports the 'recyclable' labels used by sdcc:
+
+pre	foo::
+			...
+	123$:	nop
+			jp	123$
+			jp	199$
+	199$:	nop
+			...
+	bar::
+			...
+	123$:	nop
+			...
+
+p	The name of a reusable label is only valid in the range between two normal program labels. 
+	The naming scheme is a little but unlucky. If you put a dollar sign '$' after a number it becomes a label name. :-/
+	
+	
+	
+	
+	
+	

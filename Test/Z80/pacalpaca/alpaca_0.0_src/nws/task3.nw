@@ -1,0 +1,60 @@
+\chapter{Task 3: TBD Example}
+\label{chp:task3}
+
+This chapter implements a simple task which will be loaded into the system
+as task number [[3]].
+
+<<Task 3 implementation>>=
+	;; Task 3 - TBD
+; header
+<<Task 3 header>>
+
+; routines
+<<Task 3 process routine>>
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Header}
+
+<<Task 3 header>>=
+t3header:
+        .byte   0xc9, 0x4a, 0x73, 0x4c  ; cookie
+        .byte   0x01                    ; version
+        .byte   0x04                    ; requested timeslices
+	.word	t3name			; name
+        .word   t3process               ; process function
+
+t3name:
+	.byte	6			; strlen
+        .asciz  "Task 3"                ; name
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Process routine}
+
+<<Task 3 process routine>>=
+t3process:
+	ld      hl, #(colram)   ; base of color ram
+	ld      a, #0x01        ; clear the screen to 0x00
+	ld      b, #0x04        ; 256*4 = 1k
+	call	memsetN
+
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x78	; 'X'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x79	; 'Y'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x7a	; 'Z'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	jp	t3process
+	halt
+@

@@ -1,0 +1,83 @@
+
+h3	8080 instructions
+ 
+p	These are the instructions which are common to the Z80 and the Intel 8080.
+	The 8080 lacks the index registers, the second register set and has no jump relative instructions. Also it has no 0xCB and 0xED prefixed commands.
+p	Note: for the 8080 assembler mnemonics see chapter '8080 assembler instructions'.
+	
+pre	nop          
+	ld RR,NN     	RR = BC DE HL SP
+	add hl,RR		
+	inc RR			
+	dec RR			
+	 
+	ld (bc),a    
+	ld a,(bc)    
+	ld (de),a    
+	ld a,(de)    
+	ld (NN),hl   
+	ld hl,(NN)   
+	ld (NN),a    
+	ld a,(NN)    
+	 
+	inc R			R = B C D E H L (HL) A
+	dec R			
+	ld R,N			
+	 
+	rlca
+	rrca         	
+	rla          	
+	rra          	
+	daa          
+	cpl          
+	scf          
+	ccf          
+	 
+	halt         
+	 
+	ld  R,R			R = B C D E H L (HL) A
+	 				except ld (hl),(hl)
+	 
+	add a,R			R = B C D E H L (HL) A
+	adc a,R     
+	sub a,R		
+	sbc a,R		
+	and a,R      
+	xor a,R
+	or  a,R         
+	cp  a,R         
+	 
+	ret          
+	ret CC	
+	jp 	NN        
+	jp 	CC,NN     
+	call NN      
+	call CC,NN   
+	rst  N
+	 
+	pop  RR			RR = BC DE HL AF
+	push RR			RR = BC DE HL AF
+	 
+	add a,N      
+	adc a,N
+	sub a,N
+	sbc a,N      
+	and a,N        
+	xor a,N        
+	or 	a,N         
+	cp 	a,N         
+	 
+	out (N),a    
+	in a,(N)     
+	 
+	ex (sp),hl   
+	ex de,hl     
+	di           
+	ld sp,hl     
+	ei           
+
+
+	
+
+
+	

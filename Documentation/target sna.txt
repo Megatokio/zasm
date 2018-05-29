@@ -1,0 +1,32 @@
+
+h3	#target SNA
+	sna
+
+p	A ZX Spectrum NMI snapshot file. 
+
+p	The .sna snapshot file describes a ZX Spectrum 48k serving an NMI request. There are also variants for 16k or 128k Speccies, but zasm currently only supports the basic 48k variant. (send email if you need the other variants!)
+
+p	Information on the ZX Spectrum file formats can be found in the ZX Spectrum FAQ which can be found at <a target=_blank href="http://www.worldofspectrum.org/faq/">WOS</a>.
+
+p	This file consists of a header section which mostly stores the Z80 registers and a ram dump from location $4000 to $FFFF. This is reproduced in the assembler source file as 2 code sections:
+
+pre	#target	sna
+	#code	_HEADER,0,27
+		...
+	#code	_DATA,0x4000,0xC000
+		...
+
+
+p	See the zxsp .sna template file: <a target="image" href="../Examples/template_sna.asm">template_sna.asm</a> 
+
+p	The first code segment must be exactly 27 bytes long. zasm will validate some of the bytes stored here.
+
+p	The start address of the ram segment must be $4000 and the length must be 0xC000 bytes. The ram segment may be split into multiple segments, but they must start at 0x4000 and sum up to a total of 0xC000 bytes. zasm will check this.
+
+p	The ram contents are written to the file in the uncompressed .sna format. The instruction pointer PC is not stored in the header segment but on the machine stack in ram and will be popped from it as a first action after loading this file into the emulator.
+
+
+
+
+
+

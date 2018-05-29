@@ -1,0 +1,14 @@
+\chapter{System Errors}
+
+This chapter describes how system errors are handled in \OS.
+
+The System error routines are formatted similarly to the task
+routines.  When the kernel finds an error during its interrupt
+routine, it will push the correct address for the error routine
+then return from the interrupt handler.
+
+Each error routine should disable interrupts, clear the watchdog
+timer, and draw some kind of informative information on the screen
+for the user to see.
+
+Errors are currently unimplemented.

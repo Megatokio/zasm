@@ -1,0 +1,12 @@
+
+h3	Commands for command line options
+p	The following instructions must all occur befor the first org or segment definition and they do the same as the similar named command line option. You may put these pseudo ops at the start of your assembler source to eliminate the need to pass the command line options every time you assemble it.
+
++	__ixcbr2.txt
++	__dotnames.txt
++	__reqcolon.txt
++	__casefold.txt
++	__flatops.txt
+
+
+

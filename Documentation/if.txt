@@ -1,0 +1,25 @@
+
+h3	if, endif
+	if, endif
+	
+
+pre		if <condition>
+		...
+		endif
+
+p	'if' starts a block of assembler instructions, which is only assembled if the given <condition> is true. The <condition> must be evaluatable in pass 1. Conditional assembly may be nested. <i class=magenta>note: this may change.</i>
+
+p	The 'endif' instruction finishes conditional assembly as started with the 'if' instruction.
+
+p	If the <condition> was false, then all instructions and assembler directives are ignored, except the matching 'endif' or nested 'if' … 'endif' ranges.
+
+p	The assembler directives '#if', '#elif', '#else' and '#endif' are handled just like 'if' and 'endif'. <i class=magenta>note: this may change.</i> 
+
+p	Normally the assembler directives with '#' should be used. Except that 'if' and 'endif' can occur in macros and the expanded macro can conditionally exclude some code.
+
+ 
+
+
+
+	
+

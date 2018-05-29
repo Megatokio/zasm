@@ -1,0 +1,13 @@
+
+h3	#assert
+
+pre	#assert <condition>
+
+p	Assert that the given condition is true. The condition must be evaluatable in pass 1.
+
+p	This directive might be used to detect logical or overflow errors in your source. It is used by zasm itself to assert that loaded library files actually defined the label they promissed to define. It is also used in zasm's assembler test suite.
+
+h5	Example:
+pre	#assert	( $ & 7 ) == 0		; assert that current code position 
+	 							; is a multiple of 8
+

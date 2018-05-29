@@ -1,0 +1,514 @@
+
+h3	#target TZX
+	tzx
+
+pre	#target tzx
+	#code <name>, <start>,<len>,<flag>
+	#code <name>, <start>,<len>,<flag>
+	#code <name>, <start>,<len>,<flag>,...
+	...
+
+p.red	<b>Introduced in version 4.2.0</b>
+
+p	#target TZX creates a tape file for the ZX Spectrum, ZX81, Amstrad CPC, SAM Coupé, Jupiter ACE and Enterprise or similar computers. This tape file format represents programs and data saved to a music compact cassette by the original ZX Spectrum or custom tape saving routines.
+
+p	While a TAP file can only contain standard data blocks as saved with the original ZX Spectrum "save tape" routine, TZX files can contain data blocks with custom encoding, e.g. turbo loading blocks or ZX81-like blocks, additional emulator information and custom audio sequences. TZX files were originally used for preserving and archiving real ZX Spectrum tapes.
+
+h4 Typical layout of a game tape
+p	The assembler source file will probably contain several #code segments. Normally each #code segment defines one block on the tape.
+
+p	• A normal block consists of a pilot tone (lead-in), two sync pulses, a flag byte, the raw data bytes and a final checksum byte.
+	• The flag argument defines the type of the block and is set in the #code directive.
+	• Then the raw data follows which is the assembled data of this #code segment.
+	• Finally a checksum is appended which is calculated by the assembler.
+p	A tape file is a simple sequence of any number of these blocks.
+
+p	Any kind of data was saved by the ZX Spectrum rom routine in two blocks: a <u>header</u> block, containing information about the following data, and a <u>data</u> block, containing data as described by the preceding header.
+
+p	A complete game for the ZX Spectrum is typically saved in two parts: a <u>Basic loader</u>, which consists of a header and a data block and the <u>machine code</u> part, which consists of a header and data block too. The Basic part is typically saved with an auto start address which loads the following parts and starts the game.
+
+p	The flag argument defines the type of block. This is typically $00 for a header block and $FF for the following data block.
+
+p	zasm allows you to spread a tape block across multiple #code segments. This is useful if you want to include C source files. Each #code segment with a flag byte starts a new tape block. All following #code segments with no flag byte are joined with this tape block. A segment address defined for a following block does not create a 'gap' on the tape. The segment will be loaded where it is loaded and the program is assumed to move it to the defined location befor it is used. Actually this is true for the first block too: The tape loader defines where the block will be loaded, not the segment address stated in the #code directive. This can be used if you want to move the entire program to a lower location in ram when it starts up.
+
+p	For an example of the basic layout of a ZX Spectrum tape see #target TAP.
+
+
+h4	Supported TZX block types
+
+p	TZX files are made out of blocks. Each of them may, or may not, define a complete data block on the tape. There are various block types which are identified by a block ID:
+
+h5	Supported block types
+p	0x10:	Standard speed data block
+	0x11:	Turbo speed data block
+	0x12:	Pure tone
+	0x13:	Sequence of pulses of various lengths
+	0x14:	Pure data block
+	0x18:	CSW recording block
+	0x19:	Generalized data block
+	0x20:	Pause (silence) or 'Stop the tape' command
+	0x21:	Group start
+	0x22:	Group end
+	0x24:	Loop start
+	0x25:	Loop end
+	0x2A:	Stop the tape if in 48K mode
+	0x2B:	Set signal level
+	0x30:	Text description
+	0x31:	Message block
+	0x32:	Archive info
+	0x33:	Hardware type
+
+
+h4	Using standard encoding scheme and timing
+
+p	A TZX file represents what is audible on the tape, not neccessarily a specific meaning for the pulses. Therefore it is possible that the first byte recorded on tape is not a flag byte and the last byte is not the standard checksum and even some odd bits may appear at the end of a block which do not sum up to a full byte. You probably won't need these fancy options, therefore they are all optional.
+
+p	#target TZX introduces a new syntax for optional arguments which is shown below in the second version of the #code directive. The <u>square brackets</u> indicate optionality. <u>Round brackets</u> with a vertical bar somewhere in the middle indicate a choice. Keywords are written in uppercase, but are also recognized in lowercase by the assembler.
+
+pre	#CODE name, address, length, flag
+	#CODE name, address, length, FLAG=(flag|NONE), [PILOT=(NONE|count)], [CHECKSUM=NONE|ACE], [LASTBITS=lastbits], [PAUSE=pause]
+
+p	<b>FLAG</b>: The value for the flag byte is in range 0 to 255. If the keyword NONE is used then zasm does not store a flag byte at the start of the tape block.
+p	<b>PILOT</b>: If set to NONE then no pilot tone and no sync pulses are stored. If a number is given, then a pilot tone with that number of pulses is stored. The default is to store a data block which includes a pilot tone with 8063 or 3223 pulses depending on the flag byte.
+p	<b>CHECKSUM</b>: If set to NONE then zasm will append no checksum after the data. The default is to append the standard ZX Spectrum checksum.
+p	<b>LASTBITS</b>: The number of bits actually played from the last byte. Possible values are from 1 to 8. The upper bits of the last byte are used, because the bits were sent from msb to lsb by the ZX Spectrum tape routine. Use of this option is incompatible with a checksum. If LASTBITS is omitted, then the last byte is stored (and played) as usual.
+p	<b>PAUSE</b>: Length of the silent gap after this block in ms. If PAUSE is omitted then the default is 1000ms after a header block and 2000ms after a data block.
+
+p	If CHECKSUM=ACE is defined, then some default values are changed:
+	• The checksum is calculated for the Jupiter Ace.
+	• Number of pilot pulses: 8192 (header) or 1024 (data).
+	• Length of pilot pulse, sync pulses and data pulses.
+	• Duration of pause after this block: 2ms (header) or 1s (data).
+	• note: Do not set FLAG=NONE as for #target tap: In Jupiter-Ace .tap-files the flag byte is actually not written, but in .tzx files it is!
+
+h5	Examples for code blocks with standard timing:
+
+p	Using the same #code directive as for #target TAP will result in a standard speed data block. So migrating a source from #target TAP to #target TZX is just a matter of changing the #target directive:
+
+pre	#CODE name,address,length,flag
+
+p	A data block with some non-standard settings:
+
+pre	#CODE name,address,length, FLAG=10, CHECKSUM=NONE, PAUSE=100
+
+p	A data block with a short pilot tone:
+
+pre	#CODE name,address,length, FLAG=255, PILOT=999, PAUSE=100
+
+
+h4	Custom pulse lengths and encoding schemes
+	tzx-pilot-sym, tzx-pilot, tzx-data-sym
+
+p	With #target TZX you can define custom timings for all pulses (pilot, sync and data bits) used for the standard tape encoding scheme and even own schemes, e.g. to write a ZX81-style data block. For this #target TZX introduces new pseudo opcodes to define the timing and encoding scheme of the current #code segment. The .tzx- pseudo opcodes to define pulse length and encoding scheme must be placed immediately after the #code directive.
+
+h5	<b>.tzx-pilot-sym</b>
+p	Defines a sequence of pulses used to construct the pilot tone and the sync pulses. The symbol definition starts with a flag which defines the signal polarity at the start of the symbol and a series of pulse lengths expressed in t-states (3.5MHz). Symbols are indexed in order of appearance.
+
+h5	<b>.tzx-pilot</b>
+p	Uses the above symbols to construct the pilot tone and the sync pulses.
+
+h5	<b>.tzx-data-sym</b>
+p	Defines a sequence of pulses used to encode the data of this #code block. In most encoding schemes one data symbol in the data stream encodes 1 bit of data and you need two different symbols for bit=0 and bit=1, but you can also define an encoding scheme where one data symbol encodes 2 bits, 4 bits or a whole byte. Accordingly there must be either 2, 4, 16 or 256 <tt>.tzx-data-sym</tt> definitions to encode all possible values. Data symbol definitions use the same syntax as <tt>.tzx-pilot-sym</tt>.
+
+h5	Polarity flag
+
+p	Pilot and data symbol definitions start with a polarity flag:
+p	0: Toggle polarity (make an edge, most common case)
+	1: Don't toggle (make no edge, prolong the previous pulse)
+	2: Force low level
+	3: Force high level
+
+h5	Definition of pilot and data symbols
+
+pre	.tzx-pilot-sym  polarity, pulse1, pulse2, ...		; pilot symbol #0
+	.tzx-pilot-sym  polarity, pulse1, pulse2, ...		; pilot symbol #1
+	...
+	.tzx-pilot		symbol_idx, repetitions, symbol_idx, repetitions, ...
+
+pre	.tzx-data-sym   polarity, pulse1, pulse2, ...		; data symbol #0
+	.tzx-data-sym   polarity, pulse1, pulse2, ...		; data symbol #1
+	...
+	; assembler source follows
+
+h5	Default values
+
+p	The symbol tables of a #code block are preset with default values which generate a standard ZX Spectrum (or Jupiter Ace) data block:
+
+pre	#code name,address,length,flag=0
+		.tzx-pilot-sym	0,2168			; symbol for pilot pulses
+		.tzx-pilot-sym	0,667,735		; symbol for sync pulses (two pulses)
+		.tzx-pilot		0,8063, 1,1		; 8063 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0,855,855		; symbol for bit 0
+		.tzx-data-sym	0,1710,1710		; symbol for bit 1
+
+pre	#code name,address,length,flag=255
+		.tzx-pilot-sym	0,2168			; symbol for pilot pulses
+		.tzx-pilot-sym	0,667,735		; symbol for sync pulses (two pulses)
+		.tzx-pilot		0,3223, 1,1		; 3223 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0,855,855		; symbol for bit 0
+		.tzx-data-sym	0,1710,1710		; symbol for bit 1
+
+pre	#code name,address,length,flag=0, checksum=ace
+		.tzx-pilot-sym	0,2011			; symbol for pilot pulses
+		.tzx-pilot-sym	0,601,791		; symbol for sync pulses (two pulses)
+		.tzx-pilot		0,8192, 1,1		; 8192 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0,795,801		; symbol for bit 0
+		.tzx-data-sym	0,1585,1591		; symbol for bit 1
+
+pre	#code name,address,length,flag=255, checksum=ace
+		.tzx-pilot-sym	0,2011			; symbol for pilot pulses
+		.tzx-pilot-sym	0,601,791		; symbol for sync pulses (two pulses)
+		.tzx-pilot		0,1024, 1,1		; 1024 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0,795,801		; symbol for bit 0
+		.tzx-data-sym	0,1585,1591		; symbol for bit 1
+
+h5	Choice of tzx block type
+	#TZX
+
+p	The TZX file format provides 4 block types to store code. You can either use a #TZX directive to specify the TZX block to use or use #CODE and leave it to zasm to automatically pick the most suitable block type.
+
+pre	#CODE name, address, length, flag
+	#CODE name, address, length, FLAG=(flag|NONE), [PILOT=(NONE|count)], [CHECKSUM=(NONE|ACE)], [LASTBITS=count], [PAUSE=ms]
+
+pre	#TZX STANDARD, name, address, length, FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=ms]
+	#TZX TURBO, name, address, length, FLAG=(flag|NONE), [PILOT=count], [CHECKSUM=(NONE|ACE)], [LASTBITS=count], [PAUSE=ms]
+	#TZX PURE-DATA, name, address, length, FLAG=(flag|NONE), [PILOT=NONE], [CHECKSUM=(NONE|ACE)], [LASTBITS=count], [PAUSE=ms]
+	#TZX GENERALIZED, name, address, length, FLAG=(flag|NONE), [PILOT=(NONE|count)], [CHECKSUM=(NONE|ACE)], [LASTBITS=count], [PAUSE=ms]
+
+p	The restrictions for each tzx block type are as follows:
+
+p	<b>0x10: Standard data block:</b>
+	• LASTBITS are not supported.
+	• The pulse scheme must not be modified using the .tzx- pseudo opcodes.
+
+p	<b>0x11: Turbo data block:</b>
+	• The pulse scheme must match the ZX Spectrum encoding but the pulse lengths (pilot, sync, data bits) and number of pilot pulses can be modified.
+
+p	<b>0x14: Pure data block:</b>
+	• PILOT must be NONE
+	• No pilot must be specified with .tzx-pilot-sym and .tzx-pilot
+	• The pulse scheme for the data bits must match the ZX Spectrum encoding but the pulse lengths can be modified.
+
+p	<b>0x19: Generalized data block:</b>
+	• No restrictions.
+
+
+h5	Examples for different tzx blocks
+
+p	Standard speed data block
+
+pre	#code name, address, length, flag=255
+
+p	Turbo speed data block
+
+pre	#code name, address, length, flag=$ee, pause=150
+		.tzx-pilot-sym	0, 900			; symbol#0 for pilot pulses
+		.tzx-pilot-sym	0, 300,400		; symbol#1 for sync pulses (two pulses)
+		.tzx-pilot		0,1520, 1,1		; 1520 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0, 290,290		; symbol#0 for bit 0
+		.tzx-data-sym	0, 580,580		; symbol#1 for bit 1
+
+p	Pure data block
+
+pre	#code name, address, length, flag=255, pilot=NONE
+
+p	Generalized data block
+
+pre	; Example with 2-bit symbols. this requires 4 data symbols for the 4 possible values:
+	#code name, address, length, flag=255
+		.tzx-pilot-sym	0, 1500				; symbol#0 for pilot pulses
+		.tzx-pilot-sym	0, 500				; symbol#1 for sync pulses
+		.tzx-pilot		0,1000, 1,2			; 1000 pilot pulses (symbol#0), 2 short sync pulses (symbol#1)
+		.tzx-data-sym	0, 500,350,650,500	; symbol#0 for 2 bits = 00
+		.tzx-data-sym	0, 500,450,550,500	; symbol#1 for 2 bits = 01
+		.tzx-data-sym	0, 500,550,450,500	; symbol#2 for 2 bits = 10
+		.tzx-data-sym	0, 500,650,350,500	; symbol#3 for 2 bits = 11
+
+pre	; ZX81 program:
+	#code name, address, length, flag=NONE, checksum=NONE, pilot=NONE
+		.tzx-data-sym	3, 530,520,530,520,530,520,530, 4689
+		.tzx-data-sym	3, 530,520,530,520,530,520,530, 520,530,520,530,520,530,520,530,520,530,4689
+
+
+// ----------------------------------
+h4	0x10: Standard speed data block
+	TZX STANDARD, Standard data block, Standard speed data block
+
+pre	#TZX STANDARD, name, address, length, FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=ms]
+
+p	This defines a #code segment which is stored as a standard ZX Spectrum tape block. This segment can be re-entered using directive <tt>#CODE</tt> or pseudo opcode <tt>.AREA</tt>. Any following #CODE segments with no FLAG are appended to this segment to form the full tzx data block.
+
+p	<b>FLAG</b>: The value for the flag byte is in range 0 to 255. If the keyword NONE is used then no flag byte is stored in the tape file.
+p	<b>CHECKSUM</b>: If set to NONE then zasm will append no checksum after the data. If set to ACE then a Jupiter Ace checksum will be calculated. The default is to append the standard ZX Spectrum checksum.
+p	<b>PAUSE</b>: Length of the silent gap after this block in ms. If PAUSE is omitted then the default is 1000ms (header) or 2000ms (data).
+
+
+// ----------------------------------
+h4	0x11: Turbo speed data block
+	TZX TURBO, Turbo speed data block, Turbo data block
+
+pre	#TZX TURBO, name, address, length, FLAG=(flag|NONE), [PILOT=count], [CHECKSUM=NONE|ACE], [LASTBITS=count], [PAUSE=ms]
+
+p	This defines a #code segment which is stored with the standard ZX Spectrum tape encoding scheme but with different timings. The timings can be set with .tzx- pseudo opcodes as described above. This segment can be re-entered using directive <tt>#CODE</tt> or pseudo opcode <tt>.AREA</tt>. Any following #CODE segments with no FLAG are combined with this segment to form the full tzx code block.
+
+p	<b>FLAG</b>: The value for the flag byte is in range 0 to 255. If the keyword NONE is used then no flag byte is stored in the tape file.
+p	<b>PILOT</b>: Set the number of pilot pulses to the given number. This overrides the default of 8063 or 3223 pulses.
+p	<b>CHECKSUM</b>: If set to NONE then zasm will append no checksum after the data. If set to ACE then a Jupiter Ace checksum will be calculated. The default is to append the standard ZX Spectrum checksum.
+p	<b>LASTBITS</b>: The number of bits actually played from the last byte. Possible values are from 1 to 8. The upper bits of the last byte are used, because the bits were sent from msb to lsb by the ZX Spectrum tape routine. Use of this option is incompatible with a checksum. If LASTBITS is omitted, then the last byte is stored (and played) as usual.
+p	<b>PAUSE</b>: Length of the silent gap after this block in ms. If PAUSE is omitted then the default is 1000ms (header) or 2000ms (data).
+
+p.b	Example: Turbo speed block
+pre	#tzx turbo, my_name, my_address, my_length, flag=$aa, pause=150
+		.tzx-pilot-sym	0, 900			; symbol#0 for pilot pulses
+		.tzx-pilot-sym	0, 300,400		; symbol#1 for sync pulses (two pulses)
+		.tzx-pilot		0,1520, 1,1		; 1520 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0, 290,290		; symbol#0 for bit 0
+		.tzx-data-sym	0, 580,580		; symbol#1 for bit 1
+		;
+		; machine code follows
+
+
+// ----------------------------------
+h4 	0x12: Pure tone
+	TZX PURE-TONE, Pure tone
+
+p	Most <b>#tzx</b> directives create TZX file blocks which do not encode a #code block. You can either use the symbolic name of a TZX file block, e.g. <tt>PURE-TONE</tt> or the hexadecimal number, e.g. <tt>0x12</tt>.
+
+pre	#tzx PURE-TONE, [COUNT=]num_pulses, [PULSE=]cc_per_pulse
+
+p	TZX block 0x12 can be used to "manually" create a pilot tone. The pulse length is measured in ZX Spectrum clock cycles. (3.5MHz)
+p	<b>COUNT</b>: Number of pulses
+p	<b>PULSE</b>: Length of each pulse expressed in T-states.
+
+
+// ----------------------------------
+h4 	0x13: Sequence of pulses of various lengths
+	TZX PULSES, Sequence of pulses
+
+pre	#tzx PULSES
+		dw	NN, ...
+
+p	This block stores up to 255 individual pulses. It can be used to create custom sync pulses after block 0x12 with a custom pilot tone. The pulse length is based on ZX Spectrum clock cycles. (3.5MHz)
+
+
+// ----------------------------------
+h4	0x14: Pure data block
+	TZX PURE-DATA, Pure data block
+
+pre	#TZX PURE-DATA, name, address, length, FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [LASTBITS=count], [PAUSE=ms]
+
+p	This defines a #code segment which is stored with the standard ZX Spectrum tape encoding scheme but with no pilot and sync pulses and optionally with different timing for the data pulses. The data pulse lengths can be set with the <tt>.tzx-data-sym</tt> pseudo opcode as described above. This segment can be re-entered using directive <tt>#CODE</tt> or pseudo opcode <tt>.AREA</tt>. Following #CODE segments without FLAG are appended to this segment to form a full tzx data block.
+
+p	<b>FLAG</b>: The value for the flag byte is in range 0 to 255. If the keyword NONE is used then no flag byte is stored in the tape file.
+p	<b>CHECKSUM</b>: If set to NONE then zasm will append no checksum after the data. If set to ACE then a Jupiter Ace checksum will be calculated. The default is to append the standard ZX Spectrum checksum.
+p	<b>LASTBITS</b>: The number of bits actually played from the last byte. Possible values are from 1 to 8. The upper bits of the last byte are used, because the bits were sent from msb to lsb by the ZX Spectrum tape routine. Use of this option is incompatible with a checksum. If LASTBITS is omitted, then the last byte is stored (and played) as usual.
+p	<b>PAUSE</b>: Length of the silent gap after this block in ms. If PAUSE is omitted then the default is 1000ms (header) or 2000ms (data).
+
+
+// ----------------------------------
+h4	0x18: CSW recording block
+	TZX CSW-RECORDING, CSW recording block, TZX CSW
+
+pre	#tzx CSW, [FILE=]"audio.wav", [COMPRESSED], [PAUSE=pause],
+			  [SAMPLE-RATE=value], [CHANNELS=1|2], [MONO], [STEREO], [SAMPLE-FORMAT=s1|u1|s2|u2|s2x|u2x],
+			  [HEADER=bytes], [START=frame], [END=frame], [COUNT=frames]
+
+p	This block inserts audio data reduced to 1 bit into the .tzx file. The data is RLE-encoded as a so-called 'compressed square wave' and optionally further compressed with Z-compression.
+
+p	Currently <b>wav</b> files and <b>raw</b> audio files are supported:
+	• <b>wav</b> files: 1, 2 and 4 byte PCM, 4 byte FLOAT, A-LAW and µLAW encoding, 1 or 2 channels and any sample rate.
+	• <b>raw</b> files: 1 or 2 bytes, signed or unsigned, little or big endian samples, 1 or 2 channels and any sample rate.
+
+p	<b>COMPRESSED</b>: Additionally compress the block using Z-compression.
+p	<b>PAUSE</b>: Length of the gap of silence after this block in ms. If PAUSE is omitted then there is no pause after this block.
+
+h5	Raw audio settings
+p	Decoding raw audio files requires some informations:
+p	<b>SAMPLE-RATE</b>: Sample rate of the audio data in samples per second. (STEREO: frames per second.)
+p	<b>CHANNELS</b>: Number of (interleaved) audio channels: 1 or 2. <b>MONO</b> is a short-hand for 1 channel and <b>STEREO</b> is a short-hand for 2 channels.
+p	<b>SAMPLE-FORMAT</b>: The sample format defines 3 aspects of each sample:
+	<b class=blue>s|u</b>: samples are signed (s) or unsigned (u)
+	<b class=blue>1|2</b>: samples are 1 byte or 2 bytes in size.
+	<b class=blue>x</b>:   if samples are 2 bytes, then the default is that they are in "network byte order" which means: MSB first. If they are LSB first (as usual for .wav files) an 'x' must be appended.
+
+p	<b>HEADER</b>: optional: size of a file header. The header will be skipped before extracting audio data or measuring the file positions for START, END and COUNT.
+
+h5	Limit the range to encode
+p	If you don't want to import the whole file then you can adjust the range using <b>START</b>, <b>END</b> and <b>COUNT</b>, measured in FRAMES after the HEADER. If the value for END or COUNT exceeds the end of the file then it is automatically adjusted.
+p	A FRAME is a set of one sample for each channel: 1 sample for MONO and 2 samples for STEREO.
+	E.g. the size of a frame of 2-byte samples in mono is 2*1=2 and of 4-byte float samples in stereo it is 4*2=8.
+
+h5	Note
+p.blue	The CSW block does not define the starting pulse level, therefore a CSW block might be replayed inverted. To correct this problem zasm always stores a 0x2B set signal level block before the CSW block.
+
+
+
+// ----------------------------------
+h4	0x19: Generalized data block
+	TZX GENERALIZED, Generalized data block
+
+pre	#TZX GENERALIZED, name, address, length, FLAG=(flag|NONE), [PILOT=(NONE|count)], [CHECKSUM=NONE|ACE],  [LASTBITS=lastbits], [PAUSE=pause]
+
+p	This defines a #code segment which is stored with a custom encoding scheme. The encoding scheme and pulse timings can be set with .tzx- pseudo opcodes as described above. This segment can be re-entered using directive <tt>#CODE</tt> or pseudo opcode <tt>.AREA</tt>. Following #CODE segments without FLAG are appended to this segment to form a full tzx data block.
+
+p	<b>FLAG</b>: The value for the flag byte is in range 0 to 255. If the keyword NONE is used then no flag byte is stored in the tape file.
+p	<b>PILOT</b>: The number of pilot pulses is set to the given number. This overrides the default of 8063 or 3223 pulses.
+p	<b>CHECKSUM</b>: If set to NONE then zasm will append no checksum after the data. If set to ACE then a Jupiter Ace checksum will be calculated. The default is to append the standard ZX Spectrum checksum.
+p	<b>LASTBITS</b>: The number of bits actually played from the last byte. Possible values are from 1 to 8. The upper bits of the last byte are used, because the bits were sent from msb to lsb by the ZX Spectrum tape routine. Use of this option is incompatible with a checksum. If LASTBITS is omitted, then the last byte is stored (and played) as usual. If 2- or 4-bit data symbols are used (if 4 or 16 data symbols were defined) then LASTBITS must be a multiple of 2 or 4. If 8-bit data symbols are used (if 256 data symbol were defined) then LASTBITS must be a multiple of 8 which means, yes, it must be 8.
+p	<b>PAUSE</b>: Length of the silent gap after this block in ms. If PAUSE is omitted then the default is 1000ms (header) or 2000ms (data).
+
+p.b	Example: Turbo speed block
+pre	#tzx generalized, my_name, my_address, my_length, flag=$ee, pause=150
+		.tzx-pilot-sym	0, 900			; symbol#0 for pilot pulses
+		.tzx-pilot-sym	0, 300,400		; symbol#1 for sync pulses (two pulses)
+		.tzx-pilot		0,1520, 1,1		; 1520 pilot pulses (symbol#0), then one sync pulse symbol (symbol#1)
+		.tzx-data-sym	0, 290,290		; symbol#0 for bit 0
+		.tzx-data-sym	0, 580,580		; symbol#1 for bit 1
+		;
+		; machine code follows
+
+h4 	0x20: Pause (silence) or 'Stop the tape' command
+	tzx pause, silence, Stop the tape
+
+pre	#tzx PAUSE, [DURATION=]pause
+
+p	Insert silence into the tape.
+p	<b>DURATION</b>: duration in ms. If PAUSE=0 then an emulator will stop the tape.
+
+
+h4	0x21: Group start
+
+pre	#tzx GROUP-START, [NAME=]name
+
+p	Organize some blocks into a group with a name. Used to group bleepload blocks or the like. Must be followed by <tt>tzx group-end</tt>
+p	<b>NAME</b>: name to display.
+
+
+h4	0x22: Group end
+
+pre	#tzx GROUP-END
+
+p	End of group.
+
+
+h4	0x24: Loop start
+
+pre	#tzx LOOP-START, [REPETITIONS=]repetitions
+
+p	Start a group of blocks to repeat. Mostly used in old TZX files. Must be followed by <tt>#tzx loop-end</tt>.
+p	<b>REPETITIONS</b>: number of repetitions. Must be greater than 1.
+
+h4	0x25: Loop end
+
+pre	#tzx LOOP-END
+
+p	End of group.
+
+
+h4	0x2A: Stop the tape if in 48K mode
+	TZX STOP-48K, Stop the tape if in 48K mode, Stop the tape
+
+pre	#tzx STOP-48K
+
+p	This block instructs an emulator to stop the tape only if it is currently emulating a 48k (or 16k) model. Else the tape is left running and the 128k model can load additional data.
+
+
+h4	0x2B: Set signal level
+	tzx polarity, Set signal level
+
+pre	#tzx POLARITY, [POLARITY=]polarity
+
+p	Set the signal polarity. The ZX Spectrum tape loading routines are polarity insensitive but e.g. the ZX81 routines weren't. This block can be used to force the polarity of the following pulses.
+
+p	<b>POLARITY</b>: 0=low, 1=high.
+
+
+h4	0x30: Text description
+	tzx info
+
+pre	#tzx INFO, [TEXT=]text
+
+p	Add a text description for the following block(s). It is up to the emulator to display it somehow.
+p	<b>TEXT</b>: Ascii text. Should be limited to 30 characters.
+
+
+h4	0x31: Message block
+	tzx message
+
+pre	#tzx MESSAGE, [DURATION=]duration, [TEXT=]text
+
+p	Display a message during loading.
+p	<b>DURATION</b>: time to display this message in seconds.
+p	<b>TEXT</b>: Ascii text. At most 8 lines à 30 characters. Text lines must be enclosed in quotes and lines separated by comma.
+
+p.b	Example
+pre	#tzx message, 5, "Hello world,","this is a test message.","cheese."
+
+
+h4	0x32: Archive info
+	tzx archive-info, Archive info
+
+pre	#tzx ARCHIVE-INFO
+		db	type, text
+		...
+
+p	Store information like author, publisher, release date, price etc.
+p	Only <tt>defb</tt> pseudo opcodes (and aliases) are allowed. Each line must consist of one byte indicating the type of information and a quoted text string giving this information.
+p	There must be at most one ARCHIVE-INFO block for each tzx file. The archive block is reordered to the front of the file regardless of it's position in the source.
+
+p.b	Example
+pre	#tzx archive-info
+		db	0,"Fufu goes bobo"		; title
+		db	3,"2018"				; year
+		...
+
+p.b	Information IDs (tzx v1.20):
+p	00 - Full title
+    01 - Software house/publisher
+    02 - Author(s)
+    03 - Year of publication
+    04 - Language
+    05 - Game/utility type
+    06 - Price
+    07 - Protection scheme/loader
+    08 - Origin
+    FF - Comment(s)
+
+
+h4	0x33: Hardware type
+	tzx hardware-info, Hardware type
+
+pre	#tzx HARDWARE-INFO
+		db	type, id, state
+		...
+
+p	Store information about supported or required computer models and peripherals. For the full list refer to the TZX file documentation.
+p	The contained data should parse to multiple sets of three bytes, 'hardware type', 'hardware ID' and 'hardware info'. The data may be stored with <tt>db</tt> or similar as you like.
+p	There must be at most one HARDWARE-INFO block for each tzx file. The hardware-info block is reordered to the front of the file (behind the archive info, if present) regardless of it's position in the source.
+
+p.b	Example
+pre	#tzx hardware-info
+		db	0,0x1a,3			; doesn't run on a jupiter ace
+		db	0,0x00,0			; game is known to run on a ZX Spectrum 16k
+		db	2,0x01,3			; doesn't run if a MF1 is attached
+		db	3,0x02,1			; actually uses the Currah µSpeech
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

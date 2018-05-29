@@ -1,0 +1,44 @@
+\chapter{Development Schedule}
+
+The development cycles for \OS have been broken down into a few phases.  
+Each of the phases will be completed before then next one will be started.
+
+\section{Phase 1}
+
+    \begin{itemize}
+
+	\item task startup with hardcoded entry points
+
+	\item task switching with hardcoded priorites/delays
+
+	\item init and process routines for tasks
+
+    \end{itemize}
+
+
+\section{Phase 2}
+
+    \begin{itemize}
+
+	\item task exec with ROM Task searcher 
+
+	\item simple message queue (not useful)
+
+    \end{itemize}
+
+
+
+\section{Phase 3}
+
+    \begin{itemize}
+
+	\item task switching with wait(0), requested priorities
+
+	\item more advanced message queue
+
+	\item shutdown routine for tasks
+
+	\item perhaps allow for multiple execs of the same process
+		(this collides with the searcher's functionality)
+
+    \end{itemize}

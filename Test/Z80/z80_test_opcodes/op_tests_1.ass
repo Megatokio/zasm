@@ -1,0 +1,1207 @@
+
+
+
+
+opa_rz_ret	data	1			; Restzyklen für nacktes RET am Ende der 1. Waitmap-Zeile
+
+opa_test	equ	PRTBUF +128		; contended ram buffer used for test code
+						; use PRTBUF+128 because ZX128k uses PRTBUF for BASIC too (crash!)
+
+
+
+
+; ----------------------------------------------------
+;	Vermesse Opcodes lt. Tabelle 1, 2 und 3
+;	und drucke Ergebnisse
+; ----------------------------------------------------
+		
+
+test_opa:
+
+	; init:
+		ld	a,201			; RET
+		ld	(opa_test),a
+		ld	hl,(cc_waitmap_start)
+		ld	de,16*8 -3
+		add	hl,de
+		call	opa_get_rz
+		ld	(opa_rz_ret),a
+
+#if 1
+		call	print_msg
+		defm	$0d,"--- table 1 ---",$00
+
+		ld	hl,opa_table
+
+topa1		push	hl
+		call	z80_op_length
+		call	opcode_access_maps
+		pop	hl
+
+		call	z80_op_skip
+		ld	a,(hl)
+		and	a
+		jr	nz,topa1
+#endif
+
+#if 1
+		call	print_msg
+		defm	$0d,"--- table 2 ---",$00
+
+		ld	hl,opa_table_2
+topa2		ld	de,hl			; de -> start
+		call	z80_op_skip
+		call	z80_op_skip		; hl -> end
+		ld	a,l
+		sub	e			; a = len
+		ex	hl,de			; hl=start, de=end
+		push	de		
+		call	opcode_access_maps
+		pop	hl			; new start = old end		
+		ld	a,(hl)
+		and	a
+		jr	nz,topa2
+#endif
+
+#if 1
+		call	print_msg
+		defm	$0d,"--- free-sized table ---",$00
+
+		ld	hl,opa_table_3
+topa3		ld	de,hl			; de -> start
+topa4		call	z80_op_skip
+		ld	a,(hl)
+		and	a
+		jr	nz,topa4		; hl -> end
+		
+		ld	a,l
+		sub	e			; a = len
+		ex	hl,de			; hl=start, de=end
+		push	de
+		call	opcode_access_maps
+		pop	hl			; new start = old end
+		inc	hl			; skip NOP
+		
+		ld	a,(hl)
+		and	a
+		jr	nz,topa3
+#endif
+
+		call	print_msg
+		defm	$0d,"--- finished ----",$00
+		ret
+
+
+; calc & print map and rmap:
+;
+opcode_access_maps:
+		push	hl
+		push	af
+		call	opcode_access_map
+		pop	af
+		pop	hl
+		jp	opcode_access_rmap		
+
+
+
+
+
+; ----------------------------------------------------
+;	Ermittle Zugriffszeiten eines Befehls
+;	Der Befehl / die Testsequenz wird zunächst direkt vor Beginn der Waitmap ausgeführt.
+;	Subsequente Wait-Tests und das abschließende RET werden dabei durch die Waitmap verzögert. 
+;	Danach wird er immer einen cc früher ausgeführt, bis er und RET vor Anbruch der Waitmap abgeschlossen werden (waitcycles==0).
+;	Jedesmal wenn ein cc mit Waittest aus der Waitmap 'herausruckt' ist das daran erkennbar, dass der Befehl nun nicht, 
+;	bedingt durch die Verzögerung in der Waitmap,  1 cc länger dauert, sondern plötzlich 7 cc kürzer erscheint.
+;	Der Abstand zw. jeweils 2 Start-Zeitpunkten entspricht dem Abstand zw. 2 Cpu-Zyklen mit Wait-Test.
+;
+;	Limitations:
+;	-1-	Da die Waitmap immer 2 aufeinanderfolgende Zyklen waitfrei ist, lassen sich keine Aussagen über die Cpuzyklen
+;		jeweils vor den tatsächlich detektierten machen. Diese können Waittest haben oder auch nicht. Dies kann
+;		in den meisten Fällen durch die Gegenprobe opcode_access_rmap ermittelt werden, die das umgekehrte Problem hat.
+;	-2-	Da die Waitmap im 8er-Raster repetiert, können waitfreie Phasen mit 8 cc am Ende untergehen, 
+;		waitfreie Phasen mit mehr als 8 cc werden an der 8er-Grenze zerschnitten (Phantom-Hits).
+;	-3-	Da das Muster immer nur 16 x besteht, darf eine Testsequenz nur eine begrenzte Länge haben.
+;		Sie darf zu Testbeginn nicht in die Waitmap der nächsten Zeile reichen! (max. 224 cc inkl. Wartezyklen)
+;		Andernfalls kommt es zu schwer durchschaubaren Interferenzen mit dem Geschehen am Start der 2. Zeile.
+;
+;	in:	hl -> template
+;		a  =  size
+; ----------------------------------------------------
+
+opcode_access_map:
+
+		ei
+		im	1
+		call	print_nl
+
+		ld	b,a
+		ld	de,opa_test
+opa1		ld	a,(hl)
+		ld	(de),a
+		call	printhex2
+		inc	hl
+		inc	de
+		djnz	opa1
+		
+		ld	a,201		; RET
+		ld	(de),a
+		call	print_msg
+		defm	": ",$00
+
+		ld	hl,500				; hl: current cc
+		call	opa_get_lz			; a = laufzeit
+
+		ld	h,0
+		ld	l,a
+		push	hl
+		call	printdec
+		call	print_msg
+		defm	" = ",$00
+		pop	bc				; c = laufzeit(soll)
+
+		ld	hl,(cc_waitmap_start)		; hl: current cc
+		dec	hl				; wg. 1. wait test ist erst in cycle 2 im M1-Zyklus
+		dec	hl				; --> 1. wait test direkt vor 1. wait_cc
+
+		ld	e,l				; e = last cc
+		call	opa_get_wz
+		ld	d,a				; d = last wc
+
+	; hl = current cc
+	;  e = last cc
+	;  d = last wc
+	;  c = laufzeit(soll)
+		
+opa2		dec	hl
+		call	opa_get_wz
+		cp	a,d
+		ld	d,a
+		jr	z,$+4
+		jr	nc,opa2
+		
+		ld	a,e
+		sub	a,l
+		add	'0'
+		call	print_char
+		
+		ld	e,l
+
+		ld	a,d		
+		and	a
+		jr	nz,opa2		; Weitermachen bis wait cycles == 0
+
+	; letzter Test: es könnte noch ein finaler 7er oder 8er in die Waitmap reinragen
+	; z.B. bei add hl,ss (was aber eigentlich eh ein 11er ist..)
+	; dann auch 2x den start_cc vorstellen (sonst wird "17" und nicht "8" angezeigt)
+		dec	hl		
+		ld	a,(cc_waitmap_start)
+		sub	l		; current cc
+		sub	c		; laufzeit(soll)
+		jr	c,opa2
+
+		im	1
+		ret
+
+		
+; die folgenden Routinen rufen den Test-Code im opa_test auf und vermessen ihn:
+;
+;	in:	HL = start_cc
+;	out:
+;		opa_get_rz	-> a = Restzyklen bis Interrupt		((modulo 256))
+;		opa_get_lz	-> a = Laufzeit cc			((modulo 256))
+;		opa_get_wz	-> a = Wartezyklen im Testcode		((modulo 256))
+;	pres:	BC,DE,HL
+
+opa_get_rz	push	ix
+		push	bc
+		push	de
+		push	hl
+		
+		ld	(opa3ret+1),sp		; save sp (=> test code may trash sp)
+
+		ld	de, -69
+		add	hl,de
+		ld	de,opa3
+		jp	at_hl_jp_de
+
+opa3		ei				; 4		
+		ld	ix,$4000		; 14
+		ld	hl,$4001		; 10	
+		ld	bc,$4002		; 10	
+		ld	de,$4003		; 10	
+		xor	a			; 4	
+		call	opa_test		; 17 + op_lz + 10
+opa3ret		ld	sp,0			; 10			= 69 + op_lz + 20
+
+		call	restzeit_bis_irpt		
+		ld	a,l
+		add	a,20
+
+		pop	hl
+		pop	de
+		pop	bc
+		pop	ix
+		ret				; a = total cycles for opcode itself
+
+opa_get_lz	call	opa_get_rz
+		push	bc		
+		ld	c,a		
+		ld	a,(cc2_per_irpt)
+		add	a,a			; a = cc/frame
+		sub	a,c			; a -= restzeit
+		sub	l			; a -= startzeit
+		pop	bc
+		ret				; a = total cycles for opcode itself
+
+opa_get_wz	call	opa_get_lz
+		sub	c			; -= laufzeit(soll)
+		ret				; a = total wait cycles
+
+
+
+
+opcode_access_rmap_zz:
+
+		ei
+		im	1
+		call	print_nl
+
+		ld	b,a
+		ld	de,opa_test
+opa5		ld	a,(hl)
+		ld	(de),a
+		call	printhex2
+		inc	hl
+		inc	de
+		djnz	opa5
+		
+		ld	a,201		; RET
+		ld	(de),a
+		call	print_msg
+		defm	": ",$00
+
+opcode_access_rmap:
+
+		ld	hl,(cc_waitmap_start)
+		ld	de,16*8 -3
+		add	hl,de				; HL = start_cc
+		
+		call	opa_get_rz			
+		ld	c,a				; c = (letzte) restzeit
+
+		call	print_msg
+		defm	" = ",$00
+
+
+opa6		ld	de,-8
+		add	hl,de
+		
+		call	opa_get_rz			; a = akt. rz
+
+		ld	b,a		; temp
+		sub	c				; a = Abstand zum gerade reingerutschten wait_test_cycle
+		add	'0'
+		call	print_char			; Länge drucken
+
+		ld	c,b				; c = letzte Restzeit aktualisieren
+
+		ld	a,(opa_rz_ret)
+		sub	c				; vergleich mit RZ für nacktes (finales) RET
+		ret	z				; RZ(ret) - RZ(akt) == 0  => Fertig
+		cp	1
+		jr	z,opa6x				; RZ(ret) - RZ(akt) == 1 => Wait-Test in überstehendem cc (1. cc des M1-Zyklus von RET !!) 
+		cp	240
+		jr	nc,opa6xx			; RZ(ret) - RZ(akt) < 0  => Not-Aus (start_cc rückt links aus der waitmap raus)
+		jr	opa6				
+		
+opa6x		ld	a,'1'				
+		jp	print_char
+
+opa6xx:		call	print_msg
+		defm	"...",$00
+		ret
+
+
+
+
+opa_table:
+
+#if 1			; simple opcodes
+		nop
+		ld	bc,0
+		ld	(bc),a
+		inc	bc
+		inc	b
+		dec	b
+		ld	b,0		
+		rlca
+		ex	af,af'
+		add	hl,bc
+		ld	a,(bc)
+		dec	bc
+		inc	c	
+		dec	c
+		ld	c,0		
+		rrca
+		djnz	$+2		; jump
+		ld	de,0		
+		ld	(de),a
+		inc	de
+		inc	d
+		dec	d
+		ld	d,0		
+		rla
+		jr	$+2		
+		add	hl,de
+		ld	a,(de)
+		dec	de
+		inc	e
+		dec	e
+		ld	e,0		
+		rra
+		jr	nz,$+2		; nojump
+		ld	hl,0
+		ld	($4000),hl
+		inc	hl
+		inc	h
+		dec	h
+		ld	h,0
+		daa
+		jr	z,$+2		; jump
+		add	hl,hl
+		ld	hl,($4000)
+		dec	hl
+		inc	l
+		dec	l
+		ld	l,0
+		cpl
+		jr	nc,$+2
+		ld	($4000),a
+		inc	(hl)
+		dec	(hl)
+		ld	(hl),0
+		scf
+		jr	c,$+2
+		add	hl,sp
+		ld	a,($4000)
+		inc	a
+		dec	a
+		ld	a,0
+		ccf
+
+		ld	b,b
+		ld	b,c
+		ld	b,d
+		ld	b,e
+		ld	b,h
+		ld	b,l
+		ld	b,(hl)
+		ld	b,a
+		ld	c,b
+		ld	d,b
+		ld	e,b
+		ld	h,b
+		ld	l,b
+		ld	(hl),b
+		ld	a,b
+		ld	a,a
+		
+		add	a,b
+		add	a,(hl)
+		add	a,a
+		adc	a,b
+		adc	a,(hl)
+		adc	a,a
+		sub	a,b
+		sub	a,(hl)
+		sub	a,a
+		sbc	a,b
+		sbc	a,(hl)
+		sbc	a,a
+		
+		and	a,b
+		and	a,(hl)
+		and	a,a
+		or	a,b
+		or	a,(hl)
+		or	a,a
+		xor	a,b
+		xor	a,(hl)
+		xor	a,a
+		cp	a,b
+		cp	a,(hl)
+		cp	a,a
+		
+		ret	nz			; noret
+		call	nz,opa_test+3		; nocall
+		jp	nz,opa_test+3		; nojp
+		jp	opa_test+3		; jp
+		jp	z,opa_test+3		; jp
+
+		add	a,0
+		adc	a,0
+		out	($ff),a
+		out	($fe),a
+		sub	a,0
+		in	a,($ff)
+		in	a,($fe)
+		sbc	a,0
+		and	0
+		ex	de,hl
+		xor	a,0
+		or	a,0
+		ei
+		cp	a,0
+#endif
+
+#if 1					; $CB
+		rlc	b
+		rlc	(hl)
+		rrc	b
+		rrc	(hl)
+		rl	b
+		rl	(hl)
+		rr	b
+		rr	(hl)
+		sla	b
+		sla	(hl)
+		sra	b
+		sra	(hl)
+		sll	b
+		sll	(hl)
+		srl	b
+		srl	(hl)
+		bit	0,b
+		bit	1,c
+		bit	2,d
+		bit	3,e
+		bit	4,(hl)
+		bit	5,a
+		res	0,b
+		res	1,c
+		res	2,d
+		res	3,e
+		res	4,(hl)
+		res	5,a
+		set	0,b
+		set	1,c
+		set	2,d
+		set	3,e
+		set	4,(hl)
+		set	5,a
+#endif
+		
+#if 1					; ED	
+		sbc	hl,bc			; 4B
+		ld	(opa_test+10),bc	; 443333
+		neg				; 44
+		im	2			; 44
+		adc	hl,bc			; 4B
+		ld	bc,(opa_test+10)	; 443333
+		ld	r,a			; 45
+		ld	a,i			; 45
+		ld	a,r			; 45
+		rrd				; 443223	
+		adc	hl,hl			; 4B
+		ld	hl,(opa_test+10)	; 43333
+		rld				; 443223	
+		sbc	hl,sp			; 4B
+		adc	hl,sp			; 4B
+		ldi				; 443311		
+		cpi				; 44311111		
+		ldd				; 44332		
+		cpd				; 44422		
+#endif
+
+#if 1					; IX/IY
+		add	ix,bc
+		add	ix,de
+		ld	ix,0
+		ld	($4000),ix
+		inc	ix
+		add	ix,ix
+		ld	ix,($4000)
+		dec	ix
+		inc	(ix+11)
+		dec	(ix+11)
+		ld	(ix+11),0
+		add	ix,sp
+
+		ld	b,(ix+44)
+		ld	(ix+11),b
+		ld	h,(ix+66)
+		ld	(ix+22),l
+		
+		add	a,(ix+10)
+		adc	a,(ix+11)
+		sub	a,(ix+12)
+		sbc	a,(ix+13)
+		and	a,(ix+14)
+		or	a,(ix+15)
+		xor	a,(ix+16)
+		cp	a,(ix+17)
+		
+		ex	de,ix
+
+		rlc	(ix+1)
+		rrc	(ix+2)
+		rl	(ix+3)
+		rr	(ix+4)
+		sla	(ix+5)
+		sra	(ix+6)
+		sll	(ix+7)
+		srl	(ix+8)
+		bit	4,(ix+9)
+		res	5,(ix+10)
+		set	6,(ix+11)
+		
+		defb	$DD
+		inc	h
+		defb	$DD
+		dec	h
+		defb	$DD
+		ld	h,0
+		defb	$DD
+		inc	l
+		defb	$DD
+		dec	l
+		defb	$DD
+		ld	l,0
+		defb	$DD
+		ld	b,h
+		defb	$DD
+		ld	b,l
+		defb	$DD
+		ld	h,b
+		defb	$DD
+		ld	l,b
+#endif
+	
+		defb	0			; end of table
+
+
+#if 0					; weird ops after IX/IY
+		rlc	b
+		rrc	b
+		rl	b
+		rr	b
+		sla	b
+		sra	b
+		sll	b
+		srl	b
+		bit	0,b
+		set	0,b
+		res	0,b
+		rld
+		ldi
+		cpi
+		ldd
+		cpd
+#endif
+
+opa_table_2:
+
+#if 1
+		ld	b,1
+		djnz	$+2
+
+		ld	b,2
+		djnz	$+2
+
+		inc	sp
+		dec	sp
+
+		exx
+		exx
+
+		di
+		ei
+
+	;	sub	a
+	;	out	($ff),a
+
+	;	sub	a
+	;	out	($fe),a
+
+	;	sub	a
+	;	in	a,($ff)
+
+	;	sub	a
+	;	in	a,($fe)
+
+		ld	(opa_test+9),sp	
+		ld	sp,(opa_test+9)
+		
+		ld	(opa_test+5),sp
+		ld	sp,0
+
+		ld	hl,opa_test+4
+		jp	(hl)
+
+		ld	a,irptvector>>8
+		ld	i,a
+#endif
+
+#if 1
+		ld	a,$7f			; 43
+		out	($ff),a			; 4322	!	mit highbyte = [$40..$7f]
+
+		ld	a,$7f			; 43
+		out	($fe),a			; 443	ok	mit highbyte = [$40..$7f]
+
+		ld	a,$7f			; 43
+		in	a,($ff)			; 4322	!	mit highbyte = [$40..$7f]
+
+		ld	a,$7f			; 43
+		in	a,($fe)			; 443	ok	mit highbyte = [$40..$7f]
+
+	; ED
+
+		ld	bc,$ffff		; 433
+		in	b,(c)			; 48	ok
+		
+		ld	bc,$7fff		; 433
+		in	b,(c)			; 4422	!
+		
+		ld	bc,$fffe		; 433
+		in	b,(c)			; 453	ok
+		
+		ld	bc,$7ffe		; 433
+		in	b,(c)			; 453	ok
+		
+		ld	bc,$ffff		; 433
+		out	(c),b			; 48	ok
+		
+		ld	bc,$7fff		; 433
+		out	(c),b			; 4422	!
+		
+		ld	bc,$fffe		; 433
+		out	(c),b			; 453	ok
+		
+		ld	bc,$7ffe		; 433
+		out	(c),b			; 453	ok
+
+		ld	bc,$ffff		; 433
+		in	f,(c)			; 48	ok
+		
+		ld	bc,$7fff		; 433
+		in	f,(c)			; 4422	!
+		
+		ld	bc,$fffe		; 433
+		in	f,(c)			; 453	ok
+		
+		ld	bc,$7ffe		; 433
+		in	f,(c)			; 453	ok
+				
+		ld	bc,$ffff		; 433
+		ini				; 583	ok
+
+		ld	bc,$7fff		; 433
+		ini				; 45223	!
+
+		ld	bc,$fffe		; 433
+		ini				; 4633	ok
+
+		ld	bc,$7ffe		; 433
+		ini				; 4633	ok
+
+		ld	bc,$ffff		; 433
+		outi				; 457	ok
+
+		ld	bc,$7fff		; 433
+		outi				; 45322	!
+
+		ld	bc,$fffe		; 433
+		outi				; 4543	ok
+
+		ld	bc,$7ffe		; 433
+		outi				; 4543	ok
+
+		ld	bc,$ffff		; 433
+		ind				; 583	ok
+
+		ld	bc,$7fff		; 433
+		ind				; 45223	!
+
+		ld	bc,$fffe		; 433
+		ind				; 4633	ok
+
+		ld	bc,$7ffe		; 433
+		ind				; 4633	ok
+
+		ld	bc,$ffff		; 433
+		outd				; 457	ok
+
+		ld	bc,$7fff		; 433
+		outd				; 45322	!
+
+		ld	bc,$fffe		; 433
+		outd				; 4543	ok
+
+		ld	bc,$7ffe		; 433
+		outd				; 4543	ok
+
+		ld	b,a			; BC=2
+		ldir
+		
+		ld	b,a			; BC=2
+		lddr
+
+		ld	h,a			; HL -> non-contended
+		rld
+		
+		ld	hl,$3fff		; 433		non-contended
+		ldi				; 4732	ok
+
+		ld	hl,$3f00		; 433		non-contended
+		ldi				; 4732	ok
+
+		ld	de,$3fff		; 433		non contended
+		ldi				; 448	!
+		
+		ld	de,$3f00		; 433		non contended
+		ldi				; 448	ok
+		
+		ld	hl,$3fff		;		non contended
+		cpi
+#endif		
+
+#if 1					; IX/IY
+
+		ld	ix,opa_test+6
+		jp	(ix)
+
+		ld	ix,$2000		; non-contended
+		ld	(ix+1),2		; <-- test von timing:  pc+3:3,1x2
+		
+		ld	ix,$2000		; non-contended
+		bit	1,(ix+2)		; <-- test von timing:  pc+3:3,1x2
+#endif
+		
+		defb	0,0,0			; end of table
+
+
+opa_table_3:
+				
+#if 1
+		pop	ix
+		jp	$+3
+		rld
+		jp	(ix)
+		nop
+
+		pop	ix
+		jp	$+3
+		rrd
+		jp	(ix)
+		nop
+
+		im	0
+		im	1
+		im	2
+		nop
+		
+		defb	$ed,0,$ed,9,$ed,18,$ed,27,$ed,36,$ed,45,$ed,54,$ed,63		; DNOPs
+		defb	0
+
+		defb	$ed,$80,$ed,$89,$ed,$92,$ed,$9b,$ed,$a4,$ed,$ad,$ed,$b6,$ed,$bf	; DNOPs
+		defb	0
+
+		defb	$ed,$C0,$ed,$C9,$ed,$D2,$ed,$DB,$ed,$E4,$ed,$ED,$ed,$F6,$ed,$FF	; DNOPs
+		defb	0
+
+		pop	hl
+		ld	sp,opa_test+20
+		push	bc			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		pop	bc			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		push	af			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		pop	af			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		push	ix			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		pop	ix			; <--
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		push	hl
+		ex	(sp),hl			; <--
+		jp	(hl)
+		nop
+
+		pop	hl
+		ld	sp,opa_test+20
+		ex	(sp),ix			; <--
+		jp	(hl)
+		nop
+
+		pop	hl			
+		ld	sp,hl			; <--
+		jp	(hl)
+		nop
+
+		pop	hl
+		ld	sp,ix			; <--
+		jp	(hl)
+		nop
+
+		pop	hl
+		ld	sp,opa_test+20
+		call	opa_test+1+3+3		; <--	
+		jp	(hl)
+		nop
+		
+		pop	hl			
+		ld	sp,opa_test+20
+		call	z,opa_test+1+3+3	; <--	
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		call	opa_test+1+3+3+1	
+		jp	(hl)
+		ret				; <--
+		nop
+		
+		pop	hl			
+		ld	sp,opa_test+20
+		call	z,opa_test+1+3+3+1	
+		jp	(hl)
+		ret	z			; <--
+		nop
+		
+		pop	hl			
+		ld	sp,opa_test+20
+		call	opa_test+1+3+3+1	
+		jp	(hl)
+		reti				; <--
+		nop
+		
+		pop	hl
+		ld	sp,opa_test+20
+		call	opa_test+1+3+3+1
+		jp	(hl)
+		retn				; <--
+		nop
+
+		pop	de
+		ld	sp,$3fff
+		ex	hl,(sp)			; <--
+		ex	hl,de
+		jp	(hl)
+		nop
+		
+		pop	hl
+		ld	sp,$3fff
+		ex	ix,(sp)			; <--
+		jp	(hl)
+		nop
+		
+		ld	(hl),a		; $4001
+		ld	(bc),a		; $4002
+		ld	b,a		; bc = 2
+		cpir
+		nop
+
+		ld	(hl),a		; $4001
+		ld	(bc),a		; $4002
+		ld	b,a		; bc = 2
+		cpdr
+		nop
+		
+		ld	(hl),$ff	; $4001
+		ld	b,a		; bc = 2
+		cpir
+		nop
+
+		ld	hl,$3fff
+		ld	b,a		; bc = 2
+		cpir			
+		nop
+
+		dec	l		; hl = $4000
+		ld	(hl),$ff
+		ld	b,a		; bc = 2
+		cpdr
+		nop
+
+		pop	hl
+		ld	ix,$2000		; non-contended
+		set	1,(ix+2)		; <-- test von timing:  pc+3:3,1x2
+		jp	(hl)		; <-- also detect whether 1st or 2nd wait-free slot used for "ret"
+		nop
+
+		pop	hl
+		ld	ix,$2000		; non-contended
+		rr	(ix+2)			; <-- test von timing:  pc+3:3,1x2
+		jp	(hl)
+		nop
+
+#if 1	; keine neuen Erkenntnisse hier
+		jp	$+3
+		ldi			; <-- wird hier non-contended ausgeführt
+		ld	a,(hl)
+		ret			;  => test für timing:  de:3,1x2
+		nop
+		
+		jp	$+3
+		ldd			; <-- wird hier non-contended ausgeführt
+		ld	a,(hl)
+		ret			;  => test für timing:  de:3,1x2
+		nop
+		
+		ld	b,a		; bc = 2
+		jp	$+3
+		ldir			; <-- wird hier non-contended ausgeführt
+		ld	a,(hl)
+		ret			;  => test für timing:  de:3,1x2
+		nop
+
+		jp	$+3
+		pop	hl
+		ld	sp,opa_test+20
+		ex	ix,(sp)		; <-- wird hier non-contended ausgeführt
+					;  => test für timing: sp:3,1x2
+		ld	a,(de)		
+		jp	(hl)		; note: stack not cleaned up. SP is restored after ret anyway
+		nop
+#endif
+
+#endif
+		
+		defb	0,0			; end of table
+
+		
+
+#if 0	; missing:
+		halt		; kaum zu testen
+		rst	56	; kaum zu testen
+		defb	$cb
+		defb	$dd
+		defb	$ed
+		defb	$fd
+		inir
+		otir
+		indr
+		otdr
+		im	0
+		im	1
+		; ill. nops
+		; ill. retns
+#endif
+
+
+
+; ----------------------------------------------
+;	is LDIR interruptable?
+; ----------------------------------------------
+
+ldir_spend_time
+		ld	bc,0			; <-- get's poked
+		ld	hl,$8000		; outside contended ram!
+		ld	de,hl
+		ldir
+		ld	a,b
+		or	c
+		ret	z
+		im	1
+		ei
+		call	print_msg
+		defm	$0d,"IERR: interrupt too early!",$00
+		jp	abort
+
+irpt_ldir	ex	hl,(sp)			; irpt: abort block operation
+		push	af			; wenn wir auf $ED stehen, 
+		ld	a,(hl)			; dann überspringen wir den 2-Byte-Opcode
+		cp	$ed			; sonst machen wir nichts. safety check!
+		jr	nz,irpt_ldir_2
+		inc	hl
+		inc	hl
+		pop	af
+		ex	hl,(sp)
+		ei
+		ret
+
+irpt_ldir_2	im	1
+		ei
+		call	print_msg
+		defm	$0d,"IERR: irpt not in block instr.",$00
+		jp	abort
+			
+
+test_ldir_irptbl:
+		call	print_msg
+		defm	$0d,"Block instr. interruptable: ",$00
+				
+		ld	hl,scratch		; clear scratch area for cpir
+		sub	a
+		ld	(hl),$ff
+		inc	hl
+		inc	a
+		jr	nz,$-4
+							
+		halt				; irpt vektor stellen
+		ld	hl,irpt_ldir
+		ld	(irptvector),hl
+		im	2
+
+	; test ldir
+		ld	bc,20000			
+		ld	hl,$8000		; non-contended ram
+		ld	de,hl
+		ldir
+		ld	a,b				
+		or	c
+		jp	z,ldir_failed
+
+		ld	hl,20000-100		; setup ldir_spend_time
+		sbc	hl,bc
+		ld	(ldir_spend_time+1),hl
+
+	; test lddr
+		call	ldir_spend_time		
+		ld	bc,200				
+		ld	hl,de
+		lddr
+		ld	a,b				
+		or	c
+		jp	z,lddr_failed
+
+	; test cpir
+		call	ldir_spend_time		
+		ld	hl,scratch			
+		ld	bc,200
+		ld	a,0
+		cpir
+		or	c
+		jp	z,cpir_failed
+
+	; test cpdr
+		call	ldir_spend_time		
+		ld	hl,scratch+255
+		ld	bc,200
+		ld	a,0
+		cpdr
+		or	c
+		jp	z,cpdr_failed
+
+	; test otir
+		call	ldir_spend_time		
+		ld	b,200
+		ld	c,$fe
+		ld	hl,scratch
+		otir
+		ld	a,b	
+		and	a
+		jp	z,otir_failed
+				
+	; test otdr
+		call	ldir_spend_time		
+		ld	b,200
+		ld	c,$fe
+		ld	hl,scratch+255
+		otdr
+		ld	a,b				
+		and	a
+		jp	z,otdr_failed
+					
+	; test inir
+		call	ldir_spend_time		
+		ld	b,200			
+		ld	c,$fe
+		ld	hl,scratch
+		inir
+		ld	a,b				
+		and	a
+		jp	z,inir_failed
+
+	; test indr
+		call	ldir_spend_time		
+		ld	b,200			
+		ld	c,$fe
+		ld	hl,scratch+255
+		indr
+		ld	a,b
+		and	a
+		jp	z,indr_failed
+
+; final: all ok:			
+		im	1
+		call	print_msg
+		defm	"ok",$00
+		ret			
+				
+inir_failed	im	1
+		call	print_msg
+		defm	$0d,"  INIR failed",$00
+		ret
+
+indr_failed	im	1
+		call	print_msg
+		defm	$0d,"  INDR failed",$00
+		ret
+
+otir_failed	im	1
+		call	print_msg
+		defm	$0d,"  OTIR failed",$00
+		ret
+
+otdr_failed	im	1
+		call	print_msg
+		defm	$0d,"  OTDR failed",$00
+		ret
+
+ldir_failed	im	1
+		call	print_msg
+		defm	$0d,"  LDIR failed",$00
+		ret
+
+lddr_failed	im	1
+		call	print_msg
+		defm	$0d,"  LDDR failed",$00
+		ret
+
+cpir_failed	im	1
+		call	print_msg
+		defm	$0d,"  CPIR failed",$00
+		ret
+
+cpdr_failed	im	1
+		call	print_msg
+		defm	$0d,"  CPDR failed",$00
+		ret
+
+				
+		
+
+
+
+
+
+

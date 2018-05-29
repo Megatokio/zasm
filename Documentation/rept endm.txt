@@ -1,0 +1,37 @@
+
+h3	rept, .rept, endm and .endm
+	rept, endm
+	
+pre		rept	<value>
+		<instr>
+		...
+		endm
+		
+p	This pseudo instructions defines a sequence of source which shall be stored into code multiple times. By use of a redefinable label the stored values may even be adjusted slightly. This is a lightweight form of an ad-hoc macro.
+
+p	The names with or without dot may be used interchangeable.
+
+p	Assembler directives (starting with '#') are not allowed inside macros.
+
+p	Starting with version 4.1.4 the names "DUP" and "EDUP" are also accepted for "REPT" and "ENDM".
+
+p	Example:
+
+pre		rept	$2000 - $
+		defb	0
+		endm
+
+p	Which does the same thing as 'defs $2000-$' or even 'org $2000'. Just more complicated.
+
+pre	v	defl	0
+		rept	8
+		lda		regs2 + v/2
+	v	defl	v+2
+		cpi		v
+		jnz		0
+		endm
+
+p	This seems to be 8080 assembler source. <b>B-)</b>
+		
+
+		

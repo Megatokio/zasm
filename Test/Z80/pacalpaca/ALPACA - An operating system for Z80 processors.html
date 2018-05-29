@@ -1,0 +1,366 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+<title>ALPACA - An operating system for Z80 processors</title>
+<link rel="SHORTCUT ICON" href="http://www.cis.rit.edu/%7Ejerry/Software/alpaca/favicon.ico">
+</head>
+<body link="orange" bgcolor="#008888" text="yellow" alink="red" vlink="orange">
+
+<center>
+<br>
+
+<table bgcolor="black" border="0" cellpadding="0" cellspacing="0"> 
+<tbody><tr>
+    <td height="64" bgcolor="black" width="150"><img src="ALPACA%20-%20An%20operating%20system%20for%20Z80%20processors-Dateien/logo.gif" height="128" width="128"></td>
+    <td bgcolor="black">
+	<center>
+	<img src="ALPACA%20-%20An%20operating%20system%20for%20Z80%20processors-Dateien/ALPACA_text.gif">
+	<br clear="all">
+
+	<br>
+	<font color="#ffaa88" size="-1">
+	<font color="#ffffaa">Pac/Pengo</font> Multitasking
+	<font color="#ffffaa">Operating System</font> 
+	</font>
+	<br>
+	<br>
+	</center>
+    </td>
+    <td bgcolor="black" width="50">
+	&nbsp;
+    </td>
+</tr>
+</tbody></table>
+
+
+<br><br>
+<a name="overview">
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th bgcolor="#00bbbb"><font color="black"> Overview </font></th></tr>
+
+<tr><td bgcolor="#003333">
+
+<p>
+    Alpaca is a small multitasking operating system for Z-80 computers,
+    specifically for Pac-Man/Pengo arcade hardware.  It is an expansion
+    upon my PTUI project, which was originally just 
+
+    an experiment to see how much of a real GUI can be put into
+    the tight constraints of Pac-Man arcade machine hardware.  The
+    limitations are a total of <b>1kb</b> of RAM (for storage and
+    stack), <b>16k</b> of ROM, sprite/tile based video hardware (1k
+    color, 1k character ram), joystick, and two buttons.
+
+</p>
+<p>
+    The features of the OS are:
+    </p><ul>
+	<li> up to 4 processes concurrently running
+	</li><li> simple inter-process communication via messages 
+	</li><li> simple semaphores 
+	</li><li> simple memory management (eventually)
+	</li><li> adjustable priorities (eventually)
+    </li></ul>
+<p></p>
+
+<p>
+    The features of the GUI (PTUI) are:
+    </p><ul>
+	<li> Joystick and start buttons navigate
+	</li><li> Window frames can be moved about the screen, raised, hidden
+	</li><li> Build-configurable color schemes, frame ornaments
+	</li><li> Many widgets including: push/radio/check/spin buttons, sliders, text display
+    </li></ul>
+<p></p>
+
+
+</td></tr>
+</tbody></table>
+
+<br><br>
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th bgcolor="#00bbbb"><font color="black"> Links </font></th></tr>
+
+<tr><td bgcolor="#003333">
+
+<center>
+<p>
+[This page]
+[
+    <a href="#overview">Overview</a>
+|
+    <a href="#screenshots">Screenshots</a>
+|
+    <a href="#news">News</a>
+|
+    <a href="#download">Downloads</a>
+]
+</p>
+
+<p>
+[Other pages]
+[
+    <a href="http://www.cis.rit.edu/%7Ejerry/Software/turacoCL">Turaco CL</a>
+|
+    <a href="http://www.cis.rit.edu/%7Ejerry/Software/pengo/">Pac Hardware Hacking</a>
+]
+</p><p>
+
+
+</p><p>
+[Related projects (not mine)]
+[
+    <a href="http://dunkels.com/adam/contiki/index.html">Contiki</a>
+|
+    <a href="http://intyos.free.fr/">IntyOS</a>
+]
+</p></center>
+
+<p></p>
+
+</td></tr>
+</tbody></table>
+
+<br><br>
+</a><a name="devphase">
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th bgcolor="#00bbbb"><font color="black"> Development Phases </font></th></tr>
+
+<tr><td bgcolor="#003333">
+
+
+<p>
+    </p><center><h4>--== Phase 1 ==--</h4></center>
+    This is the current phase of development.  This phase will include:
+    <ul>
+	<li> 4 concurrently running tasks
+	</li><li> simple semaphores
+	</li><li> simple messages
+	</li><li> exec subsystem (exec, kill, sleep)
+	</li><li> simple memory helpers (memset, memcpy)
+	</li><li> simple screen interactions (clear, fill screen, draw text)
+	</li><li> simple example tasks (each do different things to show it works)
+    </li></ul>
+<p></p>
+<p>
+    </p><center><h4>--== Phase 2 ==--</h4></center>
+	This phase will involve the addition of some or all of the following:
+    <ul>
+	<li> Complete GUI
+	</li><li> adjustable priorities
+	</li><li> dynamic ram allocation
+	</li><li> Ports to other related platforms (Bally-Midway MCR2 for example)
+    </li></ul>
+<p></p>
+
+
+</td></tr>
+</tbody></table>
+
+<br><br>
+</a><a name="screenshots">
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th bgcolor="#00bbbb"><font color="black"> Screenshots </font></th></tr>
+
+<tr><td bgcolor="#003333">
+
+    <table border="0" cellpadding="4" cellspacing="10">
+
+    <tbody><tr>
+	<th><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/08.png"><img src="ALPACA%20-%20An%20operating%20system%20for%20Z80%20processors-Dateien/08.png" border="0"></a></th>
+	<td bgcolor="#001111">
+	    2003-08-22:<br>
+	    <br>
+
+	    Screenshot of the splash screen.  The lower right Umlaut Llama
+	    is a floating sprite, which does a lissajous on the screen.
+	</td>
+    </tr>
+
+    <tr>
+	<th><a href="http://www.umlautllama.com/projects/alpaca/i/PTUI_2003-06-09.html"><img src="ALPACA%20-%20An%20operating%20system%20for%20Z80%20processors-Dateien/PTUI_2003-06-09.gif" border="0"></a></th>
+	<td bgcolor="#001111">
+	    2003-06-09:<br>
+	    <br>
+
+	    Cleaned up the look of the interface, got the z-order
+	    raise-lower almost working.  
+	    <br>
+	    <b>NOTE:</b> This is of the PTUI system, which is not implemented in Alpaca yet!
+	    
+	</td>
+    </tr>
+
+    </tbody></table>
+
+</td></tr>
+</tbody></table>
+
+<br><br>
+</a><a name="news">
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th bgcolor="#00bbbb"><font color="black"> News </font></th></tr>
+
+<tr><td bgcolor="#003333">
+<p>
+  
+                </p><dl>
+                    <dt><b><i>&lt;&lt;
+			Fri Aug 22 2003 - 15:35:02 EDT
+			&gt;&gt;</i></b></dt>
+                    <dd><br>
+It is now a 136 page document that builds down into 1458 bytes.  Many
+little things have been added, and the task switching code has been
+formulated, although it might not work.... I haven't written exec or 
+kill yet. ;)
+                    </dd>
+                </dl><br>
+              
+                <dl>
+                    <dt><b><i>&lt;&lt;
+			Tue Aug 5 2003 - 16:28:07 EDT
+			&gt;&gt;</i></b></dt>
+                    <dd><br>
+As of last night, The following functions are also completed:
+<ul>
+    <li>putstr - Draw text to anywhere on the screen
+    </li><li>textcenter - Center the text
+    </li><li>textright - Right justify the text
+</li></ul>
+
+The demo build is now up to 1406 bytes, but that includes quite a bit of test
+code and stubs.
+
+<ul> Up next to write:
+    <li> Task switcher
+    </li><li> Task Exec core
+    </li><li> Task Kill core
+    </li><li> puthex - draw a hex (base-16) value on the screen 
+    </li><li> putbcd - draw a decimal integer (bcd) value on the screen 
+    </li><li> putint - draw a decimal integer (base-10) value on the screen 
+</li></ul>
+
+Oh, and apparantly, Alpaca was mentioned on July 28 on the weblog at <a href="http://dev.null.org/blog/archive.cgi/2003/07/28#1520_alpaca">/dev/null</a>.
+Cool!
+                    </dd>
+                </dl><br>
+              
+                <dl>
+                    <dt><b><i>&lt;&lt;
+			Fri Aug 1 2003 - 11:41:42 EDT
+			&gt;&gt;</i></b></dt>
+                    <dd><br>
+The demo build is now 1162 bytes.  This includes the following utility
+functions:
+<ul>
+    <li> memset - set a chunk of ram to a certain value
+    </li><li> clear screen - clears the screen
+    </li><li> sine - sine of a value (using a lookup table)
+    </li><li> cosine - cosine of a value (using sine)
+    </li><li> rand - very pserdorandom number generator
+    </li><li> xy2offs - convert XY to video/color ram offset (using a lookup table)
+    </li><li> sleep - timer-based wait mechanism (seperate from the task switcher)
+</li></ul>
+
+But it does not include yet:
+<ul>
+    <li> working semaphores
+    </li><li> task switching
+    </li><li> messaging
+    </li><li> a proper 'sleep'
+</li></ul>
+
+I also was vaguely looking in to porting to Bally-Midway MCR/1,2,3
+hardware.  This would enable the OS to run on Tron, Satan's Hollow, Spy
+Hunter, Tapper, Two Tigers, Journey, Discs Of Tron, etc. hardware.
+
+<p>
+
+I also have a goal set for myself.  The core kernel (with utility
+functions listed above, and perhaps more) must not exceed 1k of ROM
+space.  It currently uses 138 bytes too many, but that also includes
+test code for tasks.  Just the core stuff right now is 669 bytes.  So I
+have 335 bytes to implement:
+
+</p><ul>
+    <li> task switching
+    </li><li> correct "sleep"
+    </li><li> puts - draws a text string to the screen
+    </li><li> puti - draws an integer value to the screen
+    </li><li> puth - draws a hex value to the screen
+</li></ul>
+                    </dd>
+                </dl><br>
+            
+<p></p>
+
+</td></tr>
+</tbody></table>
+
+<br><br>
+
+</a><a name="download">
+<table bgcolor="black" border="0" cellpadding="6" cellspacing="5" width="75%">
+<tbody><tr><th colspan="6" bgcolor="#00bbbb"><font color="black"> Download </font></th></tr>
+
+<tr>
+    <th bgcolor="#003333"><big>v0.8</big><br>2003-08-22</th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pacman.zip">pacman ROMs</a>
+    <br>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pacalpaca.asm">.asm</a>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pacalpaca.lst">.lst</a>
+    </th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pengo2u.zip">pengo2u ROMs</a>
+    <br>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pengoalpaca.asm">.asm</a> 
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/pengoalpaca.lst">.lst</a>
+    </th>
+
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/alpaca.pdf">PDF</a></th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.8/alpaca_0.8_src.tar.gz">source .tar.gz</a></th>
+
+    <td bgcolor="#003333">
+	    <li> everything from 0.7 below
+	    </li><li> XY to screen offset conversion routines
+	    </li><li> text string output routines for the three screen regions
+	    </li><li> text justification routines (center, right)
+	    </li><li> guicls routine to clear the screen to a wallpaper
+	    </li><li> better rand() algorithm using the R register
+	    </li><li> <a href="http://www.umlautllama.com/projects/alpaca/r/0.8/08.png">splash screen</a> implemented
+	    </li><li> Task switching coded and partially documented
+	    </li><li> Document has better organization
+	    </li><li> 136 page PDF, 1458 byte executable
+    </li></td>
+</tr>
+
+<tr>
+    <th bgcolor="#003333"><big>v0.7</big><br>2003-07-28</th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pacman.zip">pacman ROMs</a>
+    <br>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pacalpaca.asm">.asm</a>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pacalpaca.lst">.lst</a>
+    </th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pengo2u.zip">pengo2u ROMs</a>
+    <br>
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pengoalpaca.asm">.asm</a> 
+    <br><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/pengoalpaca.lst">.lst</a>
+    </th>
+
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/alpaca.pdf">PDF</a></th>
+    <th bgcolor="#003333"><a href="http://www.umlautllama.com/projects/alpaca/r/0.7/alpaca_0.7.tar.gz">source .tar.gz</a></th>
+
+    <td bgcolor="#003333">
+	    <li> sets up the processor, design hammered out
+	    </li><li> implements: timer and watchdog in ISR, cls, memset, sleep
+	    </li><li> half-implements: exec, kill, sleep(0)
+	    </li><li> not implemented yet: task switching (!)
+	    </li><li> 99 page PDF, 626 byte executable
+    </li></td>
+</tr>
+
+
+</tbody></table>
+
+</a></center><a name="download">
+
+
+</a></body></html>

@@ -1,0 +1,58 @@
+
+h3	#define	
+
+pre	#define <name> <value>
+
+p	Define an alias for a well-known pseudo instruction or define a global label.
+
+p	#define is used in some sources in three ways:
+
+ol
+li	Define an alias for an instruction name
+li	Define a label
+li	Define a preprocessor function with arguments
+
+p	From that the most common aliases and the definition of labels are supported.
+
+h5	Define an alias
+
+pre	#define equ  .equ
+	#define	defs .ds
+
+p	Within the following groups names can be mapped in any direction:
+
+ul
+li	org .org
+li	defw dw .dw .word
+li	defb db .db .byte
+li	defm dm .dm .text .ascii
+li	defs ds .ds .block
+
+p	All these mappings are recognized and … ignored.
+p	Other mappings result in an error. (if you feel a mapping should be added then send an email.)
+	zxsp does not support aliases for instruction names, but it already knows about quite a lot of them. Therefore it can ignore these #defines.
+
+p	Use of this directive is discouraged. It is provided because some sources use it. Just delete it.
+
+	
+h5	Define a global label
+
+pre	#define	foo	123
+	#define bar $ - shelf
+
+p	#define can be used to define a global label as with
+
+pre	foo:: equ 123
+	bar:: equ $ - shelf
+
+p	Labels defined with '#define' are always global, even if defined inside a local context.
+
+p	Use of this directive is discouraged, many assemblers do not understand it. Use the pseudo instruction 'equ' instead.
+
+
+
+
+	
+	
+
+	

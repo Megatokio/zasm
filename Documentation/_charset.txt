@@ -1,0 +1,74 @@
+//-----------------------------------------------------------------
+h3	#charset
+
+pre	#charset <name>
+	#charset none
+	#charset map <characterstring> = <firstcodepoint>
+	#charset unmap <characterstring>
+
+p	zasm can translate characters from the source file (which must be ascii or utf-8) to the character set of the target system. If no translation was set, then Latin-1 is assumed for your target system, which simply means: nothing is translated, the source is assumed to be utf-8 encoded and after utf-8 decoding the resulting characters must be in range 0x00 to 0xFF.
+
+p	Translation should only be applied to printable characters, though it might be tempting to convert '\n' (10) to '\r' (13) for targets which use '\r' to start a new line.
+
+p	zasm translates character literals like 'A' and strings like "foobar" into the selected character set. If a translation is not available in the target character set, then zasm issues an error.
+
+p	This translation is done everywhere: in pseudo opcodes like defm as well as in immediate arguments of opcodes or in the value for #if, #code or #data. It is not applied to filenames in #include etc. or to the string in #charset itself. 
+	Caveat: It <u>is</u> applied to the numeric value <firstcodepoint> in #charset, if you use a character literal here.
+
+pre		defm  "Say hello" + 0x80
+		ld	  a,'D'+1
+		defb  0x20, 'a', '▞', '£'
+	#assert ' ' == 0				; is the ZX80 / ZX81 character set selected?
+
+p	This translation is also applied to strings in c sources: sdcc creates <tt>.ascii</tt> pseudo instructions which are handled just like <tt>defm</tt>.
+	But unluckily sdcc emits only hexcode constants for character literals, and for this reason character literals in the c source will not be translated:
+	
+pre	static const char foo[] = "My little secret";   // will be translated
+	char c = 'A';                                   // won't be translated :-(
+
+p.magenta	Using character set translation is especially useful for targets with a character sets which is not based on ASCII, e.g. for the <i>ZX81</i>.
+
+
+h5	Available translations are:
+
+ul
+li	zx80
+li	zx80_inverted
+li	zx81
+li	zx81_inverted
+li	zxspectrum
+li	jupiterace
+li	jupiterace_inverted
+li	ascii
+li	none
+
+p	ZX80 and ZX81 have completely non-ascii character codes, even character code 0x00 is a legal character: the space. (caveat: this may lead to problems in c source.) There are no lowercase letters. Instead lower case letters are used as an easy way to create an inverted (uppercase) letter.
+p	ZX Spectrum and Jupiter Ace have a character set which is mostly ascii, but with '©' and '£' added.
+p	They all have block graphics symbols, e.g. these characters can be used in a source file for the ZX Spectrum: "©£ ▝▘▀▗▐▚▜▖▞▌▛▄▟▙█". (note: the ' ' in the string is the non-breaking space.) 
+p	<tt>ASCII</tt> limits available characters to the 7-bit ascii range.
+p	<tt>NONE</tt> resets the character translation. (effectively to Latin-1, see above.)
+p	The inverted character sets produce characters with bit 7 toggled (bit 7 indicates inversion in all character sets) compared to the not-inversed character set. As the block graphics already consist of inverted and not inverted characters, the inverted characters are reverted to normal in the inverted character sets.
+p	It is possible to enable, redefine and disable the character set throughout the source whenever and as often as required.
+
+h5	Custom character sets
+
+p	You can construct your own translation table starting from any predefined translation or from scratch:
+
+pre	#charset ascii
+	#charset map "abcdefghijklmnopqrstuvwxyz" = 'A'
+	#charset unmap "`{|}~"
+
+p	In this example we limit the range of available characters to uppercase characters, e.g. for a veerry oolld printer:
+p	We start with the ASCII character set and map all lowercase characters to their uppercase counterparts and remove all special characters in the lowercase characters vicinity. The resulting characters are now limited to the range 0x20 to 0x5F. Characters 0x60 to 0x7E are either remapped or disabled. Character 0x7F was no ascii character from the start.
+
+p	Now all uppercase and lowercase characters in character literals and strings in your source are translated to uppercase ASCII characters and any use of '<tt>`</tt>' to '<tt>~</tt>' will result in an error.
+
+
+
+
+
+
+
+
+
+

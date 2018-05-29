@@ -1,0 +1,36 @@
+
+h3	Syntax variants
+
+p	zasm supports different syntax for some opcodes:
+
+pre	ex	hl,de		ex	de,hl
+	ex 	(sp),RR		ex 	RR,(sp)		RR = hl, ix, iy
+	jp	(RR)		jp	RR
+	in	R,(c) 		in	R,(bc)
+	out	(c),R		out	(bc),R		R = b c d e h l (hl) a
+	in	a,(N)		in a,N
+	out (N),a		out N,A
+	rst	0			rst	0
+	rst	1			rst	8
+	rst	2			rst	16
+	rst	3			rst	24
+	rst	4			rst	32
+	rst	5			rst	40
+	rst	6			rst	48
+	rst	7			rst	56
+	add a,R			add	R			R = b c d e h l (hl) a
+	adc a,R     	adc	R				and (ix+dis) (iy+dis)
+	sub a,R			sub	R
+	sbc a,R			sbc	R
+	and a,R      	and	R
+	xor a,R			xor	R
+	or  a,R         or	R
+	cp  a,R         cp	R
+	
+p	Some variants apply to notation for arguments:
+
+pre	ld	a,N			ld 	a,#N
+	ld	a,(ix+0)	ld	a,(ix)
+	ld	a,(ix+dis)	ld	a,dis(ix)
+	
+	

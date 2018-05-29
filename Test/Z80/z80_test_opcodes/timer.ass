@@ -1,0 +1,941 @@
+; tab-8
+
+
+#if 0
+	Spezielle Probleme:	
+	1. Wait Cycles
+	   Das RAM kann Wartezyklen pro Zugriff haben
+	   Das RAM kann Wartezyklen an festen Stellen haben (Contention)
+	2. Race Condition im Interrupt Timing
+	   Irpt-Test und Irpt-Active-Flanke können zeitgleich erfolgen,
+	   und das ist wohl bei ZX48k und ZX128 so. (more to be tested)
+	   Dann kann ein Irpt jeweils schon erkannt werden oder auch nicht.
+	   entsprechend können zwischen zwei Interrupts N + [-1..+1] cc gemessen werden
+	   "mein" ZX48k erkennt den Irpt kalt zunächst 'früh', warm dann später 'spät', 
+	   zwischenzeitlich wechselnd, insbes. HALT aber bis zuletzt 'früh'. 
+	   Entsprechend erkennt er den Start of Contention zuerst bei Cpu Cycle 14338 
+	   und später bereits bei 14387.
+#endif
+
+
+
+; ------------------------------------------------------------
+;	Diverse Interrupt-Routinen
+; ------------------------------------------------------------
+
+; interrupt routine setzt das cy flag
+
+scf_38cc_irpt:					; 19 irpt ack
+		scf				; 4
+		ei				; 4
+		ret	c			; 11		= 38 cc
+
+; dummy interrupt routine ohne funktion
+
+dummy_37cc_irpt:				; 19 irpt ack
+		nop				; 4
+		ei				; 4
+		ret				; 10		= 37 cc
+
+
+
+; ------------------------------------------------------------
+;	Initialisiere Timer
+;	Prüft,	dass die aktuelle Bank und der Stack 
+;		Waitstates-frei sind.
+;		R-Register  ((TODO: R in HALT))
+;	Ermittle cc/frame/2
+;		Erwartet: ca. 35000
+;
+;	Ann.:	(cc/frame)&1 == 0
+;		kann bei Race Condition im Irpt-Timing 
+;		in seltenen Fällen irrtümlich anschlagen.
+;
+;	Laufzeit: 6 + 8 Frames
+;	Aborts on error
+;
+;	in:	--
+;	out:	cc2_per_irpt
+;	mod:	af,bc,de,hl,im1,ei,i
+; ------------------------------------------------------------
+
+
+init_timer:
+
+		ld	a,irptvector>>8
+		ld	i,a			; setup i for im2 irpt table
+
+		ld	hl,scf_38cc_irpt
+		ld	(irptvector),hl		; setup vector table
+
+		ei
+		im	2		; setup irpt mode to use table
+
+; Messe Laufzeiten dreier nominell gleich langer Schleifen und das R-Register:
+;	- mit wenigen Speicherzugriffen
+;	- mit vielen Speicherzugriffen
+;	- mit Speicherzugriffen auf dem Stack
+
+; -------------
+		halt			; 38 + N*4
+		ld	a,0		; 7
+		ld	r,a		; 9		
+		ld	hl,0		; 10
+		and	a		; 4		=  68 + N*4  =  (N+17) * 4		
+
+ihc1:		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	de		; 1 / 6
+		dec	de		; 1 / 6
+		inc	hl		; 1 / 6
+		jp	nc,ihc1		; 3 / 10	= hl * 100 = N * 4
+
+		ld	a,r		; 9
+		push	af		; 11		= 20 = N*4
+
+; -------------
+		halt			; 38 + N*4
+		ld	a,0		; 7
+		ld	r,a		; 9
+		ld	de,0		; 10
+		and	a		; 4		= N * 4
+
+ihc2:		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		jr	$+2		; 4 / 12
+		inc	de		; 1 / 6
+		jp	nc,ihc2		; 3 / 10	= de * 100 = N * 4
+
+		ld	a,r		; 9
+		push	af		; 11		= 20 = N*4
+
+; -------------
+		halt			; 38 + N*4
+		ld	a,0		; 7
+		ld	r,a		; 9
+		ld	bc,0		; 10
+		and	a		; 4		= N * 4
+
+ihc3:		push	hl		; 1+2 / 11
+		push	hl		; 1+2 / 11
+		push	hl		; 1+2 / 11
+		push	hl		; 1+2 / 11
+		pop	hl		; 1+2 / 10
+		pop	hl		; 1+2 / 10
+		pop	hl		; 1+2 / 10
+		pop	hl		; 1+2 / 10
+		inc	bc		; 1 / 6
+		jp	nc,ihc3		; 3 / 10	= bc * 100  =  N * 4
+
+		ld	a,r		; 9
+		push	af		; 11		= 20 = N*4
+
+; Ergebnisauswertung
+
+		im	1
+		and	a
+		sbc	hl,de
+		jr	nz,ihc4		; code page contended		
+		add	hl,de
+		
+		sbc	hl,bc
+		jr	nz,ihc5		; stack page contended				
+		add	hl,bc
+
+		ld	a,c		
+		add	a
+		add	a
+		add	a
+		add	c
+		add	c
+		add	8		; ld bc,0 + and a + ld a,r*2 + irpt + scf + ei + ret
+		and	$7f
+		pop	bc		; b = R
+		sub	b
+		jr	nz,ihc6		; R Register falsch (BC)
+
+		ld	a,e		
+		add	a
+		add	a
+		add	a
+		add	e
+		add	8		; ld bc,0 + and a + ld a,r*2 + irpt + scf + ei + ret
+		and	$7f
+		pop	de		; d = R
+		sub	d
+		jr	nz,ihc6		; R falsch (DE)		
+	
+		ld	a,l
+		add	a
+		add	a
+		add	a
+		add	a
+		add	8		; ld bc,0 + and a + ld a,r*2 + irpt + scf + ei + ret
+		and	$7f
+		pop	hl		; h = R
+		sub	h
+		jp	nz,ihc6		; R falsch (HL)
+		jr	cc1
+
+ihc4		call	print_msg
+		defm	$0d,"code page has wait states",$00
+		jp	abort
+				
+ihc5		call	print_msg
+		defm	$0d,"stack page has wait states",$00
+		jp	abort
+
+ihc6		call	print_msg
+		defm	$0d,"R register test failed",$00
+		jp	abort
+		
+		
+; -------------	Messe cc / Frame -------------
+
+	; Zeit von Interrupt bis Interrupt messen
+cc1		im	2
+		halt				; 38 + [0..3]
+		ld	hl,0			; 10
+		and	a			; 4		cy=0
+
+		inc	hl			; hl * 6		
+		jp	nc,$-1			; hl * 10
+
+	; Zeit seit Interrupt:	38 + [0..3] + 14 + hl*16
+	; 		=	52 + [0..3] + hl*16
+	; cc/frame	=	52 + [0..3] + hl*16 -10 -[0..15]
+	;		=	27 + [0..18] + hl*16
+
+						; 38		irpt
+		add	hl,hl			; 11
+		add	hl,hl			; 11
+		add	hl,hl			; 11		
+		ex	hl,de			; 4		cc/frame = de*2 + [27..45]
+
+	; wir starten jetzt mit der Annahme, dass  cc/frame == de*2
+	; wissen aber, dass de*2 um [27..45] zu kurz ist
+	; wir laufen insges. 8 Frames, wovon wir einen schon haben, also noch 7
+	; danach messen wir die Restzeit auf 4 cc genau mittels R-Register
+	; cc/frame = de*2 + R/2
+	; ist R ungerade, so deutet das auf ungenaue Interrupts hin (Race Condition)
+	; und R ist entweder um 1 zu klein oder um 1 zu groß
+	; ist R/2 ungerade, so haben wir eine ungerade Anzahl cc per Frame
+	; R/2 muss im erwarteten Bereich [27..45] bzw. [28..44] für nur gerade cc liegen
+
+		di				; 4	
+		ld	hl,-778	+4*6		; 10		adjust
+		add	hl,de			; 11
+		ld	a,2*7			; 7	= 159 + [0..3] + de*2 
+
+cc3		push	af			; 2*7 * 11
+		call	wait_cc			; 2*7 * de  - 1* adjust
+		ld	hl,de			; 2*7 * 8
+		pop	af			; 2*7 * 10
+		dec	a			; 2*7 * 4
+		jp	nz,cc3			; 2*7 * 10	=  159 + [0..3] + de*2  + 2*7 * (43+de) - adjust
+						;		=  761 + [0..3] + 16*de  -adjust
+
+		ei				; 4
+		sub	a			; 4
+		ld	r,a			; 9		=  778 + [0..3] + 16*de  -adjust
+						;		=  4*6 + [0..3] + 16*de
+
+		halt				; - [3..0] + 4*N	R += 4+N
+		ld	a,r			;			R += 2		Restzeit = (R-6)*4
+		
+		rrca				; odd => bogus timing (race condition?)
+		rrca				; odd => odd cc/frame 
+		ld	h,0			; expected range: [14..22] * 4
+		ld	l,a
+		add	hl,de			; hl = cc/frame/2
+		ld	(cc2_per_irpt),hl
+		im	1
+						
+; Ergebnis prüfen
+
+		sub	14
+		sub	1+ (22-14) 
+		ret	c			; ok
+
+		add	14 +1 +(22-14) 
+		rlca
+		rlca				; restore original R value
+
+		call	print_msg
+		defm	$0d,"timer error: R = ",$00
+		call	printdec_a
+
+		call	print_msg
+		defm	$0d,"  expected: R = [14..22] * 4",$00
+		jp	abort
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Ermittle Restzyklen bis Interrupt 
+;
+;	min. Latenz:	= 32 cc	  (hl=2, rest=0)
+;	Restzeit:	= hl*16 + [0..15] cc
+;	ges. Laufzeit:	= hl*16 + 94 cc
+;
+;	Die Nach-Interrupt-Laufzeit der Routine ist konstant,
+;	so dass anschließend der Bruchteil [+0..+15] ermittelt werden kann.
+;
+;	in:	irpt enabled, im2
+;	out:	irpt enabled, im2, hl: Restzeit/16  <=>  Restzeit = hl*16 + [0..15]
+;	mod:	irpt vector,  f, de, hl
+; ------------------------------------------------------------
+
+restzeit_bis_irpt_x16:				; 17		call
+		and	a			; 4	cy=0
+		ld	hl,scf_38cc_irpt	; 10
+		ld	(irptvector),hl		; 16
+
+		jp	c,rz16_1		; 10		= 57
+
+		inc	hl			; N * 6		
+		jp	nc,$-1			; N * 10	= N*16
+
+						; 38		irpt
+rz16_1		ld	de,2 - scf_38cc_irpt	; 10
+		add	hl,de			; 11
+		ret				; 10		= 69
+
+
+test_restzeit_x16:
+		ld	de,(cc2_per_irpt)	; soll-restzeit 
+		ld	e,32			; & loop counter
+rz16_3		push	de			; soll-restzeit
+
+		ld	hl,(cc2_per_irpt)
+		dec	hl			; -4 for EI
+		dec	hl
+		add	hl,hl
+		and	a
+		sbc	hl,de
+
+		ld	de,rz16_4
+		jp	at_hl_jp_de
+
+rz16_4		ei
+		call	restzeit_bis_irpt_x16
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		
+		pop	de			; soll-restzeit & loop ctrl
+		ld	a,e
+		and	15
+		or	l
+		ld	l,a
+		sbc	hl,de
+		jr	nz,rz16_5
+
+		dec	e
+		jr	nz,rz16_3
+		ret
+
+rz16_5		im	1
+		ei
+		push	de
+
+		call	print_msg
+		defm	$0d,"rz_bis_irpt_x16: rz=",$00
+
+		push	hl
+		ld	a,e
+		call	printdec_a
+
+		call	print_msg
+		defm	", d=",$00
+
+		pop	hl
+		ld	a,l
+		call	printdec_a
+
+		pop	de
+		dec	e
+		jr	nz,rz16_3
+		ret
+
+
+		
+
+		
+
+; ------------------------------------------------------------
+;	wait_cc: 
+;		Highest precision timer
+;		Wait hl cpu clock cycles
+;		This time includes the time for 'call' and 'ret'.
+;		Minimum wait time: 127 T cycles (incl. 'call' and 'ret')
+;
+;	Note:	subtract 10 for 'ld hl,NN'
+;		assert that the stack is not in contended ram!
+;
+;	in:	hl = cpu cycles to wait
+;	out:	--
+;	mod:	af,bc,hl
+; ------------------------------------------------------------
+
+wait_delay	equ	7+10+11+12		; = 40
+wait_bias	equ	56+19+16+26+10		; = 127
+
+
+waitcc2		ld	c,-wait_delay				; 7
+		jp	waitcc1					; 10
+
+
+wait_cc:
+
+	; wait: 56 T					; 17		for 'call'
+		ld	bc,-wait_bias-wait_delay	; 10
+waitcc1		add	hl,bc				; 11	; 11
+		jr	c,waitcc2			; 7	; 12
+
+	; h = -1	l = -1 .. -wait_delay
+	; b = -1	c = -wait_delay oder auch nicht!
+	; Restwartezeit = wait_delay + l
+
+		ld	a,l				; 4
+		sub	a,-wait_delay			; 7		a = N = Restwartezeit ((excl. bias))
+							;		cy = 0
+
+	; wait: 19 T + a & 1
+		rra					; 4
+		jr	c,$+3				; de&1 == 1  =>       12 T
+		nop					; de&1 == 0  => 7+4 = 11 T
+		and	a,a				; 4		cy = 0
+
+	; wait: 16 T + a & 2
+		rra					; 4
+		jr	nc,$+4				; de&2 == 0  =>       12 T
+		add	a,0				; de&2 == 2  => 7+7 = 14 T
+
+	; wait: 26 T + a & $3C
+		cpl					; 4		a = - (1 + N>>2)	= -1 .. -10
+		add	a, waitcc9%256			; 7
+		ld	h, waitcc9/256			; 7
+		ld	l,a				; 4
+		jp	(hl)				; 4
+			
+		defs	( 16 - $&15 )  &  ( $>>8 <> ($+10)>>8 )		; caveat at page breaks
+			
+		defs	9,0				; 0..9 * 4	; $00 == NOP
+		ret					; 10
+waitcc9
+
+
+		
+				
+
+; ------------------------------------------------------------
+;	Synchronisiere exakt auf Interrupt
+;	und rufe um  cc = cc0 + hl  routine (de) auf
+;	die Zielroutine kehrt mit RET direkt zum Aufrufer zurück
+;
+;	Die Synchronisationszeit beträgt 1 .. 4 Frames
+;
+;	in:	hl = Zeit nach Irpt;  de = Zielroutine
+;	out:	im2, di
+;	mod:	af,bc,de,hl, irptvector
+; ------------------------------------------------------------
+
+; wir warten bis zum nächsten Interrupt
+; dann warten wir genau so lange, dass der nächste Irpt noch nicht da sein kann 
+; (es sei denn, wir haben schon den frühest möglichen Zeitpunkt)
+; dann warten wir immer cc/frame +1 cc, bis wir den Interrupt erwischen
+
+at_hl_jp_de:
+
+		push	de			; proc to call
+		ld	de,-32			; Latenz der Starterroutine
+		add	hl,de
+		push	hl			; zeitpunkt
+		
+		ld	hl,scf_38cc_irpt
+		ld	(irptvector),hl
+		ei
+		im	2
+		halt				; interrupt kommt um  cc = 0 + [0..3]
+
+						; 38 + [0..3]		irpt
+		ld	hl,irpt_at		; 10
+		ld	(irptvector),hl		; 16
+
+		ld	de,-73 -74 -3		; 10	= 74 + [0..3]
+		
+	; interrupt erfolgte nicht -> adjust
+
+at1		di				; 4
+		ld	hl,(cc2_per_irpt)	; 16
+		call	wait_cc			; cc/frame/2
+		ld	hl,(cc2_per_irpt)	; 16
+		add	hl,de			; 11
+		ld	de,-73 +1		; 10
+		call	wait_cc			; cc/frame/2 - adjust
+		ei				; 4
+		jr	at1			; 12	= 73 + cc/frame - adjust
+
+
+; interrupt kam => frühest möglicher Zeitpunkt ist jetzt!
+
+					; 19		irpt ackn
+irpt_at:	pop	hl		; 10		drop
+		pop	hl		; 10		wartezeit
+		jp	wait_cc		; 10-17 + hl	warten und routine anspringen
+					; = 32 + hl
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Ermittle Restzyklen bis Interrupt 
+;
+;	min. Latenz:	= 32 
+;	Restzeit:	= hl*4 + [0..3] 
+;	ges. Laufzeit:	= hl*4 + 1 frame + 82 
+;
+;	Zur Ermittlung des N*4-Anteils wird einen weiteren Interrupt gewartet
+;	cc2_per_irpt muss ermittelt sein
+;	Der Laufzeit-Overhead der Routine ist konstant,
+;	so dass anschließend der Bruchteil [+0..+3] ermittelt werden kann.
+;
+;	in:	irpt enabled, im2
+;	out:	irpt enabled, im2,  hl: Restzeit/4
+;	mod:	irpt vector,  af,bc,de,hl
+; ------------------------------------------------------------
+
+rz4_latency	equ	32
+rz4_overhead	equ	82
+
+
+; die Startsequenz ist eine Kopie von restzeit_bis_irpt_x16:
+
+restzeit_bis_irpt_x4:				; 17		call
+		and	a			; 4	cy=0
+		ld	hl,scf_38cc_irpt	; 10
+		ld	(irptvector),hl		; 16
+
+		jp	c,rz4_1			; 10		= 57
+
+		inc	hl			; N * 6		
+		jp	nc,$-1			; N * 10	= N*16
+
+						; 38		irpt
+rz4_1		ld	de,2 - scf_38cc_irpt	; 10
+		add	hl,de			; 11		= 59
+
+; ab hier neuer code:
+; Restzeit war:		hl*16 + [0..15]
+; Laufzeit bisher:	hl*16 + 84
+
+		add	hl,hl			; 11
+		add	hl,hl			; 11
+		ex	hl,de			; 4		de = restzeit/4 - [0..15]
+
+; Restzeit war:		de*4 + [0..15]
+; Laufzeit bisher:	de*4 + 110
+; Zeit seit Irpt:	110 - [0..15]
+; Zeit bis next Irpt:	cc/frame - 110 + [0..15]
+
+		ld	hl,(cc2_per_irpt)	; 16
+		call	wait_cc			; cc/frame/2
+		ld	hl,(cc2_per_irpt)	; 16
+		ld	bc,-110 -69 -1		; 10
+		add	hl,bc			; 11
+		call	wait_cc			; cc/frame/2 -110 -101 -1
+
+		ld	a,$80 -2 -4 -1		; 7
+		ld	r,a			; 9
+						;	= 69 + cc/frame  -110 -69 -1 
+
+; Laufzeit bisher:	de*4 - 1 + cc/frame
+; Zeit bis Irpt:	1 + [0..15]
+; Anm.: wir brauchen mind. 1 cc Luft weil HALT mind. 1x ausgeführt wird
+							
+		halt				; cc += N*4	R += N		halt	N = [1..4]
+						; 38		R += 4		irpt
+		ld	a,r			; 9		R += 2		a = -7+6+N = [0..3]
+		ld	l,a			; 4
+		ld	h,0			; 7
+		add	hl,de			; 11
+		
+		ret				; 10		hl = Restzeit/4
+						;	<=>	Restzeit = hl*4 + [0..3]
+						;		a = [0..3] zur Prüfung
+
+; Restzeit war:		hl*4 + [0..3]
+; Laufzeit gesamt:	hl*4 + cc/frame + 82
+
+
+
+test_restzeit_x4:
+		ld	de,(cc2_per_irpt)	; soll-restzeit 
+		ld	e,32			; & loop counter
+rz4_3		push	de			; soll-restzeit
+
+		ld	hl,(cc2_per_irpt)
+		dec	hl			; -4 for EI
+		dec	hl
+		add	hl,hl
+		and	a
+		sbc	hl,de
+
+		ld	de,rz4_4
+		jp	at_hl_jp_de
+
+rz4_4		ei
+		call	restzeit_bis_irpt_x4
+		add	hl,hl
+		add	hl,hl
+		
+		pop	de			; soll-restzeit & loop ctrl
+		ld	a,e
+		and	3
+		or	l
+		ld	l,a
+		sbc	hl,de
+		jr	nz,rz4_5
+
+		dec	e
+		jr	nz,rz4_3
+		ret
+
+rz4_5		im	1
+		ei
+		push	de
+
+		call	print_msg
+		defm	$0d,"rz_bis_irpt_x4: rz=",$00
+
+		push	hl
+		ld	a,e
+		call	printdec_a
+
+		call	print_msg
+		defm	", d=",$00
+
+		pop	hl
+		ld	h,0
+		call	printdec
+
+		pop	de
+		dec	e
+		jr	nz,rz4_3
+		ret
+
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Restzeit bis Interrupt
+;
+;	in:	irpt enabled, im2
+;	out:	irpt enabled, im2,  hl = Restzeit
+;	mod:	irpt vector,  af,bc,de,hl
+; ------------------------------------------------------------
+
+rz_latency	equ	rz4_latency +17
+rz_overhead	equ	69
+
+restzeit_bis_irpt:
+	
+		call	restzeit_bis_irpt_x4
+
+; Restzeit:		hl*4 + 17 + [0..3]
+; Laufzeit bisher:	hl*4 + 17 + cc/frame + rz4_overhead
+; Zeit seit Irpt:	rz4_overhead - [0..3]
+; Zeit bis next Irpt:	cc/frame - rz4_overhead + [0..3]
+
+		add	hl,hl			; 11
+		add	hl,hl			; 11
+		ld	de,17			; 10
+		add	hl,de			; 11		= 43 cc
+
+; Restzeit:		hl + [0..3]
+; Laufzeit bisher:	hl + cc/frame +rz4_overhead +43
+; Zeit seit Irpt:	rz4_overhead + 43 - [0..3]
+; Zeit bis next Irpt:	cc/frame -rz4_overhead -43 + [0..3]
+
+		ld	de,rz2			; 10
+		ld	(irptvector),de		; 16
+
+		ld	de,-rz4_overhead -43 -42 -100 -4	; 10
+		dec	hl			; 6		= 42 cc
+		
+rz1		di				; 4
+		inc	hl			; 6
+		push	hl			; 11
+		ld	hl,(cc2_per_irpt)	; 16
+		add	hl,de			; 11
+		call	wait_cc			; cc/frame/2 - adjust
+		ld	hl,(cc2_per_irpt)	; 16
+		call	wait_cc			; cc/frame/2
+		pop	hl			; 10
+		ld	de,-100 +1		; 10
+		ei				; 4
+		jr	rz1			; 12		= 100 + cc/frame - 100 +1
+
+						; 19 + 0	irpt ackn
+rz2		pop	de			; 10		drop
+		ld	de,dummy_37cc_irpt	; 10
+		ld	(irptvector),de		; 16		safety
+		ei				; 4
+		ret				; 10
+
+
+
+test_restzeit:
+		ld	de,(cc2_per_irpt)	; soll-restzeit 
+		ld	e,16			; & loop counter
+rz3		push	de			; soll-restzeit
+
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl
+		ld	bc, 4 + 10		; pop und ei
+		and	a
+		sbc	hl,bc
+		and	a
+		sbc	hl,de
+
+		ld	de,rz4
+		call	at_hl_jp_de
+
+rz4		ei
+		pop	de			; ret addr
+		call	restzeit_bis_irpt
+		
+		pop	de			; soll-restzeit & loop ctrl
+		and	a
+		sbc	hl,de
+		jr	nz,rz5
+
+		dec	e
+		jr	nz,rz3
+		ret
+
+rz5		im	1
+		ei
+		call	print_msg
+		defm	$0d,"restzeit_bis_irpt broken",$00
+		jp	abort
+
+
+
+; ------------------------------------------------------------
+;	Prüfe Dauer des Irpt Ackn Cycle in IM 2
+;
+;	in:	--
+;	out:	im1, ei, a = cc/irpt_ackn
+;	mod:	af,bc,de,hl
+; ------------------------------------------------------------
+
+calc_cc_per_im2_ackn:
+
+	; geeigneten Zählwert bestimmen
+	
+		ld	hl,dummy_37cc_irpt
+		ld	(irptvector),hl
+		im	2
+		ei
+		halt
+		
+		call	restzeit_bis_irpt_x16
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		ld	de,40
+		add	hl,de	
+		ld	de,hl		; > cc/frame/2
+
+	; Restzeiten zählen und vergleichen:
+
+		ld	a,$fb			; EI
+		call	cim_sub
+		ld	c,a			
+		ld	a,$f3			; DI
+		call	cim_sub
+		sub	c
+		sub	18			; scf, ei, ret
+		and	$f7
+		im	1
+		ret
+
+; Das Unterprogramm:
+; Da wir nicht wissen, mit welchen Versatz [0..3] wir starten, muss die Messroutine
+; vom Start der Messung bis zum Ende ein Vielfaches von 4 Takten laufen.
+; Der Messbereich muss N*4 Interrupts umfassen, um N*4 cc Gesamtlaufzeit garantieren zu können.
+		
+cim_sub		ld	(cim_patch),a
+		ld	hl,dummy_37cc_irpt
+		ld	(irptvector),hl
+		im	2
+		ei
+		halt				; 19+x + 18 + [0..3]
+
+cim_patch	nop				; 4		EI oder DI
+
+		ld	b,8			; 7
+
+cim1		push	bc		; 8 * N	  ->   > 4 frames  ->  4 irpts
+		ld	hl,de		
+		call	wait_cc
+		pop	bc
+		dec	b
+		jp	nz,cim1
+
+		sub	a			; 4
+		ld	r,a			; 9		
+		ei				; 4
+
+		halt				; N*4	+ 19+x + 18
+		halt				; N*4	+ 19+x + 18
+		halt				; N*4	+ 19+x + 18
+		halt				; N*4	- [3..0]
+		ld	a,r
+		ret
+
+
+; ------------------------------------------------------------
+;	Bestimme Dauer von Irpt Ackn in IM0 und IM1
+;
+;	Ruft den Standard-Interrupt in allen 3 Modi auf
+;
+; ------------------------------------------------------------
+
+calc_cc_per_irpt_ackn:
+
+		call	calc_cc_per_im2_ackn
+		ld	(cc_per_im2_ackn),a
+		
+		rst	56		; die Irpt-Routine muss erst noch den Key-Up verdaten...
+		rst	56		; Mit einem Irpt brauchen wir nach calc_cc_per_im2_ackn nicht zu rechnen
+		rst	56
+		rst	56
+
+		ld	hl,0
+		ld	(FRAMES),hl
+		
+		ld	hl,56
+		ld	(irptvector),hl
+		
+		im	0
+		halt
+		ld	a,0		; 7
+		ld	r,a		; 9
+		halt
+		halt
+		halt
+		halt
+		ld	a,r
+		ld	b,a		; b = R nach IM0
+
+		im	1
+		halt
+		ld	a,0
+		ld	r,a
+		halt
+		halt
+		halt
+		halt
+		ld	a,r
+		ld	c,a		; c = R nach IM1
+
+		im	2
+		halt
+		ld	a,0
+		ld	r,a
+		halt
+		halt
+		halt
+		halt
+		ld	a,r
+		ld	d,a		; d = R nach IM2
+		
+		
+		ld	a,(cc_per_im2_ackn)
+		ld	e,a
+
+		ld	a,e			; cc/im2
+		add	a,d			; cc/im2 - r/im2
+		sub	a,b			; cc/im2 - r/im2 + r/im0
+		and	$7f
+		ld	(cc_per_im0_ackn),a
+		
+		ld	a,e			; cc/im2
+		add	a,d			; cc/im2 - r/im2
+		sub	a,c			; cc/im2 - r/im2 + r/im1
+		and	$7f
+		ld	(cc_per_im1_ackn),a
+
+		im	1
+		ret
+
+
+
+
+
+; ------------------------------------------------------------
+;	Messe Laufzeit der Routine DE zum Zeitpunkt HL
+;
+;	in:	HL = Zeitpunkt cc seit irpt
+;		DE = Routinen-Adresse
+;	out:	HL = Laufzeit cc
+;	mod:	AF,BC,DE,im2,irptvector,ie
+; ------------------------------------------------------------
+
+at_hl_time_de:	
+		push	hl
+		call	at_hl_jp_de
+		ei				; 4 cc
+		call	restzeit_bis_irpt
+
+		pop	de
+		add	hl,de
+		ex	hl,de			; DE = startzeit+restzeit
+		
+		ld	hl,dummy_37cc_irpt
+		ld	(irptvector),hl		; security
+
+		ld	hl,(cc2_per_irpt)
+		dec	hl
+		dec	hl			; -4 für EI
+		add	hl,hl			; cc/irpt -4
+		and	a
+		sbc	hl,de			; HL = Laufzeit
+		ret
+
+
+
+
+
+
+
+
+
+
+

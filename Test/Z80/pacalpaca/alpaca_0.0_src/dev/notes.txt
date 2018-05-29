@@ -1,0 +1,51 @@
+RAM
+Constants
+startup init
+exec
+task switch
+
+Tasks can be started up in random slots at any time
+
+
+	flags	sp
+W	0	0
+X	0	0
+Y	0	0
+Z	0	0
+
+startup:
+	set all sp's to 0xff
+	set multitasking flag
+
+exec:
+	set the sp of one of the slots to the value of the task to be run
+
+
+irq:
+    set aside regs (B)
+    decrement timer
+    if timer is < 1 
+    {
+	switch task:
+	push all remaining registers (A)
+      trynext:
+	increment task number
+	and task number with 0x03
+	check stored sp for that task
+	if (stored sp == 0xff)
+	{
+	    goto trynext:
+	} if (stored sp <= 0xfe)
+	{
+	    start task (sp) in that slot:
+		sp = slot's starting stack pointer
+		push entry point onto stack
+		push 0s onto the stack as (B) above
+		push 0s onto the stack as (A) above
+	} else {
+	    move that sp into the SP
+	    reset timer to max
+	}
+	pop all remaining registers
+    }
+    restore regs

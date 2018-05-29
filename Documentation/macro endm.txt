@@ -1,0 +1,148 @@
+
+h3	macro, .macro, endm and .endm
+	macro, endm
+	
+p	'macro' starts a macro definition and 'endm' terminates it. Macros are assigned a name by which they can later be used at the place of an ordinary instruction.	
+
+p	There are quite numerous formats used by different assemblers and zasm tries to support at least some of them out of the box. In the following code examples the instruction names with or without a dor can be used interchangeable.
+
+p	Frequently you need some kind of label in a macro, but you cannot redefine ordinary labels. Frequently this can be solved with redefinable labels which are defined with 'defl' or 'set'.
+
+p	It is possible to conditionally exclude portions of the macro by use of the pseudo instructions 'if' and 'endif'. (<u>not</u> '#if' and '#endif'!)
+
+p	Assembler directives (starting with '#') are not allowed inside macros.
+
+
+h5	Define a simple macro without arguments
+
+pre	<name> 	macro 
+			<instr>
+			...
+			endm
+			
+p	Alternate syntax:
+
+pre			macro <name> 	
+			<instr>
+			...
+			endm
+
+p	Example:
+
+pre	counter	defl	0
+	COUNT	.macro
+	counter	defl counter + 1
+			.endm
+	 		
+			...
+	 
+			COUNT
+	 
+			...
+	 
+	final_count	equ	counter
+
+p	This defines a counter for something, e.g. Forth words if your source happens to be a Forth interpreter. It uses a redefinable label which is redefined every time the macro is used in the source. The final value of the redefinable label is only really the final value at the end of your source. In order to use it somewhere before, potentially befor the last occurance of the macro, it is finally copied into an ordinary not redefinable label which can be used anywhere in the source.
+
+h5	Define a macro with arguments
+
+pre	<name> 	macro <name1> [ , <name2> … ]
+			<instr>
+			...
+			endm
+			
+p 	Alternate syntax:
+				
+pre			macro <name> <name1> [ , <name2> … ]
+			<instr>
+			...
+			endm
+
+p	Invocation:
+
+pre			<name> <some text> [ , <some text> … ]
+			
+p	This defines a macro with some arguments. Either of both definition styles are possible. Additionally there are different methods for defining and referencing the symbol arguments:
+
+pre	foo:	macro A, B
+			ld	&A, &B
+			endm
+	 
+			macro foo, A, B
+			ld	\A, \B
+			endm
+	 
+	foo:	macro #A, #B
+			ld	#A, #B
+			endm
+	 
+			macro foo, #A, #B
+			ld	#A, #B
+			endm
+
+h5	Argument processing in the macro definition
+
+ul
+li	Arguments are replaced by verbatim copies of the arguments in the invocation
+li	A 'special character' before the macro name is required in the macro definition
+li	The special character is either defined implicitely ('&' for <name> macro … and '\' for macro <name> …)
+li	or it is defined explicitely py prepending it to the arguments (name macro <tag><name1>, <tag><name2> …)
+
+p	Macro arguments can be inserted anywhere, even '#<name>' is allowed to occur in column 1 (if '#' happens to be your tag of choice). Possible tags are one of: "!#$%&.:?@\^_|~" but don't try to be too smart here, use of '&' is recommended.
+
+p	Example:
+
+pre	foo:	macro &A
+			ld	b,&A
+	foo&A:	ld	a,' '
+			rst	8
+			djnz	foo&A
+			endm
+	 
+			...
+	 
+			foo	20
+			...
+			foo 8
+			
+p	In this example the argument is used as the second argument for 'ld b,N' and to construct a unique label name for each invocation. Obviously the passed argument must be a number literal else the label name thing won't work. A better solution would have been to use a redefinable label.
+
+
+h5	Argument processing in the macro invocation
+
+p	There are two methods for argument parsing, the standard 'clean & simple' one, and one for complex arguments.
+
+p.b	Standard arguments
+
+p	Arguments must follow the basic syntax rules: strings or character literals must be closed (balanced delimiters) and arguments end at the next comma, semicolon or line end. Brackets are not required to match.
+
+pre		foo a, 1+2, a*(1+2)
+		foo (, "hi, i'm Kio!", )	; 3 arguments
+
+p.b	Complex arguments
+
+p	Complex arguments start with an opening '<' and run up to the next '>' which is followed by a comma, a semicolon or the line end. With the help of the angle brackets you can pass unbalanced ''' and '"' or a comma or a semicolon as one argument to a macro. It is also helpful if you need to pass spaces at the start or end of an argument, or even just a space.
+
+pre		foo	<,>, <;>, <">			; 3 arguments: , ; and "
+		foo <<>, < >, <ld a,b>		; 3 arguments: < space and ld a,b
+		foo	>, ><, 					; 3 arguments: > >< and nothing
+		
+p	There are still some impossible combinations, e.g. it is not possible to pass <b class=blue><>,</b> (3 characters) as an argument.
+
+
+
+h5	Not implemented in macros:
+
+ul
+li	reference to arguments without a tag character
+li	keyword 'local': try to use 'defl' instead. (not possible in all cases)
+
+
+
+
+
+
+			
+
+
+

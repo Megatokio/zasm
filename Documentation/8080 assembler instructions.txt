@@ -1,0 +1,98 @@
+
+h3	8080 assembler instructions
+
+pre	NOP			
+	 
+    LXI R,D16	R = B D H SP
+    INX R	
+    DAD R
+    DCX R
+	 
+    STAX B		
+    STAX D		
+    LDAX B		
+    LDAX D
+	 
+    INR R		R = B C D E H L M A
+    DCR R
+    MVI R,D8	
+	 
+    RLC			
+    RRC			
+    RAL			
+    RAR			
+    SHLD adr	
+    DAA			
+    LHLD adr	
+    CMA			
+    STA adr		
+    STC			
+    LDA adr		
+    CMC			
+	 
+	MOV	R,R			R = B C D E H L M A
+	 				except MOV M,M
+	HLT
+	 
+	ADD R			R = B C D E H L M A
+    ADC R
+    SUB R
+    SBB R
+    ANA R
+    XRA R
+    ORA R
+    CMP R
+	 
+    RET			
+    RNZ			
+    RZ			
+    RNC			
+    RC			
+    RPO			
+    RPE			
+    RP			
+    RM			
+	 
+    JMP adr		
+    JNZ adr		
+    JZ adr		
+    JNC adr		
+    JC adr		
+    JPO adr		
+    JPE adr		
+    JP adr		
+    JM adr		
+	 
+    CALL adr	
+    CNZ adr		
+    CZ adr		
+    CNC adr		
+    CC adr		
+    CPO adr		
+    CPE adr		
+    CP adr		
+    CM adr		
+	 
+    RST N
+	 
+    POP R		R = B D H PSW		
+    PUSH R
+	 
+    ADI D8		
+    ACI D8		
+    SUI D8		
+    SBI D8		
+    ANI D8		
+    XRI D8		
+    ORI D8		
+    CPI D8		
+	 
+    OUT D8		
+    IN 	D8		
+    XTHL		
+    PCHL		
+    XCHG		
+    DI			
+    SPHL		
+    EI			
+

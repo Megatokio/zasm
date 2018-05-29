@@ -1,0 +1,203 @@
+
+
+H1	Including C Source Files
+
+p	This is a summary page for all the c source related information otherwise spread over the zasm documentation.
+
+
+p	Related command line options
+
+pre	-c path/to/cc   	set path to c compiler (default: sdcc in $PATH)
+	-t path/to/dir  	set path to temp dir for c compiler (default: output dir)
+	-I path/to/dir  	set path to c system header dir (default: sdcc default)
+	-L path/to/dir  	set path to standard library dir (default: none)
+
+p	Related assembler directives 
+
+pre	#include
+	#include library
+	#cpath
+	#cflags
+	#target, #code and #data
+	#local and #endlocal
+
+p	Example sources:
+
+pre	<a href="../Examples/template_rom_with_c_code.asm">Examples/template_rom_with_c_code.asm</a>
+	<a href="../Test/test-tap.asm">Test/test-tap.asm</a>
+
+p	include/ and lib/ directory
+	Note: the supplied <tt>sdcc/lib/</tt> directory requires sdcc 3.4.1.
+	
+pre	<a href="../sdcc/include/">sdcc/include/</a>
+	<a href="../sdcc/lib/">sdcc/lib/</a>
+
+p	Interesting reading
+
+pre	<a href="../sdcc/sdcc_info.txt">sdcc_info.txt</a>
+	<a href="../sdcc/sdcc manual.pdf" target=images>sdcc manual.pdf</a>
+
+
+// ––––––––––––––––––––––––––––––––––––––––––
+h3	Command line options for C compiler
++	command line options for c compiler.txt
+
+
+
+// ––––––––––––––––––––––––––––––––––––––––––
+h3	Short tutorial for using C files
+
+p	zasm can include C source files in your project. These will be compiled using the C compiler sdcc.
+p	In a 'normal' C project you typically start writing C sources and then at some point wonder what the file <tt>crt0.s</tt> may do and then how to modify it. With zasm you start with an assembler file which mostly does what the <tt>crt0.s</tt> file should do. zasm also resolves global symbols from the system libraries and links your project into one binary.
+p	The main assembler file must define a #target, some #code and #data segments, implement the restart vectors, an interrupt and the nmi handler, initialize the system hardware, initialize variables and define <tt>_putchar</tt> and <tt>_getchar</tt>, if required.
+			
+
+h5	Find the C compiler
+p	When it comes to compiling a C source, zasm looks for the C compiler. If it is not in your $PATH then you must tell zasm where it is with the command line option -c.
+p	Example:
+pre	$> zasm -c /usr/bin/sdcc foo.asm
+
+h5	Locate the system headers
+p	Next the C compiler needs to know where the system headers are when a C source includes some of them. The C compiler will look at the default locations, but you may pass it the include/ directory from the zasm distribution, which can be done with command line option -I.
+p	Example:
+pre	$> zasm -I /work/sdcc/include foo.asm
+
+
+h5	Required segments
+p	The C compiler sdcc expects some segments to be defined in your source.
+p	Example:
+pre
+	_ram_start equ 0x4000	; wherever 
+	 
+	#target rom				; define the code model
+	 
+	#code _HOME,0			; code that must not be put in a bank switched part of memory.
+	#code _GSINIT			; init code: the compiler adds some code here and there as required
+	#code _CODE				; most code and const data go here
+	#code _INITIALIZER		; initializer data (in rom) for initialized variables (in ram)
+	#code _CABS,*,0			; referenced but never (?) actually used by sdcc
+	#code _GSFINAL,*,0		; referenced but never (?) actually used by sdcc
+	 
+	#data _DATA, _ram_start	; uninitialized variables
+	#data _INITIALIZED		; variables initialized from _INITIALIZER
+	#data _DABS,*,0			; referenced but never (?) actually used by sdcc
+	#data _RSEG,*,0			; referenced but never (?) actually used by kcc
+
+p	In this example the _HOME segment starts at address 0 and therefore must start with the handlers for the restart vectors. As an example see <a href="/Develop/Projects/zasm/Examples/template_rom_with_c_code.asm" target=_blank>Examples/template_rom_with_c_code.asm</a>.
+p	Hint: as one of the very last lines in your source add a <tt>ret</tt> statement or directly a call to main() in _GSINIT:
+	
+pre
+	#code _GSINIT			; switch to segment _GSINIT
+		call _main			; final action in _GSINIT: call main()
+		rst  0				; if it returns (which it shouldn't)
+
+
+h5	How to include C source files
+p	The major file of your project must be an assembler file. 
+   This file can include other assembler files or c source files.
+   C source files <u>must</u> end with the file name extension '.c'.
+p	Example:
+pre	#include "example.c"
+
+	
+h5	How to resolve symbols from the system library
+p	Compiled C source files frequently contain references to procedures or other global symbols in the system libraries. These can be resolved automatically if your assembler file includes the system library with the #include assembler directive after the last included c source file or after the last reference to an undefined symbol from the system library for the first time.
+	
+p	Example:
+pre	#include standard library
+	
+p	This will resolve all symbols from the system library known as required at that point in your source.
+
+p	As a prerequisite zasm must know where to find the system library directory. It is recommended to use the supplied directory from the distribution and then you have to tell zasm where it is. This can be done with the command line option -L.
+p	Example:
+pre	$> zasm -L /work/sdcc/lib foo.asm
+
+p	Alternatively you can give a path in the '#include library' directive itself:
+pre	#include library "/work/sdcc/lib"	
+
+	
+h5	Using a heap
+	
+p	If you use malloc() etc. then you also need a heap. The actual requirements depend on the implementation of malloc() and free() and this is how it currently should work: (else refer to the implementations of <a href="/Develop/Projects/zasm/sdcc/lib/_malloc.c" target=_blank>lib/_malloc</a> and <a href="/Develop/Projects/zasm/sdcc/lib/_free.c" target=_blank>lib/_mfree</a>…)
+
+p	Define data segment <tt>_HEAP</tt> as the last data segment if you want it to occupy all unused ram up to ram end.
+pre
+	#data _HEAP					; heap:
+	__sdcc_heap_start:	 		; --> sdcc _malloc.c
+		ds	_min_heap_size		; minimum required size
+		ds	_ram_end-$-1		; add all unused memory to the heap
+	__sdcc_heap_end: 			; --> sdcc _malloc.c
+		ds 	1
+	
+
+
+h5	Initialization code
+p	System initialization must be done in assembler as far as it cannot be done in C. An important step in system initialization is the initialization of initialized variables. After that main() must be called which should not return.
+
+p	Example:
+pre
+	_init:						; jump here from reset entry at 0x0000
+		di
+		ld	sp,_ram_end			; set stack pointer
+	
+		ld	bc,_initializer_len	; length of segment _INITIALIZER (must be calculated)
+		ld	de,_INITIALIZED		; start of segment _INITIALIZED
+		ld	hl,_INITIALIZER		; start of segment _INITIALIZER
+		ld	a,b
+		or	c
+		jr	z,$+4
+		ldir					; copy initializer data into initialized variables
+	
+		call _GSINIT			; Initialize global variables (whatever the c compiler has put in here)
+		call _main				; call main() (if not done at the end of _GSINIT itself)		
+		rst  0					; if it returns
+
+
+h5	How to implement _putchar() and _getchar()
+	
+p	C will call the symbols <tt>_putchar</tt> and <tt>_getchar</tt> if your source includes any print or read function call. These cannot be provided by the standard system library because they are highly specific to your target system. If C sources link against these symbols then <u>you</u> must provide appropriate definitions. 
+	
+p	Eventually you can implement <tt>_putchar</tt> and <tt>_getchar</tt> in C, but if you need to implement them in assembler, then you need to know how the C compiler passes the arguments.
+	
+p	Argument passing to and from functions may vary with compiler options, so i recommend that you first include dummy definitions for <tt>_putchar()</tt> and <tt>_getchar()</tt> in your project and inspect the list file generated by the assembler to see what the compiler does. 
+	
+p	Example: in a C file define:
+	
+pre	char inchar,outchar;
+	char getchar(void) { return inchar; } 
+	void putchar(char c) { outchar = c; }
+
+	
+p	assemble your project and you may see the following assember source for _putchar and _getchar:
+	
+pre
+	;char getchar(void) { return inchar; }
+	_getchar:
+	    ld  hl,#_inchar
+	    ld  l,(hl)
+	    ret
+	
+	;void putchar(char c) { outchar = c; }
+	_putchar:
+	    push ix
+	    ld   ix,#0
+	    add  ix,sp
+	    ld   a, 4 (ix)
+	    ld   (#_outchar),a
+	    pop  ix
+	    ret
+
+		 
+p	Use this as a template for your own implementation. For an example see <a href="http://k1.spdns.de/Develop/Projects/zasm/Examples/zx_spectrum_io_rom.s" target=_blank>Examples/zx_spectrum_io_rom.s</a>
+
+	
+	
+
++	_include.txt
++	_cpath.txt
++	_cflags.txt
++	_target.txt
++	_code.txt
++	_data.txt
++	_local.txt
+

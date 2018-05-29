@@ -1,0 +1,34 @@
+Change to next.
+
+.swap:
+	a = current slot
+	c = try slot
+	e = current slot
+
+.loadInTheSP:
+	a = current (old) slot
+	hl = slot sp base + current slot * 2
+	c = try slot
+	de = old sp
+	ix = old sp
+
+.setupVars:
+	a = current (old) slot
+	hl = new SP
+	bc = try
+	de = new SP
+	ix = old SP
+
+
+a	try (new) slot number
+
+hl	stack list base + (try +1) * 2
+
+bc	new rambase value
+
+d	0
+e	try + 1) * 2
+
+ix	SP
+
+iy	

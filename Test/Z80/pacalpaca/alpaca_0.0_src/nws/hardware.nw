@@ -1,0 +1,347 @@
+\chapter{Hardware memory constants}
+
+
+This chapter lists off all of the addresses for all of the bits of
+hardware that we will have to deal with.  This chapter includes
+information about Pac-Man as well as Pengo hardware.
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Pac-Man Configuration}
+
+<<PAC Global Constants>>=
+	stack		= 0x4ff0
+@
+
+<<PAC Global Constants>>=
+	vidram		= 0x4000
+	colram		= 0x4400
+	ram		= 0x4c00
+	dsw0		= 0x5080
+	in1		= 0x5040
+	in0		= 0x5000
+	specreg		= 0x5000
+	speclen		= 0x00C0
+	sprtbase	= 0x4ff0
+	sprtlen		= 0x0010
+@
+
+The bits for player 1 joystick
+<<PAC Global Constants>>=
+	p1_port		= in0
+	p1_up		= 0
+	p1_left		= 1
+	p1_right	= 2
+	p1_down		= 3
+@
+
+The bits for player 2 joystick
+<<PAC Global Constants>>=
+	p2_port		= in1
+	p2_up		= 0
+	p2_left		= 1
+	p2_right	= 2
+	p2_down		= 3
+@
+
+The bits for joystick buttons.  Since Pac hardware has no fire buttons, 
+we'll just absorb the start buttons instead.
+<<PENGO Global Constants>>=
+	p1_bport	= in1
+	p1_b1		= 5
+	p2_bport	= in1
+	p1_b1		= 6
+@
+
+
+The bits for start buttons
+<<PAC Global Constants>>=
+	start_port	= in1
+	start1		= 5
+	start2		= 6
+@
+
+The bits for coin inputs
+<<PAC Global Constants>>=
+	coin_port	= in0
+	coin1		= 5
+	coin2		= 6
+	coin3		= 7
+@
+
+And the bits for cabinet, test and service switches:
+<<PAC Global Constants>>=
+	rack_port	= in0
+	racktest	= 4
+	svc_port	= in1
+	service		= 4
+	cab_port	= in1
+	cabinet		= 7
+@
+
+
+\subsection{Sprite Hardware}
+
+This constants 8 pairs of two bytes:
+\begin{itemize}
+    \item byte 1, bit 0		- Y flip
+    \item byte 1, bit 1		- X flip
+    \item byte 1, bits 2-7	- sprite image number
+    \item byte 2		- color
+\end{itemize}
+
+When drawing the sprite, we need to multiply the sprite number to
+clear the XY flip bits.
+
+<<PAC Global Constants>>=
+	sprtMult	= 4
+@
+
+And we should have offset numbers, to help out with IX and IY
+indexing of the sprite array.
+<<PAC Global Constants>>=
+	sprtColor	= 1
+	sprtIndex	= 0
+@
+
+[[sprtXFlip]] defines the byte offset which contains the X flip bit.
+[[bitXFlip]] defines the bit number to use if using [[SET]] or [[RES]] opcodes.
+[[valXFlip]] defines the value to use if creating a byte to poke in.
+
+<<PAC Global Constants>>=
+	sprtXFlip	= 0
+	bitXFlip	= 0
+	valXFlip	= 1
+	sprtYFlip	= 0
+	bitYFlip	= 1
+	valYFlip	= 2
+@
+
+
+Here's the base of the sprite RAM.
+<<PAC Global Constants>>=
+	spritebase	= 0x4ff0
+@
+
+And there are 8 sprites total:
+<<PAC Global Constants>>=
+	nsprites	= 0x08
+@
+
+And for the coordinates, these are xy pairs for 8 sprites.
+<<PAC Global Constants>>=
+	spritecoords	= 0x5060
+@
+
+\subsection{Sound Hardware}
+
+Three voices.
+Voice 1:
+
+<<PAC Global Constants>>=
+	v1_acc		= 0x5040
+	v1_wave		= 0x5045
+	v1_freq		= 0x5050
+	v1_vol		= 0x5055
+@
+
+Voice 2:
+<<PAC Global Constants>>=
+	v2_acc		= 0x5046
+	v2_wave		= 0x504a
+	v2_freq		= 0x5056
+	v2_vol		= 0x505a
+@
+
+Voice 3:
+<<PAC Global Constants>>=
+	v3_acc		= 0x504b
+	v3_wave		= 0x504f
+	v3_freq		= 0x505b
+	v3_vol		= 0x505f
+@
+
+
+\subsection{Enablers}
+<<PAC Global Constants>>=
+	irqen		= 0x5000
+	sounden		= 0x5001
+	flipscreen	= 0x5003
+	coincount	= 0x5007
+	watchdog	= 0x50C0
+@
+
+\subsection{Extras for Pac}
+<<Pac Global Constants>>=
+	strtlmp1	= 0x5004
+	strtlmp2	= 0x5005
+	coinlock	= 0x5006
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Pengo Configuration}
+
+<<PENGO Global Constants>>=
+	stack		= 0x8ff0
+@
+
+<<PENGO Global Constants>>=
+	vidram		= 0x8000
+	colram		= 0x8400
+	ram		= 0x8800
+	dsw0		= 0x9040
+	in1		= 0x9080
+	in0		= 0x90c0
+	specreg		= 0x9000
+	speclen		= 0x00ff
+	sprtbase	= 0x8ff2
+	sprtlen		= 0x0010
+@
+
+The bits for player 1 joystick
+<<PENGO Global Constants>>=
+	p1_port		= in0
+	p1_up		= 0
+	p1_down		= 1
+	p1_left		= 2
+	p1_right	= 3
+@
+
+The bits for player 2 joystick
+<<PENGO Global Constants>>=
+	p2_port		= in1
+	p2_up		= 0
+	p2_down		= 1
+	p2_left		= 2
+	p2_right	= 3
+@
+
+The bits for joystick buttons
+<<PENGO Global Constants>>=
+	p1_bport	= in0
+	p1_b1		= 7
+	p2_bport	= in1
+	p1_b1		= 7
+@
+
+
+The bits for start buttons
+<<PENGO Global Constants>>=
+	start_port	= in1
+	start1		= 5
+	start2		= 6
+@
+
+The bits for coin inputs
+<<PENGO Global Constants>>=
+	coin_port	= in0
+	coin1		= 4
+	coin2		= 5
+	coin3		= 6
+@
+
+And the bits for service
+<<PENGO Global Constants>>=
+	svc_port	= in1
+	service		= 4
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Sprite Hardware}
+
+This constants 8 pairs of two bytes:
+\begin{itemize}
+    \item byte 1, bit 0		- Y flip
+    \item byte 1, bit 1		- X flip
+    \item byte 1, bits 2-7	- sprite image number
+    \item byte 2		- color
+\end{itemize}
+
+When drawing the sprite, we need to multiply the sprite number to
+clear the XY flip bits.
+
+<<PENGO Global Constants>>=
+        sprtMult        = 4  
+@
+
+And we should have offset numbers, to help out with IX and IY
+indexing of the sprite array.
+<<PENGO Global Constants>>=
+        sprtColor       = 1
+        sprtIndex       = 0
+@
+
+[[sprtXFlip]] defines the byte offset which contains the X flip bit.
+[[bitXFlip]] defines the bit number to use if using [[SET]] or [[RES]] opcodes.
+[[valXFlip]] defines the value to use if creating a byte to poke in.
+
+<<PENGO Global Constants>>=
+        sprtXFlip       = 0
+        bitXFlip        = 0  
+        valXFlip        = 1    
+        sprtYFlip       = 0
+        bitYFlip        = 1
+        valYFlip        = 2
+@
+
+Here's the base of the sprite RAM.
+
+<<PENGO Global Constants>>=
+	spritebase	= 0x8ff2
+@
+
+And there are 8 sprites total:
+<<PENGO Global Constants>>=
+	nsprites	= 0x06
+@
+
+And for the coordinates, these are xy pairs for 8 sprites.
+<<PENGO Global Constants>>=
+	spritecoords	= 0x9022
+@
+
+\subsection{Sound Hardware}
+
+Three voices.
+Voice 1:
+
+<<PENGO Global Constants>>=
+	v1_wave		= 0x9005
+	v1_freq		= 0x9011
+	v1_vol		= 0x9015
+@
+
+Voice 2:
+<<PENGO Global Constants>>=
+	v2_wave		= 0x900a
+	v2_freq		= 0x9016
+	v2_vol		= 0x901a
+@
+
+Voice 3:
+<<PENGO Global Constants>>=
+	v3_wave		= 0x900f
+	v3_freq		= 0x901b
+	v3_vol		= 0x901f
+@
+
+\subsection{Enablers}
+<<PENGO Global Constants>>=
+	irqen		= 0x9040
+	sounden		= 0x9041
+	flipscreen	= 0x9043
+	coincount	= 0x9044
+	watchdog	= 0x9070
+@
+
+
+\subsection{Extras for Pengo}
+<<PENGO Global Constants>>=
+	palbank		= 0x9042
+	collutbank	= 0x9046
+	spritebank	= 0x9047
+	
+@

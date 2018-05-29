@@ -1,0 +1,141 @@
+\chapter{System Architecture}
+\label{chp:kernelarch}
+
+This chapter explains how the kernel and memory of the system are
+arranged.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Hardware Architecture}
+\label{sec:hardarch}
+
+First of all, we'll start with how the hardware is arranged.  If
+you look at figure \ref{fig:memmap}, you will see the memory map
+for Pac-Man based games on the left, and Pengo on the right.
+Pengo is only really shown as reference since it was mentioned
+earlier in this doc.  All of the design described here will focus
+on Pac-Man hardware.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.60]{../dev/memmap.pdf}
+\caption{Hardware memory map}
+\label{fig:memmap}
+\end{center}
+\end{figure}
+
+
+In a nutshell, there is some ROM on the system, shown in green.
+There also are some control registers which allow the program to
+get input from the user (joystick, coin switches, etc) which are
+shown in blue.  This group also contains things like a flag to flip
+the screen, as well as the watchdog timer.
+
+The watchdog timer is a device that resets the system completely
+unless it has been cleared within 16 screen refreshes.  This is
+made for when a game might get into some unpredicted behavior where
+it might crash or hang.  When the game gets to that state, it will
+reboot itself using this mechanism.  We will essentially disable
+it by clearing it within the interrupt routine which happens once
+every screen referesh.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{RAM Allocation}
+
+There are three groups of RAM, shown in pink in figure
+\ref{fig:memmap}.  These are the screen color and character RAM, as
+well as User RAM.  The screen color and character RAM are for drawing
+things on the screen.  The hardware has a character-based background,
+where you put the character to draw in the character RAM and the color
+to draw it in the color RAM.
+
+The other RAM is the User Ram, which is general purpose, for whatever
+the program/programmer wants to use it for.  The exception is the
+uppermost 16 bytes, which is used to draw floating sprites on the
+screen.  
+
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.60]{../dev/rammap.pdf}
+\caption{Kernel RAM memory map}
+\label{fig:rammap}
+\end{center}
+\end{figure}
+
+Figure \ref{fig:rammap} shows just the User Ram on the system.
+This shows how \OS uses the ram.   It is broken up into 6 sections.
+This diagram assumes that there are four tasks concurrently running.
+More about those in \S\ref{chp:isr}.
+
+The sections shown are: (from top to bottom)
+
+\begin{itemize}
+
+    \item Sprite Ram	(16 bytes)
+    \item Task 0 Stack	(192 bytes)
+    \item Task 1 Stack	(192 bytes)
+    \item Task 2 Stack	(192 bytes)
+    \item Task 3 Stack	(192 bytes)
+    \item Semaphores 	(16 bytes)
+    \item Message Queue	(64 bytes)
+    \item Kernel and Task Globals (160 bytes)
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%
+\subsection{Sprite Ram}
+
+This is a section of RAM that is used by the sprite video hardware.
+This is where the positions, colors, sprite numbers and flags are
+placed by the software to have the video hardware draw the sprites
+on the screen.
+
+%%%%%%%%%%%%%%%
+\subsection{Task Stacks}
+
+Each task will have its own stack pointer and stack.  Figure
+\ref{fig:rammap} shows four task stacks in the system for up to
+four tasks running.  If we had more ram or a disk for virtual
+memory, we could probably increase this to be virtually unlimited,
+but for now, we'll stick to four.
+
+When each task is enabled by the task switcher\footnote{See
+\S\ref{chp:isr} for more information.} it needs to be within its
+own stack frame.  Each task thinks that only itself is running.
+There are some rudimentary communications methods by which one task
+can talk to another, and that is via the Message Queue, which is
+discussed next.  Other than the Message Queue, the task has no idea
+if there is one other task, or thirty other tasks running on the
+system.
+
+
+%%%%%%%%%%%%%%%
+\subsection{Semaphores}
+
+This is the ram where the kernel will keep track of the state of
+all of the semaphores that are in use in the system.  More about 
+those in \S\ref{chp:semaphores}.
+
+
+%%%%%%%%%%%%%%%
+\subsection{Message Queue}
+
+The message queue is a small amount of memory (256 bytes) that
+contains rudimentary messages (TBD) that allow for a task to
+communicate with the kernel or with other tasks.
+
+More details about the message queue can be found in \S\ref{chp:messagequeue}.
+
+%%%%%%%%%%%%%%%
+\subsection{Kernel and Task Globals}
+
+This section of memory contains all of the variables used by the
+kernel itself as well as all of the tasks themselves.  Since there
+is no memory protection at all all of this has to be cooridinated
+such that multiple tasks are prevented from assuming control of
+RAM that another task or the kernel is using.  Obviously, this
+cannot be enforced, so it is the obligation of the task to ``play
+nice'' with the other tasks, and stay within its own sandbox.
+
+The memory allocation routines are discussed in \S\ref{chp:memorymanagement}.

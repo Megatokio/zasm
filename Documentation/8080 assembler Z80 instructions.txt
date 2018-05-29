@@ -1,0 +1,131 @@
+
+h3	8080 assembler instructions for Z80 opcodes
+	
+p	This table lists the 8080 assembler syntax for the additional opcodes of the Z80 cpu.
+p	They were rarely used, because people quickly switched over to the much more readable Zilog Z80 mnemonics. But there were some 8080 assemblers which added the new Z80 opcodes using 'their' syntax. It is absolutely not recommended to write new Z80 programs using 8080 assembler syntax, not even for writing new 8080 programs. Use Zilog Z80 syntax (the default for any Z80 assembler) instead. 
+
+p	Most mnemonics are taken from the CROSS manual except the following:
+	I doubt these were ever used…
+
+pre	RLCR r		CROSS-Doc: used RLC which is already used for RLCA, also deviation from naming scheme
+	RRCR r		CROSS-Doc: used RRC which is already used for RRCA, also deviation from naming scheme
+	OTDR		CROSS-Doc: used OUTDR which is a 5 letter word
+	OTIR		CROSS-Doc: used OUTIR which is a 5 letter word
+	DADX rr		CROSS-Doc: no opcode for ADD IX,rr
+	DADY rr		CROSS-Doc: no opcode for ADD IY,rr
+	PCIX		CROSS-Doc: no opcode for JP IX
+	PCIY		CROSS-Doc: no opcode for JP IY
+	INC  r		CROSS-Doc: no opcode for IN r,(c)
+	OUTC r		CROSS-Doc: no opcode for OUT (c),r
+	STAR		CROSS-Doc: no opcode for LD R,A
+	LDAI		CROSS-Doc: no opcode for LD A,I
+	LDAR		CROSS-Doc: no opcode for LD A,R
+
+p	Some opcodes were extended to be used with dis(X) and dis(Y) as well.
+p	The new registers I, R were not accessed by name but with dedicated mnemonics.
+p	The index registers were abbreviated X and Y and an access <tt>(IX+dis)</tt> was written as <tt>dis(X)</tt>. 
+
+h5	New mnemonics
+
+pre	<b>8080 syntax     Z80 syntax</b>
+	DJNZ dis		djnz dis
+	JRZ	 dis		jr	 z,dis
+	JRNZ dis		jr	 nz,dis
+	JRC	 dis		jr	 c,dis
+	JRNC dis		jr	 nc,dis
+	JMPR dis		jr	 dis
+	EXX				exx
+	EXAF			ex	af,af'
+	XTIX			ex	ix,(sp)
+	XTIY			ex	iy,(sp)
+	PCIX			jp	ix
+	PCIY			jp	iy
+	CCD				cpd
+	CCDR			cpdr
+	CCI				cpi
+	CCIR			cpir
+	LDI				ldi
+	LDIR			ldir
+	LDD				ldd
+	LDDR			lddr
+	IND				ind
+	INDR			indr
+	INI				ini
+	INIR			inir
+	OUTD			outd
+	OUTI			outi
+	OTDR			otdr			note: CROSS used OUTDR
+	OTIR			otir			note: CROSS used OUTIR
+	STAI			ld	i,a
+	STAR			ld	r,a
+	LDAI			ld	a,i
+	LDAR			ld	a,r
+	IM0				im	0
+	IM1				im 	1
+	IM2				im	2
+	RETN			retn
+	RETI			reti
+	RLD				rld
+	RRD				rrd
+	NEG				neg
+	SPIX			ld	sp,ix
+	SPIY			ld	sp,iy
+	SBCD NN			ld	(NN),bc		named acc. to SHLD; note: *not* sbc!
+	SDED NN			ld	(NN),de		""
+	SSPD NN			ld	(NN),sp		""
+	SIXD NN			ld	(NN),ix		""
+	SIYD NN			ld	(NN),iy		""
+	LBCD NN			ld	bc,(NN)		named acc. to LHLD
+	LDED NN			ld	de,(NN)		""
+	LSPD NN			ld	sp,(NN)		""
+	LIXD NN			ld	ix,(NN)		""
+	LIYD NN			ld	iy,(NN)		""
+	INC	 R			in	r,(c) 		R = B C D E H L A;  note: *not* inc!
+	OUTC R			out	(c),r		R = B C D E H L A
+	DADC R			adc	hl,rr		R = B D H SP
+	DSBC R			sbc hl,rr		R = B D H SP
+	DADX R			add	ix,rr		R = B D X SP
+	DADY R			add iy,rr		R = B D Y SP
+	RES  N,R		res n,r			N = [0…7]; R = B C D E H L M A dis(X) dis(Y)
+	SET  N,R		set n,r			""
+	BIT  N,R		bit n,r			""
+	SLAR R			sla r			R = B C D E H L M A dis(X) dis(Y)
+	SRLR R			srl r			""
+	SRAR R			sra r			""
+	RALR R			rl  r			""
+	RARR R			rr  r			""
+	RRCR R			rrc r			""
+	RLCR R			rlc r			""
+
+h5	Existing mnemonics
+p	Existing 8080 mnemonics which now also can be used with index registers
+
+pre	<b>8080 syntax     Z80 syntax</b>
+	ADD  R			add	 a,r		R = B C D E H L M A dis(X) dis(Y)
+	ADC  R			adc  a,r		""
+	SUB  R			sub  a,r		""
+	SBB  R			sbc  a,r		""
+	ANA  R			and  r			""
+	ORA  R			or   r			""
+	XRA  R			xor  r			""
+	CMP  R			cmp  r			""
+	INR	 R			inc	 r			""
+	DCR  R			dec	 r			""
+	MVI	 R,N		ld	 r,N		""
+	MOV	 R,R		lr	 r,r		""; M, dis(X) or dis(Y) can only occur on one side
+	DCX  R			dec	 rr			R = B D H SP X Y
+	INX  R			inc  rr			""
+	LXI  R			ld	 rr,NN		""
+	PUSH R			push rr			R = B D H PSW X Y
+	POP  R			pop  rr			""
+
+
+
+
+
+
+
+
+
+
+

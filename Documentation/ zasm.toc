@@ -1,0 +1,166 @@
+
+//	zasm documentation
+
+
+H0	zasm - Z80 Assembler – Version 4.2
+toc	Table of Contents
+
+p.c	<i>Last updated: %%DATE%%.</i>
+
+p	<b class=red>zasm</b> is a multiple pass assembler for the historic 8-bit CPU <i>Zilog Z80</i> and it's variants, e.g. <i>Intel 8080</i> (it's predecessor) or the <i>Z180 / HD64180</i>.
+
+p	<b class=red>zasm</b> is available for Unix-like operating systems like OSX, Linux, BSD.
+
+p.b	Download page and Git archive:
+p	<http://k1.spdns.de/Develop/projects/zasm/Distributions/>
+	<http://k1.spdns.de/Git/zasm-4.0.git>
+	<http://k1.spdns.de/Git/Libraries.git>
+
+p.b	Online Assembler
+p	A cgi script is running on my mac which allows to assemble Z80 sources online.
+	It supports mostly everything, you can even include c sources. <b>:-)</b>
+	<http://k1.spdns.de/cgi-bin/zasm.cgi>
+
+p	Please send bug reports to <a href="mailto:kio@little-bat.de">Kio</a>.
+
+p	Note: internal links in this document are generated automatically. Some links may be not meaningful.
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+//	H1 	Quick Overview
+// 	H3		Features
+//	H3		Typical invocation
+//	H3  	Source File Examples
+//	H3  	Differences from v3 to v4
+
++	Quick Overview.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+//	H1 	Command Line Options
+
++	Command Line Options.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1	  Assembler directives
+//H3:
++		_target.txt
++		_code.txt
++		_data.txt
++		_if.txt
++		_end.txt
++		_include.txt
++		_insert.txt
++		_local.txt
++		_assert.txt
++		_define.txt
++		_charset.txt
++		_compress.txt
++		_cpath.txt
++		_cflags.txt
++		_!.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1	  Pseudo instructions
+p	Pseudo instructions are instructions like 'org' or 'defs', which are written at the place of a Z80 assembler instruction but which are not Z80 instructions. Some pseudo instructions generate code, others don't.
+p	Unless you use command line option '--reqcolon' Z80 and pseudo instructions must not start in column 1 but must always preceded by some spaces or tabs, else the assembler will mistakenly assume a label definition.
+
+//H3:
++		area.txt
++		org.txt
+//		data.txt		-> defs
++		defb db.txt
++		defw dw.txt
++		long.txt
++		defm dm.txt
++		asciz.txt
++		defs ds.txt
++		align.txt
++		if.txt
++		end.txt
++		include.txt
++		incbin.txt
++		globl.txt
++		macro endm.txt
++		rept endm.txt
++		dup edup.txt
++		phase dephase.txt
++		z80 z180 8080.txt
++		dotnames reqcolon etc.txt
++		equ.txt
++		defl set.txt
++		Label definition.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1 		CPU instructions
+//H3:
++		8080 instructions.txt
++		z80 instructions.txt
++		z180 instructions.txt
++		Illegals.txt
++		Syntax variants.txt
++		Compound instructions.txt
++		8080 assembler instructions.txt
++		8080 assembler Z80 instructions.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1 		Expressions
+//H3:
++		Numeric expressions.txt
++		String expressions.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+//H1 Including C Source Files
++	Including C Sources.txt
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+//H1 8080 Assembler
++	8080 Assembler.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1 Targets
+//H3:
++		Target files - Overview.txt
++		target bin rom.txt
++		target sna.txt
++		target z80.txt
++		target tap.txt
++		target tzx.txt
++		target o 80.txt
++		target p 81 p81.txt
++		target ace.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+//H1 List File
++	List File.txt
+
+
+// –––––––––––––––––––––––––––––––––––––––––––––––––
+
+H1 Legal and Version History
+//H4:
++	Legal Notes.txt
++	Version History.txt
+
+
+
+
+
+

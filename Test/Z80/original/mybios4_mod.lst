@@ -1,0 +1,1375 @@
+              	; --------------------------------------
+              	; zasm: assemble "mybios4_mod.asm"
+              	; date: 2018-05-18 20:49:26
+              	; --------------------------------------
+
+
+              	#!/usr/local/bin/zasm -o original/
+              	;43K CP/M 2.2 BIOS for PC-6001
+              	; Original by AKIKAWA, Hisashi(for PC-6001mkII/6601)
+              	; Modified by tanam
+              	
+              	
+0400:         	BLS	equ	1024		;data block size
+0008:         	NRETRY	equ	8		;disk access retry
+              	
+0000:         	SYSPAR	equ	0000h		;CP/M system parameter area
+0004:         	TDRIVE	equ	0004h		;current user/drive
+0100:         	TPA	equ	0100h		;transient program area
+4274:         	DISK	equ	4274h		;disk access routine
+              	
+9000:         	CBASE	equ	09000h		;CCP
+9806:         	BDOS	equ	09806h		;BDOS
+AF20:         	DSKPBF	equ	0af20h		;copy of 0fe70-0fe84 (disk parameter)
+AFF0:         	DSKSP	equ	0aff0h		;stack pointer in BASIC ROM call (READ,WRITE)
+B000:         	INTSP	equ	0b000h		;stack pointer in interrupt routine
+B000:         	RBUF	equ	0b000h		;disk read buffer
+B400:         	WBUF	equ	0b400h		;disk write buffer
+B800:         	VDISP	equ	0b800h		;virtual display address
+BFD0:         	DSKIX	equ	0bfd0h		;disk access work area used by ROM routine
+E200:         	VRAM	equ	0e200h		;VRAM plane1
+E000:         	ATTR	equ	0e000h		;VRAM plane2
+              	
+              	;BIOS jump table
+A600:         		org	0a600h
+A600: C3D6A7  		jp	BOOT
+A603: C31EA8  	JPWBT:	jp	WBOOT
+A606: C398A8  		jp	CONST
+A609: C3A0A8  		jp	CONIN
+A60C: C318A9  		jp	CONOUT
+A60F: C3F3AA  		jp	LIST
+A612: C3F3AA  		jp	PUNCH
+A615: C3F1AA  		jp	READER
+A618: C30AAB  		jp	HOME
+A61B: C3F4AA  		jp	SELDSK		
+A61E: C30CAB  		jp	SETTRK
+A621: C311AB  		jp	SETSEC
+A624: C316AB  		jp	SETDMA
+A627: C31BAB  		jp	READ
+A62A: C37EAB  		jp	WRITE
+A62D: C3AAAC  		jp	LISTST
+A630: C3ACAC  		jp	SECTRN
+              	
+              	;disk parameter header, drive0-3
+A633:         	DPH0:
+A633: 0000    		dw	0000h		;translate table for skew
+A635: 0000    		dw	0		;scratch pad area used by BDOS
+A637: 0000    		dw	0		;scratch pad area used by BDOS
+A639: 0000    		dw	0		;scratch pad area used by BDOS
+A63B: A2A6    		dw	DIRBUF		;buffer for directory
+A63D: 77A6    		dw	DPB1D		;disk parameter block
+A63F: 22A7    		dw	CSV0		;check sum vector
+A641: 32A7    		dw	ALV0		;allocation vector
+              	
+A643:         	DPH1:
+A643: 0000    		dw	0000h		;translate table for skew
+A645: 0000    		dw	0		;scratch pad area used by BDOS
+A647: 0000    		dw	0		;scratch pad area used by BDOS
+A649: 0000    		dw	0		;scratch pad area used by BDOS
+A64B: A2A6    		dw	DIRBUF		;buffer for directory
+A64D: 77A6    		dw	DPB1D		;disk parameter block
+A64F: 45A7    		dw	CSV1		;check sum vector
+A651: 55A7    		dw	ALV1		;allocation vector
+              	
+A653:         	DPH2:
+A653: 0000    		dw	0000h		;translate table for skew
+A655: 0000    		dw	0		;scratch pad area used by BDOS
+A657: 0000    		dw	0		;scratch pad area used by BDOS
+A659: 0000    		dw	0		;scratch pad area used by BDOS
+A65B: A2A6    		dw	DIRBUF		;buffer for directory
+A65D: 77A6    		dw	DPB1D		;disk parameter block
+A65F: 68A7    		dw	CSV2		;check sum vector
+A661: 78A7    		dw	ALV2		;allocation vector
+              	
+A663:         	DPH3:
+A663: 0000    		dw	0000h		;translate table for skew
+A665: 0000    		dw	0		;scratch pad area used by BDOS
+A667: 0000    		dw	0		;scratch pad area used by BDOS
+A669: 0000    		dw	0		;scratch pad area used by BDOS
+A66B: A2A6    		dw	DIRBUF		;buffer for directory
+A66D: 77A6    		dw	DPB1D		;disk parameter block
+A66F: 8BA7    		dw	CSV3		;check sum vector
+A671: 9BA7    		dw	ALV3		;allocation vector
+              	
+              	;BIOS work area
+A673: 40      	WIDTH:	db	64		;virtual display size=80x25
+A674: 18      	HEIGHT:	db	24		;
+A675: FF      		ds	1
+A676: 00      	VDAREA:	db	0		;display area number in virtual display
+              	
+              	;disk parameter block
+A677:         	DPB1D:
+A677: 2000    	SPT:	dw	32		;logical sector per track
+              					; 4096[bytes/track]/128[bytes/sector]
+A679: 03      	BSH:	db	3		;block shift factor, BLS=128*2^BSH
+A67A: 07      	BLM:	db	7		;block length mask, 2^BSH-1
+A67B: 00      	EXM:	db	0		;extent mask
+              					; (BLS*16)/(128*128)-1, for DSM<256
+              					; (BLS*8)/(128*128)-1, for DSM>=256
+A67C: 9700    	DSM:	dw	151		;disk size max,
+              					; 4096[bytes/track]*(40-OFF)[track]/BLS-1
+A67E: 3F00    	DRM:	dw	63		;directory max BLS*ALbit(=2)/32-1
+A680: C0      	AL0:	db	11000000b	;allocation vector for directory, block0-7
+A681: 00      	AL1:	db	0		;allocation vector for directory, block8-15
+A682: 1000    	CKS:	dw	16		;checksum size, (DRM+1)/4
+A684: 0200    	OFF:	dw	2		;reserved track offset
+              	
+              	;BIOS work area
+A686: 0000    	DMA:	dw	0		;set by SETDMA
+A688: 00      	DRIVE:	db	0		;set by SELDSK
+A689: 00      	TRACK:	db	0		;set by SETTRK
+A68A: 00      	SECTOR:	db	0		;set by SETSEC (logical sector)
+              	
+A68B: FF      	RDRIVE:	db	0ffh		;drive in read buffer
+A68C: FF      	RTRACK:	db	0ffh		;track in read buffer
+A68D: FF      	RBLOCK:	db	0ffh		;block in read buffer
+A68E: FF      	WDRIVE:	db	0ffh		;drive in write buffer
+A68F: FF      	WTRACK:	db	0ffh		;track in write buffer
+A690: FF      	WBLOCK:	db	0ffh		;block in write buffer
+A691: 00      	PEND:	db	0		;write pending
+A692: 00      	CBUF:	db	0		;write mode
+A693: 0000    	DSKSPB:	dw	0		;store stack pointer in BASIC ROM call
+              	
+A695: 00      	CSRX:	db	0		;cursor x position on virtual display
+A696: 00      	CSRY:	db	0		;cursor y positin on virtual display
+A697: 00B8    	CSRAD:	dw	VDISP		;cursor address on virtual display
+A699: 00E0    	CSRATT:	dw	ATTR		;cursor attribute address on real display
+              					; used and changed by only CONIN and INTGAM
+A69B: 00      	CSROUT:	db	0		;cursor in/out of real display (non-zero=out)
+              					; used and changed by only CONIN and INTGAM
+A69C: FF      	FCENABL:db	0ffh		;auto focus enable, non-zero=on
+              	
+A69D: 00      	KEYBUF:	db	0		;key
+A69E: 00      	CAPS:	db	0		;caps lock, non-zero=on
+A69F: 00      	ESCMOD:	db	0		;waiting for ESC character
+A6A0: 00      	ESCEQY:	db	0		;
+A6A1: 00      	TIME:	db	0		;2ms timer
+              	
+              	;BDOS work area
+A6A2: FFFFFFFF	DIRBUF:	ds	128		;buffer for directory
+A6A6: FF...   	
+A722: FFFFFFFF	CSV0:	ds	16		;check sum vector, (DRM+1)/4
+A726: FF...   	
+A732: FFFFFFFF	ALV0:	ds	19		;allocation vector, (DSM+1)/8
+A736: FF...   	
+A745: FFFFFFFF	CSV1:	ds	16		;check sum vector, (DRM+1)/4
+A749: FF...   	
+A755: FFFFFFFF	ALV1:	ds	19		;allocation vector, (DSM+1)/8
+A759: FF...   	
+A768: FFFFFFFF	CSV2:	ds	16		;check sum vector, (DRM+1)/4
+A76C: FF...   	
+A778: FFFFFFFF	ALV2:	ds	19		;allocation vector, (DSM+1)/8
+A77C: FF...   	
+A78B: FFFFFFFF	CSV3:	ds	16		;check sum vector, (DRM+1)/4
+A78F: FF...   	
+A79B: FFFFFFFF	ALV3:	ds	19		;allocation vector, (DSM+1)/8
+A79F: FF...   	
+              	
+A7AE:         	INTTBL:
+A7AE: AFAC    		dw	INTKEY		;fa02 normal key
+A7B0: AFAC    		dw	INTKEY		;fa04 RS-232C
+A7B2: 16AD    		dw	INTTIM		;fa06 2ms timer
+A7B4: AFAC    		dw	INTKEY		;fa08 CMT read
+A7B6: 29AD    		dw	EIRET		;fa0a
+A7B8: 29AD    		dw	EIRET		;fa0c
+A7BA: 29AD    		dw	EIRET		;fa0e CMT load stop
+A7BC: 29AD    		dw	EIRET		;fa10 CMT save stop
+A7BE: 29AD    		dw	EIRET		;fa12 CMT error
+A7C0: E6AC    		dw	INTGRP		;fa14 GRAPH etc.
+A7C2: AFAC    		dw	INTKEY		;fa16 reply to game key query
+              	
+A7C4:         	SYSTBL:
+A7C4: C303A6  		jp	JPWBT
+A7C7: 81      		db	81h		;IOBYTE LST=LPT,PUN=TTY,RDR=TTY,CON=CRT
+A7C8: 00      		db	0		;user number and current drive
+A7C9: C30698  		jp	BDOS
+              	
+A7CC:         	GRPTBL1:
+              	;GRAPH+		\   -   _   [   ]
+A7CC: 09178384		db	09h,17h,83h,84h,85h
+A7D0: 85      	
+A7D1:         	GRPTBL2:
+A7D1: 7C7E607B		db	"|","~","`","{","}"
+A7D5: 7D      	
+              	
+              	
+              	;BIOS main program
+A7D6:         	BOOT:
+A7D6: F3      		di
+A7D7: 32F6AA  		ld	(SELDSK+2),a	;ndrive
+A7DA: CD80A8  		call	KEPDSKP
+A7DD: DD21D0BF		ld	ix,DSKIX
+A7E1: 31F0AF  		ld	sp,DSKSP	;stack must be in RAM
+A7E4: 3EAF    		ld	a,0afh
+A7E6: ED47    		ld	i,a
+A7E8: 21AEA7  		ld	hl,INTTBL
+A7EB: 57      		ld	d,a
+A7EC: 1E02    		ld	e,02h
+A7EE: 011600  		ld	bc,11*2
+A7F1: EDB0    		ldir
+A7F3: FB      		ei
+              	
+A7F4: AF      		xor	a
+A7F5: 320400  		ld	(TDRIVE),a
+A7F8: D3C0    		out	(0c0h),a	;color attribute
+A7FA: D3C1    		out	(0c1h),a	;320x200 graphic
+A7FC: 3E02    		ld	a,2
+A7FE: D3B0    		out	(0b0h),a	;relay=off,VRAM=c000,timer=on
+              	
+A800: 2110A8  		ld	hl,MSG
+A803:         	MSGLP:
+A803: 4E      		ld	c,(hl)
+A804: 79      		ld	a,c
+A805: B7      		or	a
+A806: 2827    		jr	z,GOCPM
+A808: E5      		push	hl
+A809: CD18A9  		call	CONOUT
+A80C: E1      		pop	hl
+A80D: 23      		inc	hl
+A80E: 18F3    		jr	MSGLP
+              	
+A810: 1A34334B	MSG:	db	1ah,"43K CP/M 2.2",00h
+A814: 2043502F	
+A818: 4D20322E	
+A81C: 3200    	
+              	
+A81E:         	WBOOT:
+A81E: DD21D0BF		ld	ix,DSKIX
+A822: 31F0AF  		ld	sp,DSKSP	;stack must be in RAM
+A825: 3E11    		ld	a,11h
+A827: D3F0    		out	(0f0h),a	;0000-7fff:ROM
+A829: CD8CA8  		call	BCKDSKP
+A82C: CD58A8  		call	LOADSYS
+A82F:         	GOCPM:
+A82F: 3EDD    		ld	a,0ddh
+A831: D3F0    		out	(0f0h),a	;0000-7fff:RAM
+A833: 328BA6  		ld	(RDRIVE),a	;invalid drive
+A836: 328EA6  		ld	(WDRIVE),a	;invalid drive
+A839: 3A0400  		ld	a,(TDRIVE)	;current user/drive
+A83C: 21C4A7  		ld	hl,SYSTBL
+A83F: 110000  		ld	de,SYSPAR
+A842: 010800  		ld	bc,8
+A845: EDB0    		ldir
+A847: E60F    		and	0fh		;current drive
+A849: 4F      		ld	c,a
+A84A: CDF4AA  		call	SELDSK		;c no change
+A84D: 7C      		ld	a,h
+A84E: B5      		or	l
+A84F: 2001    		jr	nz,TDRVOK
+A851: 4F      		ld	c,a		;if hl=0 then c=0
+A852:         	TDRVOK:
+A852: 310090  		ld	sp,CBASE
+A855: C30090  		jp	CBASE		;c=drive
+              	
+              	
+A858:         	LOADSYS:
+              	;CCP=9000-9805 (track0,sector2-track1,sector10)
+              	;BDOS=9806-a5ff (track1,sector10-track2,sector7)
+A858: AF      		xor	a
+A859: DD7700  		ld	(ix+0),a	;drive number
+A85C: DD771B  		ld	(ix+27),a	;error count
+A85F: 010200  		ld	bc,0002h	;track0,sector2
+A862: 3E0F    		ld	a,15		;15 sectors
+A864: 110090  		ld	de,CBASE
+A867: B7      		or	a		;clear z- and c-flag for reading
+A868: CD7442  		call	DISK
+A86B: 38EB    		jr	c,LOADSYS
+A86D:         	LOADSYS2:
+A86D: AF      		xor	a
+A86E: DD771B  		ld	(ix+27),a	;error count
+A871: 010101  		ld	bc,0101h	;track1,sector1
+A874: 3E07    		ld	a,7		;7 sectors
+A876: 11009F  		ld	de,CBASE+0f00h
+A879: B7      		or	a		;clear z- and c-flag for reading
+A87A: CD7442  		call	DISK
+A87D: 38EE    		jr	c,LOADSYS2
+A87F: C9      		ret
+              	
+A880:         	KEPDSKP:
+A880: 2170FE  		ld	hl,0fe70h
+A883: 1120AF  		ld	de,DSKPBF
+A886: 011500  		ld	bc,0015h
+A889: EDB0    		ldir
+A88B: C9      		ret
+              	
+A88C:         	BCKDSKP:
+A88C: 2120AF  		ld	hl,DSKPBF
+A88F: 1170FE  		ld	de,0fe70h
+A892: 011500  		ld	bc,0015h
+A895: EDB0    		ldir
+A897: C9      		ret
+              	
+A898:         	CONST:
+A898: 3A9DA6  		ld	a,(KEYBUF)
+A89B: B7      		or	a
+A89C: C8      		ret	z
+A89D: 3EFF    		ld	a,0ffh
+A89F: C9      		ret
+              	
+A8A0:         	CONIN:
+A8A0: CD65AA  		call	CALCAD
+              	;	ld	de,ATTR-VRAM+40*7
+A8A3: 11E000  		ld	de,32*7
+A8A6: 19      		add	hl,de
+A8A7:         	CONINLP:
+A8A7: 3A9DA6  		ld	a,(KEYBUF)
+A8AA: B7      		or	a
+A8AB: 2015    		jr	nz,KEYIN
+A8AD: 3AA1A6  		ld	a,(TIME)
+A8B0: 0600    		ld	b,00h
+A8B2: 07      		rlca
+A8B3: 380A    		jr	c,SETCSR
+A8B5: 060F    		ld	b,0fh
+A8B7: 3A95A6  		ld	a,(CSRX)
+A8BA: 0F      		rrca
+A8BB: 3802    		jr	c,SETCSR
+A8BD: 06F0    		ld	b,0f0h
+A8BF:         	SETCSR:
+A8BF: 70      		ld	(hl),b
+A8C0: 18E5    		jr	CONINLP
+A8C2:         	KEYIN:
+A8C2: 47      		ld	b,a		;
+A8C3: AF      		xor	a
+A8C4: 329DA6  		ld	(KEYBUF),a
+A8C7: 77      		ld	(hl),a
+A8C8: 78      		ld	a,b		;
+A8C9: C9      		ret
+              	
+A8CA:         	CTL:
+A8CA: 21D8A8  		ld	hl,CTLTBL
+A8CD: 87      		add	a,a
+A8CE: 85      		add	a,l
+A8CF: 6F      		ld	l,a
+A8D0: 3001    		jr	nc,NOINC1
+A8D2: 24      		inc	h
+A8D3:         	NOINC1:
+A8D3: 5E      		ld	e,(hl)
+A8D4: 23      		inc	hl
+A8D5: 56      		ld	d,(hl)
+A8D6: EB      		ex	de,hl
+A8D7:         	JPHL:
+A8D7: E9      		jp	(hl)
+              	
+A8D8:         	CTLTBL:
+A8D8: E8A9E8A9		dw	CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL
+A8DC: E8A9E8A9	
+A8E0: E8A9E8A9	
+A8E4: E8A9E8A9	
+A8E8: 9EA987A9		dw	CTLLFT,CTLRHT,CTLLF, CTLUP, CTLRHT,CTLCR, CTLNUL,CTLNUL
+A8EC: 2AA97EA9	
+A8F0: 87A978A9	
+A8F4: E8A9E8A9	
+A8F8: E8A9E8A9		dw	CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL,CTLNUL
+A8FC: E8A9E8A9	
+A900: E8A9E8A9	
+A904: E8A9E8A9	
+A908: E8A9E8A9		dw	CTLNUL,CTLNUL,CTLCLS,CTLESC,CTLRHT,CTLLFT,CTLHOM,CTLNUL
+A90C: BAA9E3A9	
+A910: 87A99EA9	
+A914: B2A9E8A9	
+              	
+A918:         	CONOUT:
+A918: 3A9FA6  		ld	a,(ESCMOD)
+A91B: B7      		or	a
+A91C: C2E9A9  		jp	nz,ESC
+A91F: 79      		ld	a,c
+A920: E67F    		and	7fh		;reset bit7
+A922: FE20    		cp	20h
+A924: 38A4    		jr	c,CTL
+A926: CD7DAA  		call	COPYCHR
+A929: C0      		ret	nz
+              	
+A92A:         	CTLLF:				;0ah(LF), line feed + carriage return
+A92A: 2195A6  		ld	hl,CSRX
+A92D: 3600    		ld	(hl),0
+A92F: 23      		inc	hl
+A930: 34      		inc	(hl)		;CSRY
+A931: 3A74A6  		ld	a,(HEIGHT)
+A934: BE      		cp	(hl)
+A935: 202C    		jr	nz,SETAD
+A937: 35      		dec	(hl)
+A938: 1100B8  		ld	de,VDISP
+A93B: 2140B8  		ld	hl,VDISP+64
+A93E: 01C005  		ld	bc,64*(24-1)
+A941: EDB0    		ldir
+A943: 3A73A6  		ld	a,(WIDTH)
+A946: 47      		ld	b,a
+A947:         	LOWEST:
+A947: 3E20    		ld	a," "
+A949: 12      		ld	(de),a
+A94A: 13      		inc	de
+A94B: 10FA    		djnz	LOWEST
+              	
+A94D: 1100E2  		ld	de,VRAM
+A950: 2100E3  		ld	hl,VRAM+64*4
+A953: 010017  		ld	bc,64*(24-1)*4
+A956: EDB0    		ldir
+A958: EB      		ex	de,hl
+A959: 1101F9  		ld	de,VRAM+64*(24-1)*4+1
+A95C: 01FF00  		ld	bc,64*4-1
+A95F: 3600    		ld	(hl),0
+A961: EDB0    		ldir
+              	
+A963:         	SETAD:
+              	;set (CSRAD)
+A963: ED4B95A6		ld	bc,(CSRX)	;c=X,b=Y
+A967: 78      		ld	a,b
+A968: 87      		add	a,a		;Y*2
+A969: 87      		add	a,a		;Y*4
+              	;	add	a,b		;Y*5
+A96A: 87      		add	a,a		;Y*10
+A96B: 2600    		ld	h,0
+A96D: 6F      		ld	l,a
+A96E: 29      		add	hl,hl		;Y*20
+A96F: 29      		add	hl,hl		;Y*40
+A970: 29      		add	hl,hl		;Y*80
+A971: 06B8    		ld	b,VDISP/256
+A973: 09      		add	hl,bc		;VDISP+Y*80+X
+A974: 2297A6  		ld	(CSRAD),hl
+A977: C9      		ret
+              	
+A978:         	CTLCR:				;0dh(CR)
+A978: AF      		xor	a
+A979: 3295A6  		ld	(CSRX),a
+A97C: 18E5    		jr	SETAD
+              	
+A97E:         	CTLUP:				;0bh(VT)
+A97E: 2196A6  		ld	hl,CSRY
+A981: 7E      		ld	a,(hl)
+A982: B7      		or	a
+A983: C8      		ret	z
+A984: 35      		dec	(hl)
+A985: 18DC    		jr	SETAD
+              	
+A987:         	CTLRHT:				;09h(HT),0ch(FF),1ch(FS)
+A987: 2195A6  		ld	hl,CSRX
+A98A: ED4B73A6		ld	bc,(WIDTH)
+A98E: 7E      		ld	a,(hl)
+A98F: 3C      		inc	a
+A990: B9      		cp	c
+A991: 3808    		jr	c,RHTOK
+A993: 23      		inc	hl		;CSRY
+A994: 7E      		ld	a,(hl)
+A995: 05      		dec	b
+A996: B8      		cp	b
+A997: D0      		ret	nc
+A998: 34      		inc	(hl)
+A999: 2B      		dec	hl		;CSRX
+A99A: AF      		xor	a
+A99B:         	RHTOK:
+A99B: 77      		ld	(hl),a
+A99C: 18C5    		jr	SETAD
+              		
+A99E:         	CTLLFT:				;08h(BS),1dh(GS)
+A99E: 2195A6  		ld	hl,CSRX
+A9A1: 7E      		ld	a,(hl)
+A9A2: B7      		or	a
+A9A3: 2009    		jr	nz,LFTOK
+A9A5: 23      		inc	hl		;CSRY
+A9A6: 7E      		ld	a,(hl)
+A9A7: B7      		or	a
+A9A8: C8      		ret	z
+A9A9: 35      		dec	(hl)
+A9AA: 2B      		dec	hl		;CSRX
+A9AB: 3A73A6  		ld	a,(WIDTH)
+A9AE:         	LFTOK:
+A9AE: 3D      		dec	a
+A9AF: 77      		ld	(hl),a
+A9B0: 18B1    		jr	SETAD
+              	
+A9B2:         	CTLHOM:				;1eh(RS)
+A9B2: 210000  		ld	hl,0
+A9B5: 2295A6  		ld	(CSRX),hl
+A9B8: 18A9    		jr	SETAD
+              	
+A9BA:         	CTLCLS:				;1ah(SUB)
+A9BA: 2100B8  		ld	hl,VDISP
+A9BD: 1101B8  		ld	de,VDISP+1
+A9C0: 01FF05  		ld	bc,64*24-1
+A9C3: 3620    		ld	(hl)," "
+A9C5: EDB0    		ldir
+              	
+A9C7: 2100E0  		ld	hl,ATTR
+A9CA: 1101E0  		ld	de,ATTR+1
+A9CD: 010002  		ld	bc,200h
+A9D0: 369C    		ld	(hl),09ch
+A9D2: EDB0    		ldir
+              	
+A9D4: 2100E2  		ld	hl,VRAM
+A9D7: 1101E2  		ld	de,VRAM+1
+A9DA: 010018  		ld	bc,1800h
+A9DD: 3600    		ld	(hl),0h
+A9DF: EDB0    		ldir
+              	
+A9E1: 18CF    		jr	CTLHOM		;?
+              	
+A9E3:         	CTLESC:				;1bh(ESC)
+A9E3: 3E01    		ld	a,1
+A9E5: 329FA6  		ld	(ESCMOD),a
+A9E8:         	CTLNUL:				;00h(NUL),etc.
+A9E8: C9      		ret
+              	
+A9E9:         	ESC:
+A9E9: 3D      		dec	a		;a=(ESCMOD)
+A9EA: 2830    		jr	z,ESC1
+A9EC: 3D      		dec	a
+A9ED: 2823    		jr	z,ESC2
+              	
+A9EF:         	ESC3:
+A9EF: AF      		xor	a
+A9F0: 329FA6  		ld	(ESCMOD),a
+A9F3: 79      		ld	a,c
+A9F4: D620    		sub	20h
+A9F6: ED4B73A6		ld	bc,(WIDTH)
+A9FA: B9      		cp	c
+A9FB: 3802    		jr	c,XOK
+A9FD: 79      		ld	a,c
+A9FE: 3D      		dec	a
+A9FF:         	XOK:
+A9FF: 3295A6  		ld	(CSRX),a
+AA02: 3AA0A6  		ld	a,(ESCEQY)
+AA05: D620    		sub	20h
+AA07: B8      		cp	b
+AA08: 3802    		jr	c,YOK
+AA0A: 78      		ld	a,b
+AA0B: 3D      		dec	a
+AA0C:         	YOK:
+AA0C: 3296A6  		ld	(CSRY),a
+AA0F: C363A9  		jp	SETAD
+              	
+AA12:         	ESC2:
+AA12: 3E03    		ld	a,3
+AA14: 329FA6  		ld	(ESCMOD),a
+AA17: 79      		ld	a,c
+AA18: 32A0A6  		ld	(ESCEQY),a
+AA1B: C9      		ret
+              	
+AA1C:         	ESC1:
+AA1C: 329FA6  		ld	(ESCMOD),a	;a=0
+AA1F: 79      		ld	a,c
+AA20: FE3D    		cp	"="
+AA22: 280D    		jr	z,ESCEQ
+AA24: FE54    		cp	"T"
+AA26: 280F    		jr	z,ESCT
+AA28: FE59    		cp	"Y"
+AA2A: 2821    		jr	z,ESCY
+AA2C: FE2A    		cp	"*"
+AA2E: 288A    		jr	z,CTLCLS
+AA30: C9      		ret
+              	
+AA31:         	ESCEQ:				;set cursor (ESC=YX)
+AA31: 3E02    		ld	a,2
+AA33: 329FA6  		ld	(ESCMOD),a
+AA36: C9      		ret
+              	
+AA37:         	ESCT:				;clear to line end
+AA37: 2A95A6  		ld	hl,(CSRX)
+AA3A: E5      		push	hl
+AA3B: CD45AA  		call	ESCTLP
+AA3E: E1      		pop	hl
+AA3F: 2295A6  		ld	(CSRX),hl
+AA42: C363A9  		jp	SETAD
+              	
+AA45:         	ESCTLP:
+AA45: 3E20    		ld	a," "
+AA47: CD7DAA  		call	COPYCHR
+AA4A: 20F9    		jr	nz,ESCTLP
+AA4C: C9      		ret
+              	
+AA4D:         	ESCY:				;clear to screen end
+AA4D: 2A95A6  		ld	hl,(CSRX)
+AA50: E5      		push	hl
+AA51:         	ESCYLP:
+AA51: CD45AA  		call	ESCTLP
+AA54: 2195A6  		ld	hl,CSRX
+AA57: 3600    		ld	(hl),0
+AA59: 23      		inc	hl
+AA5A: 34      		inc	(hl)
+AA5B: 7E      		ld	a,(hl)
+AA5C: FE19    		cp	25
+AA5E: 38F1    		jr	c,ESCYLP
+AA60: E1      		pop	hl
+AA61: 2295A6  		ld	(CSRX),hl
+AA64: C9      		ret
+              	
+AA65:         	CALCAD:			; af,bc,hl
+              	;calculate VRAM address
+AA65: 3A96A6  		ld	a,(CSRY)
+AA68: 47      		ld	b,a		;Y
+AA69: 87      		add	a,a		;Y*2
+AA6A: 87      		add	a,a		;Y*4
+              	;	add	a,b		;Y*5
+AA6B: 87      		add	a,a		;Y*10
+AA6C: 2600    		ld	h,0
+AA6E: 6F      		ld	l,a
+AA6F: 29      		add	hl,hl		;Y*20
+AA70: 29      		add	hl,hl		;Y*40
+AA71: 29      		add	hl,hl		;Y*80
+AA72: 29      		add	hl,hl		;Y*160
+AA73: 29      		add	hl,hl		;Y*320,c-flag=0
+AA74: 06E2    		ld	b,VRAM/256
+AA76: 3A95A6  		ld	a,(CSRX)
+AA79: 1F      		rra			;X/2
+AA7A: 4F      		ld	c,a
+AA7B: 09      		add	hl,bc		;VRAM+Y*320+X/2
+AA7C: C9      		ret
+              	
+AA7D:         	COPYCHR:	;return z-flag=1 if cursor reach line end
+AA7D: 2A97A6  		ld	hl,(CSRAD)
+AA80: BE      		cp	(hl)
+AA81: 285E    		jr	z,INCCSR
+AA83: 77      		ld	(hl),a
+AA84: 87      		add	a,a
+AA85: 2600    		ld	h,0
+AA87: 6F      		ld	l,a
+AA88: 29      		add	hl,hl
+AA89: 11B5AC  		ld	de,FONT-80h
+AA8C: 19      		add	hl,de
+AA8D: EB      		ex	de,hl
+AA8E: CD65AA  		call	CALCAD		;de no change
+AA91: 0604    		ld	b,4
+AA93: 3A95A6  		ld	a,(CSRX)
+AA96: 0F      		rrca
+AA97: 3825    		jr	c,XODD
+              	
+AA99:         	XEVEN:
+              	;x=0,2,4,...
+AA99: 4E      		ld	c,(hl)		;VRAM
+AA9A: 1A      		ld	a,(de)		;font
+AA9B: A9      		xor	c
+AA9C: E6F0    		and	0f0h
+AA9E: A9      		xor	c
+AA9F: 77      		ld	(hl),a
+AAA0: 3E20    		ld	a,32
+AAA2: 85      		add	a,l
+AAA3: 6F      		ld	l,a
+AAA4: 3001    		jr	nc,NOINC3
+AAA6: 24      		inc	h
+AAA7:         	NOINC3:
+AAA7: 4E      		ld	c,(hl)		;VRAM
+AAA8: 1A      		ld	a,(de)		;font
+AAA9: 07      		rlca
+AAAA: 07      		rlca
+AAAB: 07      		rlca
+AAAC: 07      		rlca
+AAAD: A9      		xor	c
+AAAE: E6F0    		and	0f0h
+AAB0: A9      		xor	c
+AAB1: 77      		ld	(hl),a
+AAB2: 3E20    		ld	a,32
+AAB4: 85      		add	a,l
+AAB5: 6F      		ld	l,a
+AAB6: 3001    		jr	nc,NOINC4
+AAB8: 24      		inc	h
+AAB9:         	NOINC4:
+AAB9: 13      		inc	de
+AABA: 10DD    		djnz	XEVEN
+AABC: 1823    		jr	INCCSR
+              	
+AABE:         	XODD:
+              	;x=1,3,5,...
+AABE: 4E      		ld	c,(hl)		;VRAM
+AABF: 1A      		ld	a,(de)		;font
+AAC0: 0F      		rrca
+AAC1: 0F      		rrca
+AAC2: 0F      		rrca
+AAC3: 0F      		rrca
+AAC4: A9      		xor	c
+AAC5: E60F    		and	0fh
+AAC7: A9      		xor	c
+AAC8: 77      		ld	(hl),a
+AAC9: 3E20    		ld	a,32
+AACB: 85      		add	a,l
+AACC: 6F      		ld	l,a
+AACD: 3001    		jr	nc,NOINC5
+AACF: 24      		inc	h
+AAD0:         	NOINC5:
+AAD0: 4E      		ld	c,(hl)		;VRAM
+AAD1: 1A      		ld	a,(de)		;font
+AAD2: A9      		xor	c
+AAD3: E60F    		and	0fh
+AAD5: A9      		xor	c
+AAD6: 77      		ld	(hl),a
+AAD7: 3E20    		ld	a,32
+AAD9: 85      		add	a,l
+AADA: 6F      		ld	l,a
+AADB: 3001    		jr	nc,NOINC6
+AADD: 24      		inc	h
+AADE:         	NOINC6:
+AADE: 13      		inc	de
+AADF: 10DD    		djnz	XODD
+              	
+AAE1:         	INCCSR:
+AAE1: 2A97A6  		ld	hl,(CSRAD)
+AAE4: 23      		inc	hl
+AAE5: 2297A6  		ld	(CSRAD),hl
+AAE8: 2195A6  		ld	hl,CSRX
+AAEB: 34      		inc	(hl)
+AAEC: 3A73A6  		ld	a,(WIDTH)
+AAEF: BE      		cp	(hl)
+AAF0: C9      		ret
+              	
+AAF1:         	READER:
+AAF1: 3E1A    		ld	a,1ah		;ctrl-z
+AAF3:         	LIST:
+AAF3:         	PUNCH:
+AAF3: C9      		ret
+              	
+AAF4:         	SELDSK:				;hl=DPH0+drive*16
+AAF4: 79      		ld	a,c
+AAF5: FE01    		cp	1		;ndrive: written in BOOT
+AAF7: 210000  		ld	hl,0
+AAFA: D0      		ret	nc
+AAFB: 3288A6  		ld	(DRIVE),a
+AAFE: 2133A6  		ld	hl,DPH0
+AB01: 87      		add	a,a		;drive*2
+AB02: 87      		add	a,a		;drive*4
+AB03: 87      		add	a,a		;drive*8
+AB04: 87      		add	a,a		;drive*16
+AB05: 85      		add	a,l
+AB06: 6F      		ld	l,a
+AB07: D0      		ret	nc
+AB08: 24      		inc	h
+AB09: C9      		ret
+              	
+AB0A:         	HOME:
+AB0A: 0E00    		ld	c,0
+AB0C:         	SETTRK:
+AB0C: 79      		ld	a,c
+AB0D: 3289A6  		ld	(TRACK),a
+AB10: C9      		ret
+              	
+AB11:         	SETSEC:
+AB11: 79      		ld	a,c
+AB12: 328AA6  		ld	(SECTOR),a
+AB15: C9      		ret
+              	
+AB16:         	SETDMA:
+AB16: ED4386A6		ld	(DMA),bc
+AB1A: C9      		ret
+              	
+AB1B:         	READ:
+AB1B: CD8CA8  		call	BCKDSKP
+AB1E: ED7393A6		ld	(DSKSPB),sp
+AB22: 31F0AF  		ld	sp,DSKSP	;stack area must be in RAM
+AB25:         	RCHECK:
+AB25: 218EA6  		ld	hl,WDRIVE
+              	;	ld	de,WBUF
+AB28: CD59AC  		call	CHKBLK
+AB2B: CC47AC  		call	z,CPW2RA
+AB2E: 218BA6  		ld	hl,RDRIVE
+AB31: 1100B0  		ld	de,RBUF
+AB34: CD59AC  		call	CHKBLK		;de no change
+AB37: 2012    		jr	nz,RDIFF
+AB39: ED5B86A6		ld	de,(DMA)
+AB3D: 018000  		ld	bc,128
+AB40: EDB0    		ldir
+AB42: CD9FAC  		call	CLDSKWK
+AB45: ED7B93A6		ld	sp,(DSKSPB)
+AB49: AF      		xor	a		;ok
+AB4A: C9      		ret
+              	
+AB4B:         	RDIFF:
+AB4B: 218BA6  		ld	hl,RDRIVE
+AB4E: CD53AB  		call	REDDSK
+AB51: 18D2    		jr	RCHECK
+              	
+AB53:         	REDDSK:
+AB53: CD7DAC  		call	SETBLK		;de no change
+AB56: DD21D0BF		ld	ix,DSKIX
+AB5A: AF      		xor	a	
+AB5B: DD771B  		ld	(ix+27),a	;error count
+AB5E:         	REDRTRY:
+AB5E: CD91AC  		call	SETPAR		;de no change
+AB61: DD7700  		ld	(ix+0),a	;drive number
+AB64: 3E11    		ld	a,11h
+AB66: D3F0    		out	(0f0h),a	;0000-7fff:ROM
+AB68: 3E04    		ld	a,4		;the number of sector
+AB6A: B7      		or	a		;clear z- and c-flag for reading
+AB6B: D5      		push	de
+AB6C: CD7442  		call	DISK
+AB6F: D1      		pop	de
+AB70: 3EDD    		ld	a,0ddh
+AB72: D3F0    		out	(0f0h),a	;0000-7fff:RAM
+AB74: D0      		ret	nc		;no error
+AB75: DD7E1B  		ld	a,(ix+27)
+AB78: FE08    		cp	NRETRY
+AB7A: 3045    		jr	nc,DSKERR
+AB7C: 18E0    		jr	REDRTRY
+              	
+AB7E:         	WRITE:
+AB7E: CD8CA8  		call	BCKDSKP
+AB81: ED7393A6		ld	(DSKSPB),sp
+AB85: 31F0AF  		ld	sp,DSKSP	;stack area must be in RAM
+AB88: 79      		ld	a,c		;c=write condition
+AB89: 3292A6  		ld	(CBUF),a
+AB8C:         	WCHECK:
+AB8C: 218EA6  		ld	hl,WDRIVE
+AB8F: 1100B4  		ld	de,WBUF
+AB92: CD59AC  		call	CHKBLK		;de no change
+AB95: 2034    		jr	nz,WDIFF
+              	;write from DMA to buffer
+AB97: EB      		ex	de,hl
+AB98: 2A86A6  		ld	hl,(DMA)
+AB9B: 018000  		ld	bc,128
+AB9E: EDB0    		ldir
+ABA0: 3E01    		ld	a,1
+ABA2: 3291A6  		ld	(PEND),a
+ABA5: 3A92A6  		ld	a,(CBUF)
+ABA8: 3D      		dec	a
+ABA9: CC0CAC  		call	z,WRTIMM	;c=1 directory write (close)
+ABAC:         	WRTEND:
+ABAC: 218BA6  		ld	hl,RDRIVE
+ABAF: 1100B0  		ld	de,RBUF
+ABB2: CD59AC  		call	CHKBLK
+ABB5: CC3DAC  		call	z,CPW2R
+ABB8: CD9FAC  		call	CLDSKWK
+ABBB: ED7B93A6		ld	sp,(DSKSPB)
+ABBF: AF      		xor	a		;ok
+ABC0: C9      		ret
+              	
+ABC1:         	DSKERR:
+ABC1: CD9FAC  		call	CLDSKWK
+ABC4: ED7B93A6		ld	sp,(DSKSPB)
+ABC8: 3E01    		ld	a,1
+ABCA: C9      		ret
+              	
+ABCB:         	WDIFF:
+              	;not loaded
+ABCB: 3A91A6  		ld	a,(PEND)
+ABCE: B7      		or	a
+ABCF: C4F8AB  		call	nz,WRTPND
+              	
+ABD2: 218BA6  		ld	hl,RDRIVE
+              	;	ld	de,RBUF
+ABD5: CD59AC  		call	CHKBLK
+ABD8: 280B    		jr	z,CPR2W
+              	
+ABDA: 218EA6  		ld	hl,WDRIVE
+ABDD: 1100B4  		ld	de,WBUF
+ABE0: CD53AB  		call	REDDSK
+ABE3: 18A7    		jr	WCHECK
+              	
+ABE5:         	CPR2W:
+ABE5: 2100B0  		ld	hl,RBUF
+ABE8: 1100B4  		ld	de,WBUF
+ABEB: 010004  		ld	bc,1024
+ABEE: EDB0    		ldir
+ABF0: 218EA6  		ld	hl,WDRIVE
+ABF3: CD7DAC  		call	SETBLK
+ABF6: 1894    		jr	WCHECK
+              	
+ABF8:         	WRTPND:
+              	;write pending data
+ABF8: 2190A6  		ld	hl,WBLOCK
+ABFB: 7E      		ld	a,(hl)		;WBLOCK
+ABFC: 87      		add	a,a
+ABFD: 87      		add	a,a
+ABFE: 3C      		inc	a
+ABFF: 4F      		ld	c,a		;sector=WBLOCK*4+1
+AC00: 2B      		dec	hl
+AC01: 46      		ld	b,(hl)		;WTRACK
+AC02: 2B      		dec	hl
+AC03: 7E      		ld	a,(hl)		;WDRIVE
+AC04: CD17AC  		call	WRTDSK
+AC07: AF      		xor	a
+AC08: 3291A6  		ld	(PEND),a
+AC0B: C9      		ret
+              	
+AC0C:         	WRTIMM:
+              	;write immediately
+AC0C: CD91AC  		call	SETPAR
+AC0F: CD17AC  		call	WRTDSK
+AC12: AF      		xor	a
+AC13: 3291A6  		ld	(PEND),a
+AC16: C9      		ret
+              	
+AC17:         	WRTDSK:
+AC17: DD21D0BF		ld	ix,DSKIX
+AC1B: DD7700  		ld	(ix+0),a
+AC1E: AF      		xor	a	
+AC1F: DD771B  		ld	(ix+27),a	;error count
+AC22:         	WRTRTRY:
+AC22: 3E11    		ld	a,11h
+AC24: D3F0    		out	(0f0h),a	;0000-7fff:ROM
+AC26: 1100B4  		ld	de,WBUF		;address
+AC29: 3E04    		ld	a,4		;the number of sector
+AC2B: 37      		scf			;set c-flag for writing
+AC2C: CD7442  		call	DISK
+AC2F: 3EDD    		ld	a,0ddh
+AC31: D3F0    		out	(0f0h),a	;0000-7fff:RAM
+AC33: D0      		ret	nc		;no error
+AC34: DD7E1B  		ld	a,(ix+27)
+AC37: FE08    		cp	NRETRY
+AC39: 3086    		jr	nc,DSKERR
+AC3B: 18E5    		jr	WRTRTRY	
+              	
+AC3D:         	CPW2R:
+AC3D: EB      		ex	de,hl
+AC3E: 2A86A6  		ld	hl,(DMA)
+AC41: 018000  		ld	bc,128
+AC44: EDB0    		ldir
+AC46: C9      		ret
+              	
+AC47:         	CPW2RA:
+AC47: 2100B4  		ld	hl,WBUF
+AC4A: 1100B0  		ld	de,RBUF
+AC4D: 010004  		ld	bc,1024
+AC50: EDB0    		ldir
+AC52: 218BA6  		ld	hl,RDRIVE
+AC55: CD7DAC  		call	SETBLK
+AC58: C9      		ret
+              	
+AC59:         	CHKBLK:
+              	;compare (DRIVE),(TRACK),(SECTOR) to read/write buffer
+              	;IN: hl=RDRIVE/WDRIVE, de=RBUF/WBUF
+              	;OUT:hl=buffer address, z-flag=1 (match) / z-flag=0 (not match)
+AC59: 3A88A6  		ld	a,(DRIVE)
+AC5C: BE      		cp	(hl)
+AC5D: C0      		ret	nz
+AC5E: 23      		inc	hl
+AC5F: 3A89A6  		ld	a,(TRACK)
+AC62: BE      		cp	(hl)		;RTRACK/WTRACK
+AC63: C0      		ret	nz
+AC64: 23      		inc	hl
+AC65: 3A8AA6  		ld	a,(SECTOR)
+AC68: E6F8    		and	0f8h		;8sector/block
+AC6A: 0F      		rrca
+AC6B: 0F      		rrca
+AC6C: 0F      		rrca
+AC6D: BE      		cp	(hl)		;RBLOCK/WBLOCK=0-3
+AC6E: C0      		ret	nz
+AC6F:         	DSKBFAD:
+AC6F: 3A8AA6  		ld	a,(SECTOR)
+AC72: E607    		and	07h		;8sector/block
+AC74: 1F      		rra			;c-flag=0
+AC75: 67      		ld	h,a
+AC76: 2E00    		ld	l,0
+AC78: CB1D    		rr	l		;hl=(a&7)*128
+AC7A: 19      		add	hl,de
+AC7B: AF      		xor	a		;set z-flag
+AC7C: C9      		ret
+              	
+AC7D:         	SETBLK:
+              	;set RDRIVE/WDRIVE etc.
+AC7D: 3A88A6  		ld	a,(DRIVE)
+AC80: 77      		ld	(hl),a		;RDRIVE/WDRIVE
+AC81: 23      		inc	hl
+AC82: 3A89A6  		ld	a,(TRACK)
+AC85: 77      		ld	(hl),a		;RTRACK/WTRACK
+AC86: 23      		inc	hl
+AC87: 3A8AA6  		ld	a,(SECTOR)
+AC8A: E6F8    		and	0f8h		;8sector/block
+AC8C: 0F      		rrca
+AC8D: 0F      		rrca
+AC8E: 0F      		rrca
+AC8F: 77      		ld	(hl),a		;RBLOCK/WBLOCK=0-3
+AC90: C9      		ret
+              	
+AC91:         	SETPAR:
+              	;OUT:a=drive,b=track,c=sector,(de=address)
+AC91: 218AA6  		ld	hl,SECTOR
+AC94: 7E      		ld	a,(hl)
+AC95: E6F8    		and	0f8h
+AC97: 0F      		rrca
+AC98: 4F      		ld	c,a
+AC99: 0C      		inc	c		;physical sector
+AC9A: 2B      		dec	hl
+AC9B: 46      		ld	b,(hl)		;track
+AC9C: 2B      		dec	hl
+AC9D: 7E      		ld	a,(hl)		;drive
+AC9E: C9      		ret
+              	
+AC9F:         	CLDSKWK:		;clear 0fe64h,0fe70h-0fe84h
+AC9F: AF      		xor	a
+ACA0: 2164FE  		ld	hl,0fe64h
+ACA3: 0621    		ld	b,21h
+ACA5:         	DSKWKLP:
+ACA5: 77      		ld	(hl),a
+ACA6: 23      		inc	hl
+ACA7: 10FC    		djnz	DSKWKLP
+ACA9: C9      		ret
+              	
+              	
+ACAA:         	LISTST:
+ACAA: AF      		xor	a		;not ready
+ACAB: C9      		ret
+              	
+ACAC:         	SECTRN:
+ACAC: 60      		ld	h,b		;no skew factor
+ACAD: 69      		ld	l,c
+ACAE: C9      		ret
+              	
+ACAF:         	INTKEY:
+ACAF: ED7327AD		ld	(INTEND+2),sp	;CCP stack area is very limited !!!
+ACB3: 3100B0  		ld	sp,INTSP
+ACB6: F5      		push	af
+ACB7: CD2BAD  		call	IN90H
+ACBA: FE7F    		cp	7fh
+ACBC: 3805    		jr	c,NODEL
+ACBE: C225AD  		jp	nz,INTEND	;bit7 must be 0,parity
+ACC1: 3E08    		ld	a,08h		;DEL:7fh->08h
+ACC3:         	NODEL:
+ACC3: 329DA6  		ld	(KEYBUF),a
+ACC6: 3A9EA6  		ld	a,(CAPS)
+ACC9: B7      		or	a
+ACCA: 2859    		jr	z,INTEND
+              	;caps lock
+ACCC: 3A9DA6  		ld	a,(KEYBUF)
+ACCF: FE41    		cp	"A"
+ACD1: 3852    		jr	c,INTEND
+ACD3: FE5B    		cp	"Z"+1
+ACD5: 3808    		jr	c,UPLOW
+ACD7: FE61    		cp	"a"
+ACD9: 384A    		jr	c,INTEND
+ACDB: FE7B    		cp	"z"+1
+ACDD: 3046    		jr	nc,INTEND
+ACDF:         	UPLOW:
+ACDF: EE20    		xor	20h		;A-Z <-> a-z
+ACE1: 329DA6  		ld	(KEYBUF),a
+ACE4: 183F    		jr	INTEND
+              	
+ACE6:         	INTGRP:
+ACE6: ED7327AD		ld	(INTEND+2),sp	;CCP stack area is very limited !!!
+ACEA: 3100B0  		ld	sp,INTSP
+ACED: F5      		push	af
+ACEE: CD2BAD  		call	IN90H
+ACF1: FEFB    		cp	0fbh
+ACF3: 2818    		jr	z,SWCAPS
+ACF5: E5      		push	hl
+ACF6: C5      		push	bc
+ACF7: 21CCA7  		ld	hl,GRPTBL1
+ACFA: 010500  		ld	bc,GRPTBL2-GRPTBL1
+ACFD: EDB1    		cpir
+ACFF: 2008    		jr	nz,NOMATCH
+AD01: 010400  		ld	bc,GRPTBL2-GRPTBL1-1
+AD04: 09      		add	hl,bc
+AD05: 7E      		ld	a,(hl)
+AD06: 329DA6  		ld	(KEYBUF),a
+AD09:         	NOMATCH:
+AD09: C1      		pop	bc
+AD0A: E1      		pop	hl
+AD0B: 1818    		jr	INTEND
+              	
+AD0D:         	SWCAPS:				;switch caps lock on/off
+AD0D: 3A9EA6  		ld	a,(CAPS)
+AD10: 2F      		cpl
+AD11: 329EA6  		ld	(CAPS),a
+AD14: 180F    		jr	INTEND
+              	
+AD16:         	INTTIM:
+AD16: ED7327AD		ld	(INTEND+2),sp	;CCP stack area is very limited !!!
+AD1A: 3100B0  		ld	sp,INTSP
+AD1D: F5      		push	af
+AD1E: 3AA1A6  		ld	a,(TIME)
+AD21: 3C      		inc	a
+AD22: 32A1A6  		ld	(TIME),a
+AD25:         	INTEND:
+AD25: F1      		pop	af
+AD26: 310000  		ld	sp,0000h
+AD29:         	EIRET:
+AD29: FB      		ei
+AD2A: C9      		ret
+              	
+AD2B:         	IN90H:
+AD2B: DB92    		in	a,(92h)
+AD2D: 2F      		cpl
+AD2E: E628    		and	28h
+AD30: 20F9    		jr	nz,IN90H	;wait for ibf=1,intr=1
+AD32: DB90    		in	a,(90h)
+AD34: C9      		ret
+              	
+AD35:         	FONT:
+AD35: 00000000		db	000h,000h,000h,000h	;sp
+AD39: 44444040		db	044h,044h,040h,040h	;!
+AD3D: AA000000		db	0aah,000h,000h,000h	;"
+AD41: 0AEAEA00		db	00ah,0eah,0eah,000h	;#
+AD45: 4ECE6E40		db	04eh,0ceh,06eh,040h	;$
+AD49: 08248200		db	008h,024h,082h,000h	;%
+AD4D: 4AA4A860		db	04ah,0a4h,0a8h,060h	;&
+AD51: 48000000		db	048h,000h,000h,000h	;'
+AD55: 24444420		db	024h,044h,044h,020h	;(
+AD59: 84444480		db	084h,044h,044h,080h	;)
+AD5D: 04E4E400		db	004h,0e4h,0e4h,000h	;*
+AD61: 044E4400		db	004h,04eh,044h,000h	;+
+AD65: 00004480		db	000h,000h,044h,080h	;,
+AD69: 000E0000		db	000h,00eh,000h,000h	;-
+AD6D: 00000040		db	000h,000h,000h,040h	;.
+AD71: 22444880		db	022h,044h,048h,080h	;/
+              	
+AD75: 4AAEAA40		db	04ah,0aeh,0aah,040h	;0
+AD79: 4C4444E0		db	04ch,044h,044h,0e0h	;1
+AD7D: 4AA248E0		db	04ah,0a2h,048h,0e0h	;2
+AD81: 4A242A40		db	04ah,024h,02ah,040h	;3
+AD85: 26AAE220		db	026h,0aah,0e2h,020h	;4
+AD89: E88C22C0		db	0e8h,08ch,022h,0c0h	;5
+AD8D: 4A8CAA40		db	04ah,08ch,0aah,040h	;6
+AD91: EA224440		db	0eah,022h,044h,040h	;7
+AD95: 4AA4AA40		db	04ah,0a4h,0aah,040h	;8
+AD99: 4AA62A40		db	04ah,0a6h,02ah,040h	;9
+AD9D: 04404400		db	004h,040h,044h,000h	;:
+ADA1: 04404480		db	004h,040h,044h,080h	;;
+ADA5: 02484200		db	002h,048h,042h,000h	;<
+ADA9: 00E0E000		db	000h,0e0h,0e0h,000h	;=
+ADAD: 08424800		db	008h,042h,048h,000h	;>
+ADB1: 4A244040		db	04ah,024h,040h,040h	;?
+              	
+ADB5: 4A226A40		db	04ah,022h,06ah,040h	;@
+ADB9: 4AAEAAA0		db	04ah,0aeh,0aah,0a0h	;A
+ADBD: CAACAAC0		db	0cah,0ach,0aah,0c0h	;B
+ADC1: 4A888A40		db	04ah,088h,08ah,040h	;C
+ADC5: CAAAAAC0		db	0cah,0aah,0aah,0c0h	;D
+ADC9: E88E88E0		db	0e8h,08eh,088h,0e0h	;E
+ADCD: E88E8880		db	0e8h,08eh,088h,080h	;F
+ADD1: 688EAA40		db	068h,08eh,0aah,040h	;G
+ADD5: AAAEAAA0		db	0aah,0aeh,0aah,0a0h	;H
+ADD9: E44444E0		db	0e4h,044h,044h,0e0h	;I
+ADDD: E4444480		db	0e4h,044h,044h,080h	;J
+ADE1: AACCAAA0		db	0aah,0cch,0aah,0a0h	;K
+ADE5: 888888E0		db	088h,088h,088h,0e0h	;L
+ADE9: AEEEAAA0		db	0aeh,0eeh,0aah,0a0h	;M
+ADED: AEEEEEA0		db	0aeh,0eeh,0eeh,0a0h	;N
+ADF1: 4AAAAA40		db	04ah,0aah,0aah,040h	;O
+              	
+ADF5: CAAC8880		db	0cah,0ach,088h,080h	;P
+ADF9: 4AAAA420		db	04ah,0aah,0a4h,020h	;Q
+ADFD: CAACAAA0		db	0cah,0ach,0aah,0a0h	;R
+AE01: 4A842A40		db	04ah,084h,02ah,040h	;S
+AE05: E4444440		db	0e4h,044h,044h,040h	;T
+AE09: AAAAAAE0		db	0aah,0aah,0aah,0e0h	;U
+AE0D: AAAAAA40		db	0aah,0aah,0aah,040h	;V
+AE11: AAEEEEA0		db	0aah,0eeh,0eeh,0a0h	;W
+AE15: AAA4AAA0		db	0aah,0a4h,0aah,0a0h	;X
+AE19: AAA44440		db	0aah,0a4h,044h,040h	;Y
+AE1D: E2A4A8E0		db	0e2h,0a4h,0a8h,0e0h	;Z
+AE21: 64444460		db	064h,044h,044h,060h	;[
+AE25: AA4E4E40		db	0aah,04eh,04eh,040h	;\
+AE29: C44444C0		db	0c4h,044h,044h,0c0h	;]
+AE2D: 4A000000		db	04ah,000h,000h,000h	;^
+AE31: 000000E0		db	000h,000h,000h,0e0h	;_
+              	
+AE35: 42000000		db	042h,000h,000h,000h	;`
+AE39: 00C2EAE0		db	000h,0c2h,0eah,0e0h	;a
+AE3D: 888CAAC0		db	088h,08ch,0aah,0c0h	;b
+AE41: 00688860		db	000h,068h,088h,060h	;c
+AE45: 2226AA60		db	022h,026h,0aah,060h	;d
+AE49: 004AE860		db	000h,04ah,0e8h,060h	;e
+AE4D: 244E4440		db	024h,04eh,044h,040h	;f
+AE51: 006A62C0		db	000h,06ah,062h,0c0h	;g
+AE55: 888CAAA0		db	088h,08ch,0aah,0a0h	;h
+AE59: 40444440		db	040h,044h,044h,040h	;i
+AE5D: 20222A40		db	020h,022h,02ah,040h	;j
+AE61: 88ACCAA0		db	088h,0ach,0cah,0a0h	;k
+AE65: 44444460		db	044h,044h,044h,060h	;l
+AE69: 00EEEEA0		db	000h,0eeh,0eeh,0a0h	;m
+AE6D: 00CAAAA0		db	000h,0cah,0aah,0a0h	;n
+AE71: 004AAA40		db	000h,04ah,0aah,040h	;o
+              	
+AE75: 00CAC880		db	000h,0cah,0c8h,080h	;p
+AE79: 006A6220		db	000h,06ah,062h,020h	;q
+AE7D: 00AC8880		db	000h,0ach,088h,080h	;r
+AE81: 006842C0		db	000h,068h,042h,0c0h	;s
+AE85: 04E44460		db	004h,0e4h,044h,060h	;t
+AE89: 00AAAA60		db	000h,0aah,0aah,060h	;u
+AE8D: 00AAAA40		db	000h,0aah,0aah,040h	;v
+AE91: 00AAEEA0		db	000h,0aah,0eeh,0a0h	;w
+AE95: 00AA4AA0		db	000h,0aah,04ah,0a0h	;x
+AE99: 00AA62C0		db	000h,0aah,062h,0c0h	;y
+AE9D: 00E248E0		db	000h,0e2h,048h,0e0h	;z
+AEA1: 24484420		db	024h,048h,044h,020h	;{
+AEA5: 44404440		db	044h,040h,044h,040h	;|
+AEA9: 84424480		db	084h,042h,044h,080h	;}
+AEAD: 002E8000		db	000h,02eh,080h,000h	;~
+AEB1: 00000000		db	000h,000h,000h,000h	;none
+              	
+AEB5:         	BIOSEND:
+AEB5: FFFFFFFF		ds	0af00h-BIOSEND
+AEB9: FF...   	
+              	
+              		end
+***ERROR*** No such file or directory: file = "/pub/Develop/Projects/zasm-4.0/Test/Z80/original/mybios4_mod." (fd108)
+
+
+; +++ segments +++
+
+#CODE          = $A600 = 42496,  size = $0900 =  2304
+
+; +++ global symbols +++
+
+AL0      = $A680 = 42624          mybios4_mod.asm:106 (unused)
+AL1      = $A681 = 42625          mybios4_mod.asm:107 (unused)
+ALV0     = $A732 = 42802          mybios4_mod.asm:145
+ALV1     = $A755 = 42837          mybios4_mod.asm:147
+ALV2     = $A778 = 42872          mybios4_mod.asm:149
+ALV3     = $A79B = 42907          mybios4_mod.asm:151
+ATTR     = $E000 = 57344          mybios4_mod.asm:25
+BCKDSKP  = $A88C = 43148          mybios4_mod.asm:275
+BDOS     = $9806 = 38918          mybios4_mod.asm:16
+BIOSEND  = $AEB5 = 44725          mybios4_mod.asm:1153
+BLM      = $A67A = 42618          mybios4_mod.asm:99 (unused)
+BLS      = $0400 =  1024          mybios4_mod.asm:7 (unused)
+BOOT     = $A7D6 = 42966          mybios4_mod.asm:180
+BSH      = $A679 = 42617          mybios4_mod.asm:98 (unused)
+CALCAD   = $AA65 = 43621          mybios4_mod.asm:563
+CAPS     = $A69E = 42654          mybios4_mod.asm:137
+CBASE    = $9000 = 36864          mybios4_mod.asm:15
+CBUF     = $A692 = 42642          mybios4_mod.asm:124
+CHKBLK   = $AC59 = 44121          mybios4_mod.asm:891
+CKS      = $A682 = 42626          mybios4_mod.asm:108 (unused)
+CLDSKWK  = $AC9F = 44191          mybios4_mod.asm:951
+CONIN    = $A8A0 = 43168          mybios4_mod.asm:289
+CONINLP  = $A8A7 = 43175          mybios4_mod.asm:294
+CONOUT   = $A918 = 43288          mybios4_mod.asm:339
+CONST    = $A898 = 43160          mybios4_mod.asm:282
+COPYCHR  = $AA7D = 43645          mybios4_mod.asm:585
+CPR2W    = $ABE5 = 44005          mybios4_mod.asm:821
+CPW2R    = $AC3D = 44093          mybios4_mod.asm:875
+CPW2RA   = $AC47 = 44103          mybios4_mod.asm:882
+CSRAD    = $A697 = 42647          mybios4_mod.asm:129
+CSRATT   = $A699 = 42649          mybios4_mod.asm:130 (unused)
+CSROUT   = $A69B = 42651          mybios4_mod.asm:132 (unused)
+CSRX     = $A695 = 42645          mybios4_mod.asm:127
+CSRY     = $A696 = 42646          mybios4_mod.asm:128
+CSV0     = $A722 = 42786          mybios4_mod.asm:144
+CSV1     = $A745 = 42821          mybios4_mod.asm:146
+CSV2     = $A768 = 42856          mybios4_mod.asm:148
+CSV3     = $A78B = 42891          mybios4_mod.asm:150
+CTL      = $A8CA = 43210          mybios4_mod.asm:318
+CTLCLS   = $A9BA = 43450          mybios4_mod.asm:453
+CTLCR    = $A978 = 43384          mybios4_mod.asm:399
+CTLESC   = $A9E3 = 43491          mybios4_mod.asm:474
+CTLHOM   = $A9B2 = 43442          mybios4_mod.asm:448
+CTLLF    = $A92A = 43306          mybios4_mod.asm:350
+CTLLFT   = $A99E = 43422          mybios4_mod.asm:431
+CTLNUL   = $A9E8 = 43496          mybios4_mod.asm:477
+CTLRHT   = $A987 = 43399          mybios4_mod.asm:412
+CTLTBL   = $A8D8 = 43224          mybios4_mod.asm:333
+CTLUP    = $A97E = 43390          mybios4_mod.asm:404
+DIRBUF   = $A6A2 = 42658          mybios4_mod.asm:143
+DISK     = $4274 = 17012          mybios4_mod.asm:13
+DMA      = $A686 = 42630          mybios4_mod.asm:112
+DPB1D    = $A677 = 42615          mybios4_mod.asm:95
+DPH0     = $A633 = 42547          mybios4_mod.asm:48
+DPH1     = $A643 = 42563          mybios4_mod.asm:58 (unused)
+DPH2     = $A653 = 42579          mybios4_mod.asm:68 (unused)
+DPH3     = $A663 = 42595          mybios4_mod.asm:78 (unused)
+DRIVE    = $A688 = 42632          mybios4_mod.asm:113
+DRM      = $A67E = 42622          mybios4_mod.asm:105 (unused)
+DSKBFAD  = $AC6F = 44143          mybios4_mod.asm:910 (unused)
+DSKERR   = $ABC1 = 43969          mybios4_mod.asm:799
+DSKIX    = $BFD0 = 49104          mybios4_mod.asm:23
+DSKPBF   = $AF20 = 44832          mybios4_mod.asm:17
+DSKSP    = $AFF0 = 45040          mybios4_mod.asm:18
+DSKSPB   = $A693 = 42643          mybios4_mod.asm:125
+DSKWKLP  = $ACA5 = 44197          mybios4_mod.asm:955
+DSM      = $A67C = 42620          mybios4_mod.asm:103 (unused)
+EIRET    = $AD29 = 44329          mybios4_mod.asm:1038
+ESC      = $A9E9 = 43497          mybios4_mod.asm:480
+ESC1     = $AA1C = 43548          mybios4_mod.asm:515
+ESC2     = $AA12 = 43538          mybios4_mod.asm:508
+ESC3     = $A9EF = 43503          mybios4_mod.asm:486 (unused)
+ESCEQ    = $AA31 = 43569          mybios4_mod.asm:528
+ESCEQY   = $A6A0 = 42656          mybios4_mod.asm:139
+ESCMOD   = $A69F = 42655          mybios4_mod.asm:138
+ESCT     = $AA37 = 43575          mybios4_mod.asm:533
+ESCTLP   = $AA45 = 43589          mybios4_mod.asm:541
+ESCY     = $AA4D = 43597          mybios4_mod.asm:547
+ESCYLP   = $AA51 = 43601          mybios4_mod.asm:550
+EXM      = $A67B = 42619          mybios4_mod.asm:100 (unused)
+FCENABL  = $A69C = 42652          mybios4_mod.asm:134 (unused)
+FONT     = $AD35 = 44341          mybios4_mod.asm:1050
+GOCPM    = $A82F = 43055          mybios4_mod.asm:223
+GRPTBL1  = $A7CC = 42956          mybios4_mod.asm:172
+GRPTBL2  = $A7D1 = 42961          mybios4_mod.asm:175
+HEIGHT   = $A674 = 42612          mybios4_mod.asm:90
+HOME     = $AB0A = 43786          mybios4_mod.asm:703
+IN90H    = $AD2B = 44331          mybios4_mod.asm:1042
+INCCSR   = $AAE1 = 43745          mybios4_mod.asm:670
+INTEND   = $AD25 = 44325          mybios4_mod.asm:1035
+INTGRP   = $ACE6 = 44262          mybios4_mod.asm:1000
+INTKEY   = $ACAF = 44207          mybios4_mod.asm:971
+INTSP    = $B000 = 45056          mybios4_mod.asm:19
+INTTBL   = $A7AE = 42926          mybios4_mod.asm:153
+INTTIM   = $AD16 = 44310          mybios4_mod.asm:1028
+JPHL     = $A8D7 = 43223          mybios4_mod.asm:330 (unused)
+JPWBT    = $A603 = 42499          mybios4_mod.asm:30
+KEPDSKP  = $A880 = 43136          mybios4_mod.asm:268
+KEYBUF   = $A69D = 42653          mybios4_mod.asm:136
+KEYIN    = $A8C2 = 43202          mybios4_mod.asm:310
+LFTOK    = $A9AE = 43438          mybios4_mod.asm:443
+LIST     = $AAF3 = 43763          mybios4_mod.asm:682
+LISTST   = $ACAA = 44202          mybios4_mod.asm:962
+LOADSYS  = $A858 = 43096          mybios4_mod.asm:245
+LOADSYS2 = $A86D = 43117          mybios4_mod.asm:257
+LOWEST   = $A947 = 43335          mybios4_mod.asm:365
+MSG      = $A810 = 43024          mybios4_mod.asm:214
+MSGLP    = $A803 = 43011          mybios4_mod.asm:203
+NODEL    = $ACC3 = 44227          mybios4_mod.asm:980
+NOINC1   = $A8D3 = 43219          mybios4_mod.asm:325
+NOINC3   = $AAA7 = 43687          mybios4_mod.asm:616
+NOINC4   = $AAB9 = 43705          mybios4_mod.asm:632
+NOINC5   = $AAD0 = 43728          mybios4_mod.asm:654
+NOINC6   = $AADE = 43742          mybios4_mod.asm:666
+NOMATCH  = $AD09 = 44297          mybios4_mod.asm:1017
+NRETRY   = $0008 =     8          mybios4_mod.asm:8
+OFF      = $A684 = 42628          mybios4_mod.asm:109 (unused)
+PEND     = $A691 = 42641          mybios4_mod.asm:123
+PUNCH    = $AAF3 = 43763          mybios4_mod.asm:683
+RBLOCK   = $A68D = 42637          mybios4_mod.asm:119 (unused)
+RBUF     = $B000 = 45056          mybios4_mod.asm:20
+RCHECK   = $AB25 = 43813          mybios4_mod.asm:723
+RDIFF    = $AB4B = 43851          mybios4_mod.asm:740
+RDRIVE   = $A68B = 42635          mybios4_mod.asm:117
+READ     = $AB1B = 43803          mybios4_mod.asm:719
+READER   = $AAF1 = 43761          mybios4_mod.asm:680
+REDDSK   = $AB53 = 43859          mybios4_mod.asm:745
+REDRTRY  = $AB5E = 43870          mybios4_mod.asm:750
+RHTOK    = $A99B = 43419          mybios4_mod.asm:427
+RTRACK   = $A68C = 42636          mybios4_mod.asm:118 (unused)
+SECTOR   = $A68A = 42634          mybios4_mod.asm:115
+SECTRN   = $ACAC = 44204          mybios4_mod.asm:966
+SELDSK   = $AAF4 = 43764          mybios4_mod.asm:686
+SETAD    = $A963 = 43363          mybios4_mod.asm:381
+SETBLK   = $AC7D = 44157          mybios4_mod.asm:921
+SETCSR   = $A8BF = 43199          mybios4_mod.asm:307
+SETDMA   = $AB16 = 43798          mybios4_mod.asm:715
+SETPAR   = $AC91 = 44177          mybios4_mod.asm:937
+SETSEC   = $AB11 = 43793          mybios4_mod.asm:710
+SETTRK   = $AB0C = 43788          mybios4_mod.asm:705
+SPT      = $A677 = 42615          mybios4_mod.asm:96 (unused)
+SWCAPS   = $AD0D = 44301          mybios4_mod.asm:1022
+SYSPAR   = $0000 =     0          mybios4_mod.asm:10
+SYSTBL   = $A7C4 = 42948          mybios4_mod.asm:166
+TDRIVE   = $0004 =     4          mybios4_mod.asm:11
+TDRVOK   = $A852 = 43090          mybios4_mod.asm:240
+TIME     = $A6A1 = 42657          mybios4_mod.asm:140
+TPA      = $0100 =   256          mybios4_mod.asm:12 (unused)
+TRACK    = $A689 = 42633          mybios4_mod.asm:114
+UPLOW    = $ACDF = 44255          mybios4_mod.asm:995
+VDAREA   = $A676 = 42614          mybios4_mod.asm:92 (unused)
+VDISP    = $B800 = 47104          mybios4_mod.asm:22
+VRAM     = $E200 = 57856          mybios4_mod.asm:24
+WBLOCK   = $A690 = 42640          mybios4_mod.asm:122
+WBOOT    = $A81E = 43038          mybios4_mod.asm:216
+WBUF     = $B400 = 46080          mybios4_mod.asm:21
+WCHECK   = $AB8C = 43916          mybios4_mod.asm:774
+WDIFF    = $ABCB = 43979          mybios4_mod.asm:805
+WDRIVE   = $A68E = 42638          mybios4_mod.asm:120
+WIDTH    = $A673 = 42611          mybios4_mod.asm:89
+WRITE    = $AB7E = 43902          mybios4_mod.asm:768
+WRTDSK   = $AC17 = 44055          mybios4_mod.asm:855
+WRTEND   = $ABAC = 43948          mybios4_mod.asm:789 (unused)
+WRTIMM   = $AC0C = 44044          mybios4_mod.asm:847
+WRTPND   = $ABF8 = 44024          mybios4_mod.asm:830
+WRTRTRY  = $AC22 = 44066          mybios4_mod.asm:860
+WTRACK   = $A68F = 42639          mybios4_mod.asm:121 (unused)
+XEVEN    = $AA99 = 43673          mybios4_mod.asm:603
+XODD     = $AABE = 43710          mybios4_mod.asm:637
+XOK      = $A9FF = 43519          mybios4_mod.asm:496
+YOK      = $AA0C = 43532          mybios4_mod.asm:504
+_end     = $AF00 = 44800          mybios4_mod.asm:27 (unused)
+_size    = $0900 =  2304          mybios4_mod.asm:27 (unused)
+
+
+total time: 0.0192 sec.
+1 error

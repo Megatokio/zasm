@@ -1,0 +1,86 @@
+
+h3	#target Z80
+	z80
+
+p	A ZX Spectrum emulator snapshot.
+
+p	Information on the ZX Spectrum file formats can be found in the ZX Spectrum FAQ which can be found at <a target=_blank href="http://www.worldofspectrum.org/faq/">WOS</a>.
+
+
+p	A .z80 file may contain a snapshot for most ZX Spectrum models and, on some emulators, e.g. <a href="http://k1.spdns.de/Develop/Projects/zxsp-osx/Distributions/">zxsp for OSX</a>, for a bunch of clones, ZX80 and ZX81 variants and the Jupiter Ace as well.
+
+p	The .z80 file starts with a header section which is followed by multiple ram chunks. This is reproduced as one header segment and an appropriate number of appropriately sized segments with ram contents.
+
+p	The basic layout is like this:
+
+pre	#target z80
+	#code	_HEADER,0,size	    ; size depends on version
+		...
+	#code	_RAM,0x4000,0xC000,<id>
+		...
+
+p	See the zxsp .z80 template file: <a target="image" href="../Examples/template_z80.asm">template_z80.asm</a> 
+
+h5	A version 1.45 snapshot
+
+p	The header size is 30 bytes and the ram chunk must be a single segment of 0xC000 bytes. Use of version 1.45 is discouraged.
+p	Note: unlike the other versions the version 1.45 ram segment has no ID flag.
+
+pre	#target z80
+	#code	_HEADER,0,30
+		...
+	#code	_RAM,0x4000,0xC000
+		...
+
+h5	A version 2.0.1 snapshot
+
+p	The header section contains additional information and the ram is saved in pages of 0x4000 bytes each. This has to be reproduced in the source file. Depending on the model declared in the header section, (see <a target="image" href="../Examples/template_z80.asm">template_z80.asm</a>) an appropriate number of correctly sized code segments must follow which must have an additional flag argument which defines the ID which is assigned to their ram chunk. 
+p	This would be appropriate for a ZX Spectrum 48k:
+
+pre	#target z80
+	#code	_HEADER,0,55
+		...
+	#code	_RAM1,0x4000,0x4000,8
+		...
+	#code	_RAM2,0x8000,0x4000,4
+		...
+	#code	_RAM3,0xC000,0x4000,5
+		...
+
+p.magenta	<i>evtl. i will implement the 'varying blocksize' feature from the b&w models for zxsp and allow zasm to produce such files. this would allow one continuous segment to be used.</i>
+
+h5	A version 3.0 file is very similar, except that some few model IDs have changed and more data is added to the header section.
+p	This would be appropriate for a ZX Spectrum 128k:
+
+pre	#target z80
+	#code	_HEADER,0,86
+		...
+	#code	_RAM0,0xC000,0x4000,3	// ram mapped at 0xC000 after reset
+		...
+	#code	_RAM1,0xC000,0x4000,4	
+		...
+	#code	_RAM2,0x8000,0x4000,5	// ram at 0x8000
+		...
+	#code	_RAM3,0xC000,0x4000,6
+		...
+	#code	_RAM4,0xC000,0x4000,7
+		...
+	#code	_RAM5,0x4000,0x4000,8	// ram at 0x4000
+		...
+	#code	_RAM6,0xC000,0x4000,9
+		...
+	#code	_RAM7,0xC000,0x4000,10
+		...
+
+h5	black&white models 
+
+p	The b&w models have varying ram sizes from 1k to 64k or more. To allow storing of any arbitrary ram size the memory is chunked into blocks of 1k, 2k, 4k, 8k, 16, 32k and 64k. Currently each block must occur at most once. So 1k, 2k or 16k ram would be saved as 1 block while 48k would be saved as 2. The block IDs can be picked from <a target="image" href="../Examples/template_z80.asm">template_z80.asm</a>.
+
+pre	#code 	_HEADER 0,55
+		...
+	#code	_RAM,0x4000,0x0800,4	; looks like a TS1000 ;-)
+		...
+		
+
+
+

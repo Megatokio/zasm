@@ -1,0 +1,3330 @@
+              	; --------------------------------------
+              	; zasm: assemble "z80mon.asm"
+              	; date: 2018-05-18 20:49:26
+              	; --------------------------------------
+
+
+              	#!/usr/local/bin/zasm -o original/
+              	;******************************************************************************
+              	;
+              	;  Small monitor for the Z80 single board computer consisting of 32 kB ROM 
+              	; ($0000 to $ffff), 32 kB RAM ($8000 to $ffff) and a 16c550 UART.
+              	;
+              	; B. Ulmann, 28-SEP-2011, 29-SEP-2011, 01-OCT-2011, 02-OCT-2011, 30-OCT-2011,
+              	;            01-NOV-2011, 02-NOV-2011, 03-NOV-2011, 06/07/08-JAN-2012
+              	; I. Kloeckl, 06/07/08-JAN-2012 (FAT implementation for reading files)
+              	; B. Ulmann, 14-JAN-2011, 
+              	;
+              	; Version 0.8
+              	;
+              	;******************************************************************************
+              	;
+              	; TODO: 
+              	;       Read and print IDE error status codes in case of error!
+              	;
+              	; Known issues:
+              	;       Memory Dump has a problem when the end address is >= FF00
+              	;
+              	;******************************************************************************
+              	;
+              	;  RST $00 will enter the monitor (do not care about the return address pushed
+              	; onto the stack - the stack pointer will be reinitialized during cold as well
+              	; as during warm starts.
+              	;
+              	;  Monitor routines will generally called by placing the necessary parameters
+              	; into some processor registers and then issuing RST $08. More about this later.
+              	;
+              	;  Memory layout is as follows:
+              	;
+              	;  +-------+
+              	;  ! $FFFF !    General purpose 512 byte buffer
+              	;  !  ---  !
+              	;  ! $FE00 !
+              	;  +-------+
+              	;  ! $DFFF !    FAT control block
+              	;  !  ---  !
+              	;  ! $FDDC !
+              	;  +-------+
+              	;  ! $FDDB !    File control block
+              	;  !  ---  !
+              	;  ! $FBBE !
+              	;  +-------+
+              	;  ! $FBBD !    81 byte string buffer
+              	;  !  ---  !
+              	;  ! $FB6D !
+              	;  +-------+
+              	;  ! $FB6C !    12 byte string buffer
+              	;  !  ---  !
+              	;  ! $FB61 !
+              	;  +-------+
+              	;  ! $FB60 !    Buffers for various routines
+              	;  !  ---  !
+              	;  ! $FB4D !
+              	;  +-------+
+              	;  ! $FB4C !    Cold/warm start control (1 byte)
+              	;  +-------+
+              	;  ! $FBBD !    Stack
+              	;  !  ...  !
+              	;  ! $8000 !    Begin of RAM
+              	;  +-------+
+              	;  ! $7FFF !    ROM area
+              	;  !  ---  !    RST $08 calls a system routine
+              	;  ! $0000 !    RST $00 restarts the monitor
+              	;  +-------+
+              	;
+              	;
+0000:         	monitor_start   equ     $0000           ; $0000 -> ROM, $8000 -> Test image
+              	;
+0000:         	                org     monitor_start
+              	;
+0000:         	rom_start       equ     $0
+7FFF:         	rom_end         equ     $7fff
+8000:         	ram_start       equ     $8000
+FFFF:         	ram_end         equ     $ffff
+FE00:         	buffer          equ     ram_end - $1ff  ; 512 byte IDE general purpose buffer
+              	;
+              	; Define the FAT control block memory addresses:
+              	;
+FDFC:         	datastart       equ     buffer - 4      ; Data area start vector
+FDF8:         	rootstart       equ     datastart - 4   ; Root directory start vector
+FDF4:         	fat1start       equ     rootstart - 4   ; Start vector to first FAT
+FDF0:         	psiz            equ     fat1start - 4   ; Size of partition (in sectors)
+FDEC:         	pstart          equ     psiz - 4        ; First sector of partition
+FDEA:         	rootlen         equ     pstart - 2      ; Maximum number of entries in directory
+FDE8:         	fatsec          equ     rootlen - 2     ; FAT size in sectors
+FDE6:         	ressec          equ     fatsec - 2      ; Number of reserved sectors
+FDE5:         	clusiz          equ     ressec - 1      ; Size of a cluster (in sectors)
+FDDC:         	fatname         equ     clusiz - 9      ; Name of the FAT (null terminated)
+FDDC:         	fatcb           equ     fatname         ; Start of the FATCB
+              	;
+              	; Define a file control block (FCB) memory addresses and displacements:
+              	;
+FBDC:         	file_buffer     equ     fatcb - $200            ; 512 byte sector buffer
+FBDB:         	cluster_sector  equ     file_buffer - 1         ; Current sector in cluster
+FBD7:         	current_sector  equ     cluster_sector - 4      ; Current sector address
+FBD5:         	current_cluster equ     current_sector - 2      ; Current cluster number
+FBD1:         	file_pointer    equ     current_cluster - 4     ; Pointer for file position
+FBD0:         	file_type       equ     file_pointer - 1        ; 0 -> not found, else OK
+FBCE:         	first_cluster   equ     file_type - 2           ; First cluster of file
+FBCA:         	file_size       equ     first_cluster - 4       ; Size of file
+FBBE:         	file_name       equ     file_size - 12          ; Canonical name of file
+FBBE:         	fcb             equ     file_name               ; Start of the FCB
+              	;
+0000:         	fcb_filename            equ     0
+000C:         	fcb_file_size           equ     $c
+0010:         	fcb_first_cluster       equ     $10
+0012:         	fcb_file_type           equ     $12
+0013:         	fcb_file_pointer        equ     $13
+0017:         	fcb_current_cluster     equ     $17
+0019:         	fcb_current_sector      equ     $19
+001D:         	fcb_cluster_sector      equ     $1d
+001E:         	fcb_file_buffer         equ     $1e
+              	;
+              	; We also need some general purpose string buffers:
+              	;
+FB6D:         	string_81_bfr   equ     fcb - 81
+FB61:         	string_12_bfr   equ     string_81_bfr - 12
+              	;
+              	;  A number of routines need a bit of scratch RAM, too. Since these are 
+              	; sometimes interdependent, each routine gets its own memory cells (only
+              	; possible since the routines are not recursive).
+              	;
+FB5F:         	load_file_scrat equ     string_12_bfr - 2       ; Two bytes for load_file
+FB5D:         	str2filename_de equ     load_file_scrat - 2     ; Two bytes for str2filename
+FB5B:         	fopen_eob       equ     str2filename_de - 2     ; Eight bytes for fopen
+FB57:         	fopen_rsc       equ     fopen_eob - 4
+FB55:         	fopen_scr       equ     fopen_rsc - 2
+FB53:         	dirlist_scratch equ     fopen_scr - 2           ; Eight bytes for fopen
+FB51:         	dirlist_eob     equ     dirlist_scratch - 2
+FB4D:         	dirlist_rootsec equ     dirlist_eob - 4
+              	;
+FB4C:         	start_type      equ     dirlist_rootsec  - $1   ; Distinguish cold/warm start
+              	;
+0000:         	uart_base       equ     $0
+0010:         	ide_base        equ     $10
+              	;
+0000:         	uart_register_0 equ     uart_base + 0
+0001:         	uart_register_1 equ     uart_base + 1
+0002:         	uart_register_2 equ     uart_base + 2
+0003:         	uart_register_3 equ     uart_base + 3
+0004:         	uart_register_4 equ     uart_base + 4
+0005:         	uart_register_5 equ     uart_base + 5
+0006:         	uart_register_6 equ     uart_base + 6
+0007:         	uart_register_7 equ     uart_base + 7
+              	;
+0000:         	eos             equ     $00             ; End of string
+000D:         	cr              equ     $0d             ; Carriage return
+000A:         	lf              equ     $0a             ; Line feed
+0020:         	space           equ     $20             ; Space
+0009:         	tab             equ     $09             ; Tabulator
+              	;
+              	; Main entry point (RST 00H):
+              	;
+0000: F3      	rst_00          di                      ; Disable interrupts 
+0001: 183A    	                jr      initialize      ; Jump over the RST-area
+              	;
+              	;  RST-area - here is the main entry point into the monitor. The calling 
+              	; standard looks like this:
+              	;
+              	; 1) Set register IX to the number of the system routine to be called.
+              	; 2) Set the remaining registers according to the routine's documentation.
+              	; 3) Execute RST $08 to actually call the system routine.
+              	; 4) Evaluate the values returned in the registers as described by the 
+              	;    Routine's documentation. 
+              	;
+              	;  (Currently there are no plans to use more RST entry points, so this routine
+              	; just runs as long as necessary in memory. If more RSTs will be used, this
+              	; routine should to be moved to the end of the used ROM area with only a 
+              	; simple jump at the RST $08-location.)
+              	;
+              	;  This technique of calling system routines can be used as the following
+              	; example program that just echos characters read from the serial line
+              	; demonstrates:
+              	;
+              	;         org     $8000           ; Start in lower RAM
+              	; loop    ld      ix, 5           ; Prepare call to getc
+              	;         rst     08              ; Execute getc
+              	;         cp      3               ; CTRL-C pressed?
+              	;         jr      z, exit         ; Yes - exit
+              	;         ld      ix, 6           ; Prepare call to putc
+              	;         rst     08              ; Execute putx
+              	;         jr      loop            ; Process next character
+              	; exit    ld      ix, 4           ; Exit - print a CR/LF pair
+              	;         rst     08              ; Call CRLF
+              	;         ld      hl, msg         ; Pointer to exit message
+              	;         ld      ix, 7           ; Prepare calling puts
+              	;         rst     08              ; Call puts
+              	;         rst     00              ; Restart monitor (warm start)
+              	; msg     defb    "That's all folks.", $d, $a, 0
+              	;
+              	;  Currently the following functions are available (a more detailed description
+              	; can be found in the dispatch table itself):
+              	;
+              	;       0:      cold_start
+              	;       1:      is_hex
+              	;       2:      is_print
+              	;       3:      to_upper
+              	;       4:      crlf
+              	;       5:      getc
+              	;       6:      putc
+              	;       7:      puts
+              	;       8:      strcmp
+              	;       9:      gets
+              	;       A:      fgetc
+              	;       B:      dump_fcb
+              	;       C:      fopen
+              	;       D:      dirlist
+              	;       E:      fatmount
+              	;       F:      fatunmount
+              	;
+              	;                org     monitor_start + $08
+0003: 00      	                nop                     ; Beware: zasm is buggy concerning
+0004: 00      	                nop                     ; the org pseudo-statement. Therefore
+0005: 00      	                nop                     ; The displacement to the RST $08
+0006: 00      	                nop                     ; entry point is generated by this
+0007: 00      	                nop                     ; NOP-sequence.
+0008: C5      	rst_08          push    bc              ; Save bc and hl
+0009: E5      	                push    hl
+000A: DDE5    	                push    ix              ; Copy the contents of ix
+000C: E1      	                pop     hl              ; into hl
+000D: 29      	                add     hl, hl          ; Double to get displacement in table
+000E: 011D00  	                ld      bc, dispatch_table
+0011: 09      	                add     hl, bc          ; Calculate displacement in table
+0012: 4E23462B	                ld      bc, (hl)        ; Load bc with the destination address
+0016: C5      	                push    bc
+0017: DDE1    	                pop     ix              ; Load ix with the destination address
+0019: E1      	                pop     hl              ; Restore hl
+001A: C1      	                pop     bc              ; and bc
+001B: DDE9    	                jp      (ix)            ; Jump to the destination routine
+001D: 350D    	dispatch_table  defw    cold_start      ; $00 = clear etc.
+              	                ; Parameters:    N/A
+              	                ; Action:        Performs a cold start (memory is cleared!)
+              	                ; Return values: N/A
+              	                ;
+001F: 910A    	                defw    is_hex
+              	                ; Parameters:    A contains a character code
+              	                ; Action:        Tests ('0' <= A <= '9) || ('A' <= A <= 'F')
+              	                ; Return values: Carry bit is set if A contains a hex char.
+              	                ;
+0021: A50A    	                defw    is_print
+              	                ; Parameters:    A contains a charater code
+              	                ; Action:        Tests if the character is printable
+              	                ; Return values: Carry bit is set if A contains a valid char.
+              	                ;
+0023: B90A    	                defw    to_upper
+              	                ; Parameters:    A contains a character code
+              	                ; Action:        Converts an ASCII character into upper case
+              	                ; Return values: Converted character code in A
+              	                ;
+0025: D40A    	                defw    crlf
+              	                ; Parameters:    N/A
+              	                ; Action:        Sends a CR/LF to the serial line
+              	                ; Return values: N/A
+              	                ;
+0027: E10A    	                defw    getc
+              	                ; Parameters:    A contains a character code
+              	                ; Action:        Reads a character code from the serial line
+              	                ; Return values: N/A
+              	                ;
+0029: 630B    	                defw    putc
+              	                ; Parameters:    A contains a character code
+              	                ; Action:        Sends the character code to the serial line
+              	                ; Return values: N/A
+              	                ;
+002B: 690B    	                defw    puts
+              	                ; Parameters:    HL contains the address of a 0-terminated 
+              	                ;                string
+              	                ; Action:        Send the string to the serial line (excluding
+              	                ;                the termination byte, of course)
+              	                ; Return values: N/A
+              	                ;
+002D: C20A    	                defw    strcmp
+              	                ; Parameters:    HL and DE contain the addresses of two strings
+              	                ; Action:        Compare both strings.
+              	                ; Return values: A contains return value, <0 / 0 / >0
+              	                ;
+002F: 170B    	                defw    gets
+              	                ; Parameters:    HL contains a buffer address, B contains the
+              	                ;                buffer length (including the terminating
+              	                ;                null byte!)
+              	                ; Action:        Reads a string from STDIN. Terminates when
+              	                ;                either the buffer is full or the string is
+              	                ;                terminated by CR/LF.
+              	                ; Return values: N/A
+              	                ;
+0031: 7A0D    	                defw    fgetc
+              	                ; Parameters:    IY (pointer to a valid FCB)
+              	                ; Action:        Reads a character from a FAT file
+              	                ; Return values: Character in A, if EOF has been encountered,
+              	                ;                the carry flag will be set
+              	                ;
+0033: A50E    	                defw    dump_fcb
+              	                ; Parameters:    IY (pointer to a valid FCB)
+              	                ; Action:        Prints the contents of the FCB in human
+              	                ;                readable format to STDOUT
+              	                ; Return values: N/A
+              	                ;
+0035: 3510    	                defw    fopen
+              	                ; Parameters:    HL (points to a buffer containing the file
+              	                ;                file name), IY (points to an empty FCB)
+              	                ; Action:        Opens a file for reading
+              	                ; Return values: N/A (All information is contained in the FCB)
+              	                ;
+0037: 8611    	                defw    dirlist
+              	                ; Parameters:    N/A (relies on a valid FAT control block)
+              	                ; Action:        Writes a directory listing to STDOUT
+              	                ; Return values: N/A
+              	                ;
+0039: 6113    	                defw    fatmount
+              	                ; Parameters:    N/A (needs the global FAT control block)
+              	                ; Action:        Mounts a disk (populates the FAT CB)
+              	                ; Return values: N/A
+              	                ;
+003B: 5916    	                defw    fatunmount
+              	                ; Parameters:    N/A (needs the global FAT control block)
+              	                ; Action:        Invalidates the global FAT control block
+              	                ; Return values; N/A
+              	;
+              	;  The stackpointer will be predecremented by a push instruction. Since we need
+              	; a 512 byte buffer for data transfers to and from the IDE disk, the stack 
+              	; pointer is initialized to start at the beginning of this buffer space.
+              	;
+003D: 314BFB  	initialize      ld      sp, start_type - $1
+              	;
+              	; Initialize UART to 9600,8N1:
+              	;
+0040: 3E80    	                ld      a, $80
+0042: D303    	                out     (uart_register_3), a
+0044: 3E0C    	                ld      a, $c           ; 1843200 / (16 * 9600)
+0046: D300    	                out     (uart_register_0), a
+0048: AF      	                xor     a
+0049: D301    	                out     (uart_register_1), a
+004B: 3E03    	                ld      a, $3           ; 8N1
+004D: D303    	                out     (uart_register_3), a
+              	;
+              	; Print welcome message:
+              	;
+004F: 215301  	                ld      hl, hello_msg
+0052: CD690B  	                call    puts
+              	;
+              	;  If this is a cold start (the location start_type does not contain $aa)
+              	; all available RAM will be reset to $00 and a message will be printed.
+              	;
+0055: 3A4CFB  	                ld      a, (start_type)
+0058: FEAA    	                cp      $aa             ; Warm start?
+005A: 2818    	                jr      z, main_loop    ; Yes - enter command loop
+005C: 210402  	                ld      hl, cold_start_msg
+005F: CD690B  	                call    puts            ; Print cold start message
+0062: 210080  	                ld      hl, ram_start   ; Start of block to be filled with $00
+0065: 545D    	                ld      de, hl          ; End address of block
+0067: 13      	                inc     de              ; plus 1 (for ldir)
+0068: 01FF7F  	                ld      bc, ram_end - ram_start
+006B: 3600    	                ld      (hl), $00       ; Load first memory location
+006D: EDB0    	                ldir                    ; And copy this value down
+006F: 214CFB  	                ld      hl, start_type
+0072: 36AA    	                ld      (hl), $aa       ; Cold start done, remember this
+              	;
+              	; Read characters from the serial line and send them just back:
+              	;
+0074: 219701  	main_loop       ld      hl, monitor_prompt
+0077: CD690B  	                call    puts
+              	; The monitor is rather simple: All commands are just one or two letters. 
+              	; The first character selects a command group, the second the desired command
+              	; out of that group. When a command is recognized, it will be spelled out 
+              	; automatically and the user will be prompted for arguments if applicable. 
+007A: CD2302  	                call    monitor_key     ; Read a key
+              	; Which group did we get?
+007D: FE43    	                cp      'C'             ; Control group?
+007F: 2022    	                jr      nz, disk_group  ; No - test next group
+0081: 219D01  	                ld      hl, cg_msg      ; Print group prompt
+0084: CD690B  	                call    puts
+0087: CD2302  	                call    monitor_key     ; Get command key
+008A: FE43    	                cp      'C'             ; Cold start?
+008C: CA350D  	                jp      z, cold_start
+008F: FE57    	                cp      'W'             ; Warm start?
+0091: CA3A0D  	                jp      z, warm_start
+0094: FE53    	                cp      'S'             ; Start?
+0096: CA610A  	                jp      z, start
+0099: FE49    	                cp      'I'             ; Info?
+009B: CCB507  	                call    z, info
+009E: 28D4    	                jr      z, main_loop
+00A0: C34701  	                jp      cmd_error       ; Unknown control-group-command
+00A3: FE44    	disk_group      cp      'D'             ; Disk group?
+00A5: 2027    	                jr      nz, file_group  ; No - file group?
+00A7: 21A601  	                ld      hl, dg_msg      ; Print group prompt
+00AA: CD690B  	                call    puts
+00AD: CD2302  	                call    monitor_key     ; Get command
+00B0: FE49    	                cp      'I'             ; Info?
+00B2: CC8802  	                call    z, disk_info
+00B5: 28BD    	                jr      z, main_loop
+00B7: FE4D    	                cp      'M'             ; Mount?
+00B9: CC1709  	                call    z, mount
+00BC: 28B6    	                jr      z, main_loop
+00BE: FE54    	                cp      'T'             ; Read from disk?
+00C0: CCB402  	                call    z, disk_transfer
+00C3: 28AF    	                jr      z, main_loop
+00C5: FE55    	                cp      'U'             ; Unmount?
+00C7: CC7B0A  	                call    z, unmount
+00CA: 28A8    	                jr      z, main_loop
+00CC: 1879    	                jr      cmd_error       ; Unknown disk-group-command
+00CE: FE46    	file_group      cp      'F'             ; File group?
+00D0: 2020    	                jr      nz, help_group  ; No - help group?
+00D2: 21AC01  	                ld      hl, fg_msg      ; Print group prompt
+00D5: CD690B  	                call    puts
+00D8: CD2302  	                call    monitor_key     ; Get command
+00DB: FE43    	                cp      'C'             ; Cat?
+00DD: CC3402  	                call    z, cat_file
+00E0: 2892    	                jr      z, main_loop
+00E2: FE44    	                cp      'D'             ; Directory?
+00E4: CC7002  	                call    z, directory
+00E7: 288B    	                jr      z, main_loop
+00E9: FE4C    	                cp      'L'             ; Load?
+00EB: CC7908  	                call    z, load_file
+00EE: 2884    	                jr      z, main_loop
+00F0: 1855    	                jr      cmd_error       ; Unknown file-group-command
+00F2: FE48    	help_group      cp      'H'             ; Help? (No further level expected.)
+00F4: CC3105  	                call    z, help         ; Yes :-)
+00F7: CA7400  	                jp      z, main_loop
+00FA: FE4D    	memory_group    cp      'M'             ; Memory group?
+00FC: C24201  	                jp      nz, group_error ; No - print an error message
+00FF: 21B201  	                ld      hl, mg_msg      ; Print group prompt
+0102: CD690B  	                call    puts
+0105: CD2302  	                call    monitor_key     ; Get command key
+0108: FE44    	                cp      'D'             ; Dump?
+010A: CCC103  	                call    z, dump
+010D: CA7400  	                jp      z, main_loop
+0110: FE45    	                cp      'E'             ; Examine?
+0112: CC3704  	                call    z, examine
+0115: CA7400  	                jp      z, main_loop
+0118: FE46    	                cp      'F'             ; Fill?
+011A: CC8A04  	                call    z, fill
+011D: CA7400  	                jp      z, main_loop
+0120: FE49    	                cp      'I'             ; INTEL-Hex load?
+0122: CC0107  	                call    z, ih_load
+0125: CA7400  	                jp      z, main_loop
+0128: FE4C    	                cp      'L'             ; Load?
+012A: CCCB07  	                call    z, load
+012D: CA7400  	                jp      z, main_loop
+0130: FE4D    	                cp      'M'             ; Move?
+0132: CC2D09  	                call    z, move
+0135: CA7400  	                jp      z, main_loop
+0138: FE52    	                cp      'R'             ; Register dump?
+013A: CCA509  	                call    z, rdump
+013D: CA7400  	                jp      z, main_loop
+0140: 1805    	                jr      cmd_error       ; Unknown memory-group-command
+0142: 21E001  	group_error     ld      hl, group_err_msg
+0145: 1803    	                jr      print_error
+0147: 21BA01  	cmd_error       ld      hl, command_err_msg
+014A: CD630B  	print_error     call    putc            ; Echo the illegal character
+014D: CD690B  	                call    puts            ; and print the error message
+0150: C37400  	                jp      main_loop
+              	;
+              	; Some constants for the monitor:
+              	;
+0153: 0D0A0D0A	hello_msg       defb    cr, lf, cr, lf, "Simple Z80-monitor - V 0.8 "
+0157: 53696D70	
+015B: 6C65205A	
+015F: 38302D6D	
+0163: 6F6E6974	
+0167: 6F72202D	
+016B: 20562030	
+016F: 2E3820  	
+0172: 28422E20	                defb    "(B. Ulmann, Sep. 2011 - Jan. 2012)", cr, lf, eos
+0176: 556C6D61	
+017A: 6E6E2C20	
+017E: 5365702E	
+0182: 20323031	
+0186: 31202D20	
+018A: 4A616E2E	
+018E: 20323031	
+0192: 32290D0A	
+0196: 00      	
+0197: 0D0A5A3E	monitor_prompt  defb    cr, lf, "Z> ", eos
+019B: 2000    	
+019D: 434F4E54	cg_msg          defb    "CONTROL/", eos
+01A1: 524F4C2F	
+01A5: 00      	
+01A6: 4449534B	dg_msg          defb    "DISK/", eos
+01AA: 2F00    	
+01AC: 46494C45	fg_msg          defb    "FILE/", eos
+01B0: 2F00    	
+01B2: 4D454D4F	mg_msg          defb    "MEMORY/", eos
+01B6: 52592F00	
+01BA: 3A205379	command_err_msg defb    ": Syntax error - command not found!", cr, lf, eos
+01BE: 6E746178	
+01C2: 20657272	
+01C6: 6F72202D	
+01CA: 20636F6D	
+01CE: 6D616E64	
+01D2: 206E6F74	
+01D6: 20666F75	
+01DA: 6E64210D	
+01DE: 0A00    	
+01E0: 3A205379	group_err_msg   defb    ": Syntax error - group not found!", cr, lf, eos
+01E4: 6E746178	
+01E8: 20657272	
+01EC: 6F72202D	
+01F0: 2067726F	
+01F4: 7570206E	
+01F8: 6F742066	
+01FC: 6F756E64	
+0200: 210D0A00	
+0204: 436F6C64	cold_start_msg  defb    "Cold start, clearing memory.", cr, lf, eos
+0208: 20737461	
+020C: 72742C20	
+0210: 636C6561	
+0214: 72696E67	
+0218: 206D656D	
+021C: 6F72792E	
+0220: 0D0A00  	
+              	;
+              	; Read a key for command group and command:
+              	;
+0223: CDE10A  	monitor_key     call    getc
+0226: FE0A    	                cp      lf              ; Ignore LF
+0228: 28F9    	                jr      z, monitor_key  ; Just get the next character
+022A: CDB90A  	                call    to_upper
+022D: FE0D    	                cp      cr              ; A CR will return to the prompt
+022F: C0      	                ret     nz              ; No - just return
+0230: 33      	                inc     sp              ; Correct SP to and avoid ret!
+0231: C37400  	                jp      main_loop
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** The following routines are used in the interactive part of the monitor
+              	;***
+              	;******************************************************************************
+              	;
+              	; Print a file's contents to STDOUT:
+              	;
+0234: C5      	cat_file        push    bc
+0235: D5      	                push    de
+0236: E5      	                push    hl
+0237: FDE5    	                push    iy
+0239: 216102  	                ld      hl, cat_file_prompt
+023C: CD690B  	                call    puts
+023F: 216DFB  	                ld      hl, string_81_bfr
+0242: 0651    	                ld      b, 81
+0244: CD170B  	                call    gets            ; Read the filename into buffer
+0247: FD21BEFB	                ld      iy, fcb         ; Prepare fopen (only one FCB currently)
+024B: 1161FB  	                ld      de, string_12_bfr
+024E: CD3510  	                call    fopen
+0251: CD7A0D  	cat_file_loop   call    fgetc           ; Get a single character
+0254: 3805    	                jr      c, cat_file_exit
+0256: CD630B  	                call    putc            ; Print character if not EOF
+0259: 18F6    	                jr      cat_file_loop   ; Next character
+025B: FDE1    	cat_file_exit   pop     iy
+025D: E1      	                pop     hl
+025E: D1      	                pop     de
+025F: C1      	                pop     bc
+0260: C9      	                ret
+0261: 4341543A	cat_file_prompt defb    "CAT: FILENAME=", eos
+0265: 2046494C	
+0269: 454E414D	
+026D: 453D00  	
+              	;
+              	;  directory - a simple wrapper for dirlist (necessary for printing the command
+              	; name)
+              	;
+0270: E5      	directory       push    hl
+0271: 217C02  	                ld      hl, directory_msg
+0274: CD690B  	                call    puts
+0277: CD8611  	                call    dirlist
+027A: E1      	                pop     hl
+027B: C9      	                ret
+027C: 44495245	directory_msg   defb    "DIRECTORY", cr, lf, eos
+0280: 43544F52	
+0284: 590D0A00	
+              	;
+              	; Get and print disk info:
+              	;
+0288: F5      	disk_info       push    af
+0289: E5      	                push    hl
+028A: 21AC02  	                ld      hl, disk_info_msg
+028D: CD690B  	                call    puts
+0290: CD8B0B  	                call    ide_get_id      ; Read the disk info into the IDE buffer
+0293: 2113FE  	                ld      hl, buffer + $13
+0296: 3609    	                ld      (hl), tab
+0298: CD690B  	                call    puts            ; Print vendor information
+029B: CDD40A  	                call    crlf
+029E: 212DFE  	                ld      hl, buffer + $2d
+02A1: 3609    	                ld      (hl), tab
+02A3: CD690B  	                call    puts
+02A6: CDD40A  	                call    crlf
+02A9: E1      	                pop     hl
+02AA: F1      	                pop     af
+02AB: C9      	                ret
+02AC: 494E464F	disk_info_msg   defb    "INFO:", cr, lf, eos
+02B0: 3A0D0A00	
+              	;
+              	; Read data from disk to memory
+              	;
+02B4: F5      	disk_transfer   push    af
+02B5: C5      	                push    bc
+02B6: D5      	                push    de
+02B7: E5      	                push    hl
+02B8: DDE5    	                push    ix
+02BA: 213303  	                ld      hl, disk_trx_msg_0
+02BD: CD690B  	                call    puts            ; Print Read/Write prompt
+02C0: CDE10A  	disk_trx_rwlp   call    getc
+02C3: CDB90A  	                call    to_upper
+02C6: FE52    	                cp      'R'             ; Read?
+02C8: 2009    	                jr      nz, disk_trx_nr ; No
+02CA: DD212B0C	                ld      ix, ide_rs      ; Yes, we will call ide_rs later
+02CE: 213D03  	                ld      hl, disk_trx_msg_1r
+02D1: 180B    	                jr      disk_trx_main   ; Prompt the user for parameters
+02D3: FE57    	disk_trx_nr     cp      'W'             ; Write?
+02D5: 20E9    	                jr      nz, disk_trx_rwlp
+02D7: DD21820C	                ld      ix, ide_ws      ; Yes, we will call ide_ws later
+02DB: 215703  	                ld      hl, disk_trx_msg_1w
+02DE: CD690B  	disk_trx_main   call    puts            ; Print start address prompt
+02E1: CD0C0B  	                call    get_word        ; Get memory start address
+02E4: E5      	                push    hl
+02E5: 217203  	                ld      hl, disk_trx_msg_2
+02E8: CD690B  	                call    puts            ; Prompt for number of blocks
+02EB: CDE70A  	                call    get_byte        ; There are only 128 block of memory!
+02EE: FE00    	                cp      0               ; Did the user ask for 00 blocks?
+02F0: 2008    	                jr      nz, disk_trx_1  ; No, continue prompting
+02F2: 219F03  	                ld      hl, disk_trx_msg_4
+02F5: CD690B  	                call    puts
+02F8: 1830    	                jr      disk_trx_exit
+02FA: 219003  	disk_trx_1      ld      hl, disk_trx_msg_3
+02FD: CD690B  	                call    puts            ; Prompt for disk start sector
+0300: CD0C0B  	                call    get_word        ; This is a four byte address!
+0303: 444D    	                ld      bc, hl
+0305: CD0C0B  	                call    get_word
+0308: 545D    	                ld      de, hl
+030A: E1      	                pop     hl              ; Restore memory start address
+              	                ; Register contents:
+              	                ;       A:  Number of blocks
+              	                ;       BC: LBA3/2
+              	                ;       DE: LBA1/0
+              	                ;       HL: Memory start address
+030B: F5      	disk_trx_loop   push    af              ; Save number of sectors
+030C: CD3103  	                call    disk_trampoline ; Read/write one sector (F is changed!)
+030F: E5      	                push    hl              ; Save memory address
+0310: C5      	                push    bc              ; Save LBA3/2
+0311: 626B    	                ld      hl, de          ; Increment DE (LBA1/0)
+0313: 010100  	                ld      bc, $0001       ; by one and
+0316: 09      	                add     hl, bc          ; generate a carry if necessary
+0317: 545D    	                ld      de, hl          ; Save new LBA1/0
+0319: E1      	                pop     hl              ; Restore LBA3/2 into HL (!)
+031A: 3001    	                jr      nc, disk_trx_skip
+031C: 09      	                add     hl, bc          ; Increment BC if there was a carry
+031D: 444D    	disk_trx_skip   ld      bc, hl          ; Write new LBA3/2 into BC
+031F: E1      	                pop     hl              ; Restore memory address
+0320: C5      	                push    bc              ; Save LBA3/2
+0321: 010002  	                ld      bc, $200        ; 512 byte per block
+0324: 09      	                add     hl, bc          ; Set pointer to next memory block
+0325: C1      	                pop     bc              ; Restore LBA3/2
+0326: F1      	                pop     af
+0327: 3D      	                dec     a               ; One block already done
+0328: 20E1    	                jr      nz, disk_trx_loop
+032A: DDE1    	disk_trx_exit   pop     ix
+032C: E1      	                pop     hl
+032D: D1      	                pop     de
+032E: C1      	                pop     bc
+032F: F1      	                pop     af
+0330: C9      	                ret
+0331: DDE9    	disk_trampoline jp      (ix)
+0333: 5452414E	disk_trx_msg_0  defb    "TRANSFER/", eos
+0337: 53464552	
+033B: 2F00    	
+033D: 52454144	disk_trx_msg_1r defb    "READ: ", cr, lf, "    MEMORY START=", eos
+0341: 3A200D0A	
+0345: 20202020	
+0349: 4D454D4F	
+034D: 52592053	
+0351: 54415254	
+0355: 3D00    	
+0357: 57524954	disk_trx_msg_1w defb    "WRITE: ", cr, lf, "    MEMORY START=", eos
+035B: 453A200D	
+035F: 0A202020	
+0363: 204D454D	
+0367: 4F525920	
+036B: 53544152	
+036F: 543D00  	
+0372: 204E554D	disk_trx_msg_2  defb    " NUMBER OF BLOCKS (512 BYTE)=", eos
+0376: 42455220	
+037A: 4F462042	
+037E: 4C4F434B	
+0382: 53202835	
+0386: 31322042	
+038A: 59544529	
+038E: 3D00    	
+0390: 20535441	disk_trx_msg_3  defb    " START SECTOR=", eos
+0394: 52542053	
+0398: 4543544F	
+039C: 523D00  	
+039F: 204E6F74	disk_trx_msg_4  defb    " Nothing to do for zero blocks.", cr, lf, eos
+03A3: 68696E67	
+03A7: 20746F20	
+03AB: 646F2066	
+03AF: 6F72207A	
+03B3: 65726F20	
+03B7: 626C6F63	
+03BB: 6B732E0D	
+03BF: 0A00    	
+              	;
+              	; Dump a memory area
+              	;
+03C1: F5      	dump            push    af
+03C2: C5      	                push    bc
+03C3: D5      	                push    de
+03C4: E5      	                push    hl
+03C5: 212104  	                ld      hl, dump_msg_1
+03C8: CD690B  	                call    puts            ; Print prompt
+03CB: CD0C0B  	                call    get_word        ; Read start address
+03CE: E5      	                push    hl              ; Save start address
+03CF: 212E04  	                ld      hl, dump_msg_2  ; Prompt for end address
+03D2: CD690B  	                call    puts
+03D5: CD0C0B  	                call    get_word        ; Get end address
+03D8: CDD40A  	                call    crlf
+03DB: 23      	                inc     hl              ; Increment stop address for comparison
+03DC: 545D    	                ld      de, hl          ; DE now contains the stop address
+03DE: E1      	                pop     hl              ; HL is the start address again
+              	                ; This loop will dump 16 memory locations at once - even
+              	                ; if this turns out to be more than requested.
+03DF: 0610    	dump_line       ld      b, $10          ; This loop will process 16 bytes
+03E1: E5      	                push    hl              ; Save HL again
+03E2: CD560B  	                call    print_word      ; Print address
+03E5: 213404  	                ld      hl, dump_msg_3  ; and a colon
+03E8: CD690B  	                call    puts
+03EB: E1      	                pop hl                  ; Restore address
+03EC: E5      	                push    hl              ; We will need HL for the ASCII dump
+03ED: 7E      	dump_loop       ld      a, (hl)         ; Get the memory content
+03EE: CD350B  	                call    print_byte      ; and print it
+03F1: 3E20    	                ld      a, ' '          ; Print a space
+03F3: CD630B  	                call    putc
+03F6: 23      	                inc     hl              ; Increment address counter
+03F7: 10F4    	                djnz    dump_loop       ; Continue with this line
+              	                ; This loop will dump the very same 16 memory locations - but
+              	                ; this time printable ASCII characters will be written.
+03F9: 0610    	                ld      b, $10          ; 16 characters at a time
+03FB: 3E20    	                ld      a, ' '          ; We need some spaces
+03FD: CD630B  	                call    putc            ; to print
+0400: CD630B  	                call    putc
+0403: E1      	                pop     hl              ; Restore the start address
+0404: 7E      	dump_ascii_loop ld      a, (hl)         ; Get byte
+0405: CDA50A  	                call    is_print        ; Is it printable?
+0408: 3802    	                jr      c, dump_al_1    ; Yes
+040A: 3E2E    	                ld      a, '.'          ; No - print a dot
+040C: CD630B  	dump_al_1       call    putc            ; Print the character
+040F: 23      	                inc     hl              ; Increment address to read from
+0410: 10F2    	                djnz    dump_ascii_loop
+              	                ; Now we are finished with printing one line of dump output.
+0412: CDD40A  	                call    crlf            ; CR/LF for next line on terminal
+0415: E5      	                push    hl              ; Save the current address for later
+0416: A7      	                and     a               ; Clear carry
+0417: ED52    	                sbc     hl, de          ; Have we reached the last address?
+0419: E1      	                pop     hl              ; restore the address
+041A: 38C3    	                jr      c, dump_line    ; Dump next line of 16 bytes
+041C: E1      	                pop     hl
+041D: D1      	                pop     de
+041E: C1      	                pop     bc
+041F: F1      	                pop     af
+0420: C9      	                ret
+0421: 44554D50	dump_msg_1      defb    "DUMP: START=", eos
+0425: 3A205354	
+0429: 4152543D	
+042D: 00      	
+042E: 20454E44	dump_msg_2      defb    " END=", eos
+0432: 3D00    	
+0434: 3A2000  	dump_msg_3      defb    ": ", eos
+              	;
+              	; Examine a memory location:
+              	;
+0437: F5      	examine         push    af
+0438: E5      	                push    hl
+0439: 216504  	                ld      hl, examine_msg_1
+043C: CD690B  	                call    puts
+043F: CD0C0B  	                call    get_word        ; Wait for a four-nibble address
+0442: E5      	                push    hl              ; Save address for later
+0443: 218304  	                ld      hl, examine_msg_2
+0446: CD690B  	                call    puts
+0449: E1      	examine_loop    pop     hl              ; Restore address
+044A: 7E      	                ld      a, (hl)         ; Get content of address
+044B: 23      	                inc     hl              ; Prepare for next examination
+044C: E5      	                push    hl              ; Save hl again for later use
+044D: CD350B  	                call    print_byte      ; Print the byte
+0450: CDE10A  	                call    getc            ; Get a character
+0453: FE20    	                cp      ' '             ; A blank?
+0455: 2007    	                jr      nz, examine_exit; No - exit
+0457: 3E20    	                ld      a, ' '          ; Print a blank character
+0459: CD630B  	                call    putc
+045C: 18EB    	                jr      examine_loop
+045E: E1      	examine_exit    pop     hl              ; Get rid of save hl value
+045F: CDD40A  	                call    crlf            ; Print CR/LF
+0462: E1      	                pop     hl
+0463: F1      	                pop     af
+0464: C9      	                ret
+0465: 4558414D	examine_msg_1   defb    "EXAMINE (type ' '/RET): ADDR=", eos
+0469: 494E4520	
+046D: 28747970	
+0471: 65202720	
+0475: 272F5245	
+0479: 54293A20	
+047D: 41444452	
+0481: 3D00    	
+0483: 20444154	examine_msg_2   defb    " DATA=", eos
+0487: 413D00  	
+              	;
+              	; Fill a block of memory with a single byte - the user is prompted for the
+              	; start address, the length of the block and the fill value.
+              	;
+048A: F5      	fill            push    af              ; We will need nearly all registers
+048B: C5      	                push    bc
+048C: D5      	                push    de
+048D: E5      	                push    hl
+048E: 21E404  	                ld      hl, fill_msg_1  ; Prompt for start address
+0491: CD690B  	                call    puts
+0494: CD0C0B  	                call    get_word        ; Get the start address
+0497: E5      	                push    hl              ; Store the start address
+0498: A7      	                and     a               ; Clear carry
+0499: 010080  	                ld      bc, ram_start
+049C: ED42    	                sbc     hl, bc          ; Is the address in the RAM area?
+049E: 3009    	                jr      nc, fill_get_length
+04A0: 210205  	                ld      hl, fill_msg_4  ; No!
+04A3: CD690B  	                call    puts            ; Print error message
+04A6: E1      	                pop     hl              ; Clean up the stack
+04A7: 1836    	                jr      fill_exit       ; Leave routine
+04A9: 21F104  	fill_get_length ld      hl, fill_msg_2  ; Prompt for length information
+04AC: CD690B  	                call    puts
+04AF: CD0C0B  	                call    get_word        ; Get the length of the block
+              	                ; Now make sure that start + length is still in RAM:
+04B2: 444D    	                ld      bc, hl          ; BC contains the length
+04B4: E1      	                pop     hl              ; HL now contains the start address
+04B5: E5      	                push    hl              ; Save the start address again
+04B6: C5      	                push    bc              ; Save the length
+04B7: 09      	                add     hl, bc          ; Start + length
+04B8: A7      	                and     a               ; Clear carry
+04B9: 010080  	                ld      bc, ram_start
+04BC: ED42    	                sbc     hl, bc          ; Compare with ram_start
+04BE: 300A    	                jr      nc, fill_get_value
+04C0: 211605  	                ld      hl, fill_msg_5  ; Print error message
+04C3: CD690B  	                call    puts
+04C6: C1      	                pop     bc              ; Clean up the stack
+04C7: E1      	                pop     hl
+04C8: 1815    	                jr      fill_exit       ; Leave the routine
+04CA: 21FA04  	fill_get_value  ld      hl, fill_msg_3  ; Prompt for fill value
+04CD: CD690B  	                call    puts
+04D0: CDE70A  	                call    get_byte        ; Get the fill value
+04D3: C1      	                pop     bc              ; Get the length from the stack
+04D4: E1      	                pop     hl              ; Get the start address again
+04D5: 545D    	                ld      de, hl          ; DE = HL + 1
+04D7: 13      	                inc     de
+04D8: 0B      	                dec     bc
+              	                ; HL = start address
+              	                ; DE = destination address = HL + 1
+              	                ;      Please note that this is necessary - LDIR does not
+              	                ;      work with DE == HL. :-)
+              	                ; A  = fill value
+04D9: 77      	                ld      (hl), a         ; Store A into first memory location
+04DA: EDB0    	                ldir                    ; Fill the memory
+04DC: CDD40A  	                call    crlf
+04DF: E1      	fill_exit       pop     hl              ; Restore the register contents
+04E0: D1      	                pop     de
+04E1: C1      	                pop     bc
+04E2: F1      	                pop     af
+04E3: C9      	                ret
+04E4: 46494C4C	fill_msg_1      defb    "FILL: START=", eos
+04E8: 3A205354	
+04EC: 4152543D	
+04F0: 00      	
+04F1: 204C454E	fill_msg_2      defb    " LENGTH=", eos
+04F5: 4754483D	
+04F9: 00      	
+04FA: 2056414C	fill_msg_3      defb    " VALUE=", eos
+04FE: 55453D00	
+0502: 20496C6C	fill_msg_4      defb    " Illegal address!", cr, lf, eos
+0506: 6567616C	
+050A: 20616464	
+050E: 72657373	
+0512: 210D0A00	
+0516: 20426C6F	fill_msg_5      defb    " Block exceeds RAM area!", cr, lf, eos
+051A: 636B2065	
+051E: 78636565	
+0522: 64732052	
+0526: 414D2061	
+052A: 72656121	
+052E: 0D0A00  	
+              	;
+              	; Help
+              	;
+0531: E5      	help            push    hl
+0532: 213A05  	                ld      hl, help_msg
+0535: CD690B  	                call    puts
+0538: E1      	                pop     hl
+0539: C9      	                ret
+053A: 48454C50	help_msg        defb    "HELP: Known command groups and commands:", cr, lf
+053E: 3A204B6E	
+0542: 6F776E20	
+0546: 636F6D6D	
+054A: 616E6420	
+054E: 67726F75	
+0552: 70732061	
+0556: 6E642063	
+055A: 6F6D6D61	
+055E: 6E64733A	
+0562: 0D0A    	
+0564: 20202020	                defb    "         C(ontrol group):", cr, lf
+0568: 20202020	
+056C: 2043286F	
+0570: 6E74726F	
+0574: 6C206772	
+0578: 6F757029	
+057C: 3A0D0A  	
+057F: 20202020	                defb    "             C(old start), I(nfo), S(tart), "
+0583: 20202020	
+0587: 20202020	
+058B: 2043286F	
+058F: 6C642073	
+0593: 74617274	
+0597: 292C2049	
+059B: 286E666F	
+059F: 292C2053	
+05A3: 28746172	
+05A7: 74292C20	
+05AB: 57286172	                defb    "W(arm start)", cr, lf
+05AF: 6D207374	
+05B3: 61727429	
+05B7: 0D0A    	
+05B9: 20202020	                defb    "         D(isk group):", cr, lf
+05BD: 20202020	
+05C1: 20442869	
+05C5: 736B2067	
+05C9: 726F7570	
+05CD: 293A0D0A	
+05D1: 20202020	                defb    "             I(nfo), M(ount), T(ransfer),"
+05D5: 20202020	
+05D9: 20202020	
+05DD: 2049286E	
+05E1: 666F292C	
+05E5: 204D286F	
+05E9: 756E7429	
+05ED: 2C205428	
+05F1: 72616E73	
+05F5: 66657229	
+05F9: 2C      	
+05FA: 20202020	                defb    "         U(nmount)", cr, lf
+05FE: 20202020	
+0602: 2055286E	
+0606: 6D6F756E	
+060A: 74290D0A	
+060E: 20202020	                defb    "                                  R(ead), W(rite)"
+0612: 20202020	
+0616: 20202020	
+061A: 20202020	
+061E: 20202020	
+0622: 20202020	
+0626: 20202020	
+062A: 20202020	
+062E: 20205228	
+0632: 65616429	
+0636: 2C205728	
+063A: 72697465	
+063E: 29      	
+063F: 0D0A    	                defb    cr, lf
+0641: 20202020	                defb    "         F(ile group):", cr, lf
+0645: 20202020	
+0649: 20462869	
+064D: 6C652067	
+0651: 726F7570	
+0655: 293A0D0A	
+0659: 20202020	                defb    "             C(at), D(irectory), L(oad)", cr, lf
+065D: 20202020	
+0661: 20202020	
+0665: 20432861	
+0669: 74292C20	
+066D: 44286972	
+0671: 6563746F	
+0675: 7279292C	
+0679: 204C286F	
+067D: 6164290D	
+0681: 0A      	
+0682: 20202020	                defb    "         H(elp)", cr, lf
+0686: 20202020	
+068A: 20482865	
+068E: 6C70290D	
+0692: 0A      	
+0693: 20202020	                defb    "         M(emory group):", cr, lf
+0697: 20202020	
+069B: 204D2865	
+069F: 6D6F7279	
+06A3: 2067726F	
+06A7: 7570293A	
+06AB: 0D0A    	
+06AD: 20202020	                defb    "             D(ump), E(xamine), F(ill), "
+06B1: 20202020	
+06B5: 20202020	
+06B9: 20442875	
+06BD: 6D70292C	
+06C1: 20452878	
+06C5: 616D696E	
+06C9: 65292C20	
+06CD: 4628696C	
+06D1: 6C292C20	
+06D5: 49286E74	                defb    "I(ntel Hex Load), L(oad), R(egister dump)"
+06D9: 656C2048	
+06DD: 6578204C	
+06E1: 6F616429	
+06E5: 2C204C28	
+06E9: 6F616429	
+06ED: 2C205228	
+06F1: 65676973	
+06F5: 74657220	
+06F9: 64756D70	
+06FD: 29      	
+06FE: 0D0A00  	                defb    cr, lf, eos
+              	;
+              	; Load an INTEL-Hex file (a ROM image) into memory. This routine has been 
+              	; more or less stolen from a boot program written by Andrew Lynch and adapted
+              	; to this simple Z80 based machine.
+              	;
+              	; The INTEL-Hex format looks a bit awkward - a single line contains these 
+              	; parts:
+              	; ':', Record length (2 hex characters), load address field (4 hex characters),
+              	; record type field (2 characters), data field (2 * n hex characters),
+              	; checksum field. Valid record types are 0 (data) and 1 (end of file).
+              	;
+              	; Please note that this routine will not echo what it read from stdin but
+              	; what it "understood". :-)
+              	; 
+0701: F5      	ih_load         push    af
+0702: D5      	                push    de
+0703: E5      	                push    hl
+0704: 218407  	                ld      hl, ih_load_msg_1
+0707: CD690B  	                call    puts
+070A: CDE10A  	ih_load_loop    call    getc            ; Get a single character
+070D: FE0D    	                cp      cr              ; Don't care about CR
+070F: 28F9    	                jr      z, ih_load_loop
+0711: FE0A    	                cp      lf              ; ...or LF
+0713: 28F5    	                jr      z, ih_load_loop
+0715: FE20    	                cp      space           ; ...or a space
+0717: 28F1    	                jr      z, ih_load_loop
+0719: CDB90A  	                call    to_upper        ; Convert to upper case
+071C: CD630B  	                call    putc            ; Echo character
+071F: FE3A    	                cp      ':'             ; Is it a colon?                
+0721: 204E    	                jr      nz, ih_load_error
+0723: CDE70A  	                call    get_byte        ; Get record length into A
+0726: 57      	                ld      d, a            ; Length is now in D
+0727: 1E00    	                ld      e, $0           ; Clear checksum
+0729: CD7E07  	                call    ih_load_chk     ; Compute checksum
+072C: CD0C0B  	                call    get_word        ; Get load address into HL
+072F: 7C      	                ld      a, h            ; Update checksum by this address
+0730: CD7E07  	                call    ih_load_chk
+0733: 7D      	                ld      a, l
+0734: CD7E07  	                call    ih_load_chk
+0737: CDE70A  	                call    get_byte        ; Get the record type
+073A: CD7E07  	                call    ih_load_chk     ; Update checksum
+073D: FE01    	                cp      $1              ; Have we reached the EOF marker?
+073F: 2012    	                jr      nz, ih_load_data; No - get some data
+0741: CDE70A  	                call    get_byte        ; Yes - EOF, read checksum data
+0744: CD7E07  	                call    ih_load_chk     ; Update our own checksum
+0747: 7B      	                ld      a, e
+0748: A7      	                and     a               ; Is our checksum zero (as expected)?
+0749: 282C    	                jr      z, ih_load_exit ; Yes - exit this routine
+074B: 21A407  	ih_load_chk_err ld      hl, ih_load_msg_3
+074E: CD690B  	                call    puts            ; No - print an error message
+0751: 1824    	                jr      ih_load_exit    ; and exit
+0753: 7A      	ih_load_data    ld      a, d            ; Record length is now in A
+0754: A7      	                and     a               ; Did we process all bytes?
+0755: 280B    	                jr      z, ih_load_eol  ; Yes - process end of line
+0757: CDE70A  	                call    get_byte        ; Read two hex digits into A
+075A: CD7E07  	                call    ih_load_chk     ; Update checksum
+075D: 77      	                ld      (hl), a         ; Store byte into memory
+075E: 23      	                inc     hl              ; Increment pointer
+075F: 15      	                dec     d               ; Decrement remaining record length
+0760: 18F1    	                jr      ih_load_data    ; Get next byte
+0762: CDE70A  	ih_load_eol     call    get_byte        ; Read the last byte in the line
+0765: CD7E07  	                call    ih_load_chk     ; Update checksum
+0768: 7B      	                ld      a, e
+0769: A7      	                and     a               ; Is the checksum zero (as expected)?
+076A: 20DF    	                jr      nz, ih_load_chk_err
+076C: CDD40A  	                call    crlf
+076F: 1899    	                jr      ih_load_loop    ; Yes - read next line
+0771: 219507  	ih_load_error   ld      hl, ih_load_msg_2
+0774: CD690B  	                call    puts            ; Print error message
+0777: CDD40A  	ih_load_exit    call    crlf
+077A: E1      	                pop     hl              ; Restore registers
+077B: D1      	                pop     de
+077C: F1      	                pop     af
+077D: C9      	                ret
+              	;
+077E: 4F      	ih_load_chk     ld      c, a            ; All in all compute E = E - A
+077F: 7B      	                ld      a, e
+0780: 91      	                sub     c
+0781: 5F      	                ld      e, a
+0782: 79      	                ld      a, c
+0783: C9      	                ret
+0784: 494E5445	ih_load_msg_1   defb    "INTEL HEX LOAD: ", eos
+0788: 4C204845	
+078C: 58204C4F	
+0790: 41443A20	
+0794: 00      	
+0795: 2053796E	ih_load_msg_2   defb    " Syntax error!", eos
+0799: 74617820	
+079D: 6572726F	
+07A1: 722100  	
+07A4: 20436865	ih_load_msg_3   defb    " Checksum error!", eos
+07A8: 636B7375	
+07AC: 6D206572	
+07B0: 726F7221	
+07B4: 00      	
+              	;
+              	; Print version information etc.
+              	;
+07B5: E5      	info            push    hl
+07B6: 21C407  	                ld      hl, info_msg
+07B9: CD690B  	                call    puts
+07BC: 215301  	                ld      hl, hello_msg
+07BF: CD690B  	                call    puts
+07C2: E1      	                pop     hl
+07C3: C9      	                ret
+07C4: 494E464F	info_msg        defb    "INFO: ", eos
+07C8: 3A2000  	
+              	;
+              	; Load data into memory. The user is prompted for a 16 bit start address. Then
+              	; a sequence of bytes in hexadecimal notation may be entered until a character
+              	; that is not 0-9 or a-f is encountered.
+              	;
+07CB: F5      	load            push    af
+07CC: C5      	                push    bc
+07CD: D5      	                push    de
+07CE: E5      	                push    hl
+07CF: 213608  	                ld      hl, load_msg_1  ; Print command name
+07D2: CD690B  	                call    puts
+07D5: CD0C0B  	                call    get_word        ; Wait for the start address (2 bytes)
+07D8: E5      	                push    hl              ; Remember address
+07D9: A7      	                and     a               ; Clear carry
+07DA: 010080  	                ld      bc, ram_start   ; Check if the address is valid
+07DD: ED42    	                sbc     hl, bc          ; by subtracting the RAM start address
+07DF: E1      	                pop     hl              ; Restore address
+07E0: 110000  	                ld      de, 0           ; Counter for bytes loaded
+07E3: 3008    	                jr      nc, load_loop   ; OK - start reading hex characters
+07E5: 216708  	                ld      hl, load_msg_3  ; Print error message
+07E8: CD690B  	                call    puts
+07EB: 1836    	                jr      load_exit
+              	                ; All in all we need two hex nibbles per byte. If two characters
+              	                ; in a row are valid hexadecimal digits we will convert them 
+              	                ; to a byte and store this in memory. If one character is 
+              	                ; illegal, the load routine terminates and returns to the 
+              	                ; monitor.
+07ED: 3E20    	load_loop       ld      a, ' '
+07EF: CD630B  	                call    putc            ; Write a space as byte delimiter
+07F2: CDE10A  	                call    getc            ; Read first character
+07F5: CDB90A  	                call    to_upper        ; Convert to upper case
+07F8: CD910A  	                call    is_hex          ; Is it a hex digit?
+07FB: 3026    	                jr      nc, load_exit   ; No - exit the load routine
+07FD: CDAE0A  	                call    nibble2val      ; Convert character to value
+0800: CD460B  	                call    print_nibble    ; Echo hex digit
+0803: CB07    	                rlc     a
+0805: CB07    	                rlc     a
+0807: CB07    	                rlc     a
+0809: CB07    	                rlc     a
+080B: 47      	                ld      b, a            ; Save the upper four bits for later
+080C: CDE10A  	                call    getc            ; Read second character and proceed...
+080F: CDB90A  	                call    to_upper        ; Convert to upper case
+0812: CD910A  	                call    is_hex
+0815: 300C    	                jr      nc, load_exit
+0817: CDAE0A  	                call    nibble2val
+081A: CD460B  	                call    print_nibble
+081D: B0      	                or      b               ; Combine lower 4 bits with upper
+081E: 77      	                ld      (hl), a         ; Save value to memory
+081F: 23      	                inc     hl
+0820: 13      	                inc     de
+0821: 18CA    	                jr      load_loop       ; Get next byte (or at least try to)
+0823: CDD40A  	load_exit       call    crlf            ; Finished...
+0826: 626B    	                ld      hl, de          ; Print number of bytes loaded
+0828: CD560B  	                call    print_word
+082B: 215608  	                ld      hl, load_msg_2
+082E: CD690B  	                call    puts
+0831: E1      	                pop     hl
+0832: D1      	                pop     de
+0833: C1      	                pop     bc
+0834: F1      	                pop     af
+0835: C9      	                ret
+0836: 4C4F4144	load_msg_1      defb    "LOAD (xx or else to end): ADDR=", eos
+083A: 20287878	
+083E: 206F7220	
+0842: 656C7365	
+0846: 20746F20	
+084A: 656E6429	
+084E: 3A204144	
+0852: 44523D00	
+0856: 20627974	load_msg_2      defb    " bytes loaded.", cr, lf, eos
+085A: 6573206C	
+085E: 6F616465	
+0862: 642E0D0A	
+0866: 00      	
+0867: 20496C6C	load_msg_3      defb    " Illegal address!", eos
+086B: 6567616C	
+086F: 20616464	
+0873: 72657373	
+0877: 2100    	
+              	;
+              	; Load a file's contents into memory:
+              	;
+0879: F5      	load_file       push    af
+087A: C5      	                push    bc
+087B: D5      	                push    de
+087C: E5      	                push    hl
+087D: FDE5    	                push    iy
+087F: 21D808  	                ld      hl, load_file_msg_1
+0882: CD690B  	                call    puts            ; Print first prompt (start address)
+0885: CD0C0B  	                call    get_word        ; Wait for the start address (2 bytes)
+0888: 225FFB  	                ld      (load_file_scrat), hl
+088B: A7      	                and     a               ; Clear carry
+088C: 010080  	                ld      bc, ram_start   ; Check if the address is valid
+088F: ED42    	                sbc     hl, bc          ; by subtracting the RAM start address
+0891: 3008    	                jr      nc, load_file_1
+0893: 21E908  	                ld      hl, load_file_msg_2
+0896: CD690B  	                call    puts
+0899: 1828    	                jr      load_file_exit  ; Illegal address - exit routine
+089B: 210C09  	load_file_1     ld      hl, load_file_msg_4
+089E: CD690B  	                call    puts            ; Prompt for filename
+08A1: 216DFB  	                ld      hl, string_81_bfr
+08A4: 0651    	                ld      b, 81           ; Buffer length
+08A6: CD170B  	                call    gets            ; Read file name into bfr
+08A9: FD21BEFB	                ld      iy, fcb         ; Prepare open (only one FCB currently)
+08AD: 1161FB  	                ld      de, string_12_bfr
+08B0: CD3510  	                call    fopen           ; Open the file (if possible)
+08B3: 2A5FFB  	                ld      hl, (load_file_scrat)
+08B6: 110000  	                ld      de, 0           ; Counter for bytes loaded
+08B9: CD7A0D  	load_file_loop  call    fgetc           ; Get one byte from the file
+08BC: 3805    	                jr      c, load_file_exit
+08BE: 77      	                ld      (hl), a         ; Store byte and
+08BF: 23      	                inc     hl              ; increment pointer
+08C0: 13      	                inc     de
+08C1: 18F6    	                jr      load_file_loop  ; Process next byte
+08C3: CDD40A  	load_file_exit  call    crlf
+08C6: 626B    	                ld      hl, de          ; Print number of bytes loaded
+08C8: CD560B  	                call    print_word
+08CB: 21FB08  	                ld      hl, load_file_msg_3
+08CE: CD690B  	                call    puts
+08D1: FDE1    	                pop     iy
+08D3: E1      	                pop     hl
+08D4: D1      	                pop     de
+08D5: C1      	                pop     bc
+08D6: F1      	                pop     af
+08D7: C9      	                ret
+08D8: 4C4F4144	load_file_msg_1 defb    "LOAD FILE: ADDR=", eos
+08DC: 2046494C	
+08E0: 453A2041	
+08E4: 4444523D	
+08E8: 00      	
+08E9: 20496C6C	load_file_msg_2 defb    " Illegal address!", eos
+08ED: 6567616C	
+08F1: 20616464	
+08F5: 72657373	
+08F9: 2100    	
+08FB: 20627974	load_file_msg_3 defb    " bytes loaded.", cr, lf, eos
+08FF: 6573206C	
+0903: 6F616465	
+0907: 642E0D0A	
+090B: 00      	
+090C: 2046494C	load_file_msg_4 defb    " FILENAME=", eos
+0910: 454E414D	
+0914: 453D00  	
+              	;
+              	; mount - a wrapper for fatmount (necessary for printing the command's name)
+              	;
+0917: E5      	mount           push    hl
+0918: 212309  	                ld      hl, mount_msg
+091B: CD690B  	                call    puts
+091E: CD6113  	                call    fatmount
+0921: E1      	                pop     hl
+0922: C9      	                ret
+0923: 4D4F554E	mount_msg       defb    "MOUNT", cr, lf, cr, lf, eos
+0927: 540D0A0D	
+092B: 0A00    	
+              	;
+              	; Move a memory block - the user is prompted for all necessary data:
+              	;
+092D: F5      	move            push    af              ; We won't even destroy the flags!
+092E: C5      	                push    bc
+092F: D5      	                push    de
+0930: E5      	                push    hl
+0931: 216D09  	                ld      hl, move_msg_1
+0934: CD690B  	                call    puts
+0937: CD0C0B  	                call    get_word        ; Get address of block to be moved
+093A: E5      	                push    hl              ; Push this address
+093B: 217909  	                ld      hl, move_msg_2
+093E: CD690B  	                call    puts
+0941: CD0C0B  	                call    get_word        ; Get destination start address
+0944: 545D    	                ld      de, hl          ; LDIR requires this in DE
+              	                ; Is the destination address in RAM area?
+0946: A7      	                and     a               ; Clear carry
+0947: 010080  	                ld      bc, ram_start
+094A: ED42    	                sbc     hl, bc          ; Is the destination in RAM?
+094C: 3009    	                jr      nc, move_get_length
+094E: 218709  	                ld      hl, move_msg_4  ; No - print error message
+0951: CD690B  	                call    puts
+0954: E1      	                pop     hl              ; Clean up stack
+0955: 180E    	                jr      move_exit
+0957: 217E09  	move_get_length ld      hl, move_msg_3
+095A: CD690B  	                call    puts
+095D: CD0C0B  	                call    get_word        ; Get length of block
+0960: 444D    	                ld      bc, hl          ; LDIR requires the length in BC
+0962: E1      	                pop     hl              ; Get address of block to be moved
+              	                ; I was lazy - there is no test to make sure that the block
+              	                ; to be moved will fit into the RAM area.
+0963: EDB0    	                ldir                    ; Move block
+0965: CDD40A  	move_exit       call    crlf            ; Finished
+0968: E1      	                pop     hl              ; Restore registers
+0969: D1      	                pop     de
+096A: C1      	                pop     bc
+096B: F1      	                pop     af
+096C: C9      	                ret
+096D: 4D4F5645	move_msg_1      defb    "MOVE: FROM=", eos
+0971: 3A204652	
+0975: 4F4D3D00	
+0979: 20544F3D	move_msg_2      defb    " TO=", eos
+097D: 00      	
+097E: 204C454E	move_msg_3      defb    " LENGTH=", eos
+0982: 4754483D	
+0986: 00      	
+0987: 20496C6C	move_msg_4      defb    " Illegal destination address!", eos
+098B: 6567616C	
+098F: 20646573	
+0993: 74696E61	
+0997: 74696F6E	
+099B: 20616464	
+099F: 72657373	
+09A3: 2100    	
+              	;
+              	; Dump the contents of both register banks:
+              	;
+09A5: F5      	rdump           push    af
+09A6: E5      	                push    hl
+09A7: 21EC09  	                ld      hl, rdump_msg_1 ; Print first two lines
+09AA: CD690B  	                call    puts
+09AD: E1      	                pop     hl
+09AE: CD1D0A  	                call    rdump_one_set
+09B1: D9      	                exx
+09B2: 08      	                ex      af, af'
+09B3: E5      	                push    hl
+09B4: 21030A  	                ld      hl, rdump_msg_2
+09B7: CD690B  	                call    puts
+09BA: E1      	                pop     hl
+09BB: CD1D0A  	                call    rdump_one_set
+09BE: 08      	                ex      af, af'
+09BF: D9      	                exx
+09C0: E5      	                push    hl
+09C1: 21090A  	                ld      hl, rdump_msg_3
+09C4: CD690B  	                call    puts
+09C7: DDE5    	                push    ix
+09C9: E1      	                pop     hl
+09CA: CD560B  	                call    print_word
+09CD: 21130A  	                ld      hl, rdump_msg_4
+09D0: CD690B  	                call    puts
+09D3: FDE5    	                push    iy
+09D5: E1      	                pop     hl
+09D6: CD560B  	                call    print_word
+09D9: 21180A  	                ld      hl, rdump_msg_5
+09DC: CD690B  	                call    puts
+09DF: 210000  	                ld      hl, 0
+09E2: 39      	                add     hl, sp
+09E3: CD560B  	                call    print_word
+09E6: CDD40A  	                call    crlf
+09E9: E1      	                pop     hl
+09EA: F1      	                pop     af
+09EB: C9      	                ret
+09EC: 52454749	rdump_msg_1     defb    "REGISTER DUMP", cr, lf, cr, lf, tab, "1st:", eos
+09F0: 53544552	
+09F4: 2044554D	
+09F8: 500D0A0D	
+09FC: 0A093173	
+0A00: 743A00  	
+0A03: 09326E64	rdump_msg_2     defb    tab, "2nd:", eos
+0A07: 3A00    	
+0A09: 09505452	rdump_msg_3     defb    tab, "PTR: IX=", eos
+0A0D: 3A204958	
+0A11: 3D00    	
+0A13: 2049593D	rdump_msg_4     defb    " IY=", eos
+0A17: 00      	
+0A18: 2053503D	rdump_msg_5     defb    " SP=", eos
+0A1C: 00      	
+              	;
+0A1D: E5      	rdump_one_set   push    hl              ; Print one register set
+0A1E: 214D0A  	                ld      hl, rdump_os_msg_1
+0A21: CD690B  	                call    puts
+0A24: F5      	                push    af              ; Move AF into HL
+0A25: E1      	                pop     hl
+0A26: CD560B  	                call    print_word      ; Print contents of AF
+0A29: 21520A  	                ld      hl, rdump_os_msg_2
+0A2C: CD690B  	                call    puts
+0A2F: 6069    	                ld      hl, bc
+0A31: CD560B  	                call    print_word      ; Print contents of BC
+0A34: 21570A  	                ld      hl, rdump_os_msg_3
+0A37: CD690B  	                call    puts
+0A3A: 626B    	                ld      hl, de
+0A3C: CD560B  	                call    print_word      ; Print contents of DE
+0A3F: 215C0A  	                ld      hl, rdump_os_msg_4
+0A42: CD690B  	                call    puts
+0A45: E1      	                pop     hl              ; Restore original HL
+0A46: CD560B  	                call    print_word      ; Print contents of HL
+0A49: CDD40A  	                call    crlf
+0A4C: C9      	                ret
+0A4D: 2041463D	rdump_os_msg_1  defb    " AF=", eos
+0A51: 00      	
+0A52: 2042433D	rdump_os_msg_2  defb    " BC=", eos
+0A56: 00      	
+0A57: 2044453D	rdump_os_msg_3  defb    " DE=", eos
+0A5B: 00      	
+0A5C: 20484C3D	rdump_os_msg_4  defb    " HL=", eos
+0A60: 00      	
+              	;
+              	; Start a program - this will prompt for a four digital hexadecimal start
+              	; address. A program should end with "jp $0" to enter the monitor again.
+              	;
+0A61: 216E0A  	start           ld      hl, start_msg
+0A64: CD690B  	                call    puts
+0A67: CD0C0B  	                call    get_word        ; Wait for a four-nibble address
+0A6A: CDD40A  	                call    crlf
+0A6D: E9      	                jp      (hl)            ; Start program (and hope for the best)
+0A6E: 53544152	start_msg       defb    "START: ADDR=", eos
+0A72: 543A2041	
+0A76: 4444523D	
+0A7A: 00      	
+              	;
+              	;  unmount - simple wrapper for fatunmount (necessary for printing the command
+              	; name)
+              	;
+0A7B: E5      	unmount         push    hl
+0A7C: 21870A  	                ld      hl, unmount_msg
+0A7F: CD690B  	                call    puts
+0A82: CD5916  	                call    fatunmount
+0A85: E1      	                pop     hl
+0A86: C9      	                ret
+0A87: 554E4D4F	unmount_msg     defb    "UNMOUNT", cr, lf, eos
+0A8B: 554E540D	
+0A8F: 0A00    	
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** String routines
+              	;***
+              	;******************************************************************************
+              	;
+              	; is_hex checks a character stored in A for being a valid hexadecimal digit.
+              	; A valid hexadecimal digit is denoted by a set C flag.
+              	;
+0A91: FE47    	is_hex          cp      'F' + 1         ; Greater than 'F'?
+0A93: D0      	                ret     nc              ; Yes
+0A94: FE30    	                cp      '0'             ; Less than '0'?
+0A96: 3002    	                jr      nc, is_hex_1    ; No, continue
+0A98: 3F      	                ccf                     ; Complement carry (i.e. clear it)
+0A99: C9      	                ret
+0A9A: FE3A    	is_hex_1        cp      '9' + 1         ; Less or equal '9*?
+0A9C: D8      	                ret     c               ; Yes
+0A9D: FE41    	                cp      'A'             ; Less than 'A'?
+0A9F: 3002    	                jr      nc, is_hex_2    ; No, continue
+0AA1: 3F      	                ccf                     ; Yes - clear carry and return
+0AA2: C9      	                ret
+0AA3: 37      	is_hex_2        scf                     ; Set carry
+0AA4: C9      	                ret
+              	;
+              	; is_print checks if a character is a printable ASCII character. A valid
+              	; character is denoted by a set C flag.
+              	;
+0AA5: FE20    	is_print        cp      space
+0AA7: 3002    	                jr      nc, is_print_1
+0AA9: 3F      	                ccf
+0AAA: C9      	                ret
+0AAB: FE7F    	is_print_1      cp      $7f
+0AAD: C9      	                ret
+              	;
+              	; nibble2val expects a hexadecimal digit (upper case!) in A and returns the
+              	; corresponding value in A.
+              	;
+0AAE: FE3A    	nibble2val      cp      '9' + 1         ; Is it a digit (less or equal '9')?
+0AB0: 3802    	                jr      c, nibble2val_1 ; Yes
+0AB2: D607    	                sub     7               ; Adjust for A-F
+0AB4: D630    	nibble2val_1    sub     '0'             ; Fold back to 0..15
+0AB6: E60F    	                and     $f              ; Only return lower 4 bits
+0AB8: C9      	                ret
+              	;
+              	; Convert a single character contained in A to upper case:
+              	;
+0AB9: FE61    	to_upper        cp      'a'             ; Nothing to do if not lower case
+0ABB: D8      	                ret     c
+0ABC: FE7B    	                cp      'z' + 1         ; > 'z'?
+0ABE: D0      	                ret     nc              ; Nothing to do, either
+0ABF: E65F    	                and     $5f             ; Convert to upper case
+0AC1: C9      	                ret
+              	;
+              	;  Compare two null terminated strings, return >0 / 0 / <0 in A, works like
+              	; strcmp. The routine expects two pointer in HL and DE which will be
+              	; preserved.
+              	;
+0AC2: D5      	strcmp          push    de
+0AC3: E5      	                push    hl
+0AC4: 1A      	strcmp_loop     ld      a, (de)
+0AC5: FE00    	                cp      0                       ; End of first string reached?
+0AC7: 2807    	                jr      z, strcmp_exit
+0AC9: BE      	                cp      (hl)                    ; Compare two characters
+0ACA: 2004    	                jr      nz, strcmp_exit         ; Different -> exit
+0ACC: 23      	                inc     hl
+0ACD: 13      	                inc     de
+0ACE: 18F4    	                jr      strcmp_loop
+0AD0: 96      	strcmp_exit     sub     (hl)
+0AD1: E1      	                pop     hl
+0AD2: D1      	                pop     de
+0AD3: C9      	                ret
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** IO routines
+              	;***
+              	;******************************************************************************
+              	;
+              	; Send a CR/LF pair:
+              	;
+0AD4: F5      	crlf            push    af
+0AD5: 3E0D    	                ld      a, cr
+0AD7: CD630B  	                call    putc
+0ADA: 3E0A    	                ld      a, lf
+0ADC: CD630B  	                call    putc
+0ADF: F1      	                pop     af
+0AE0: C9      	                ret
+              	;
+              	; Read a single character from the serial line, result is in A:
+              	;
+0AE1: CD790B  	getc            call    rx_ready
+0AE4: DB00    	                in      a, (uart_register_0)
+0AE6: C9      	                ret
+              	;
+              	; Get a byte in hexadecimal notation. The result is returned in A. Since
+              	; the routine get_nibble is used only valid characters are accepted - the 
+              	; input routine only accepts characters 0-9a-f.
+              	;
+0AE7: C5      	get_byte        push    bc              ; Save contents of B (and C)
+0AE8: CDFA0A  	                call    get_nibble      ; Get upper nibble
+0AEB: CB07    	                rlc     a
+0AED: CB07    	                rlc     a
+0AEF: CB07    	                rlc     a
+0AF1: CB07    	                rlc     a
+0AF3: 47      	                ld      b, a            ; Save upper four bits
+0AF4: CDFA0A  	                call    get_nibble      ; Get lower nibble
+0AF7: B0      	                or      b               ; Combine both nibbles
+0AF8: C1      	                pop     bc              ; Restore B (and C)
+0AF9: C9      	                ret
+              	;
+              	; Get a hexadecimal digit from the serial line. This routine blocks until
+              	; a valid character (0-9a-f) has been entered. A valid digit will be echoed
+              	; to the serial line interface. The lower 4 bits of A contain the value of 
+              	; that particular digit.
+              	;
+0AFA: CDE10A  	get_nibble      call    getc            ; Read a character
+0AFD: CDB90A  	                call    to_upper        ; Convert to upper case
+0B00: CD910A  	                call    is_hex          ; Was it a hex digit?
+0B03: 30F5    	                jr      nc, get_nibble  ; No, get another character
+0B05: CDAE0A  	                call    nibble2val      ; Convert nibble to value
+0B08: CD460B  	                call    print_nibble
+0B0B: C9      	                ret
+              	;
+              	; Get a word (16 bit) in hexadecimal notation. The result is returned in HL.
+              	; Since the routines get_byte and therefore get_nibble are called, only valid
+              	; characters (0-9a-f) are accepted.
+              	;
+0B0C: F5      	get_word        push    af
+0B0D: CDE70A  	                call    get_byte        ; Get the upper byte
+0B10: 67      	                ld      h, a
+0B11: CDE70A  	                call    get_byte        ; Get the lower byte
+0B14: 6F      	                ld      l, a
+0B15: F1      	                pop     af
+0B16: C9      	                ret
+              	;
+              	;  Read a string from STDIN - HL contains the buffer start address,
+              	; B contains the buffer length.
+              	;
+0B17: F5      	gets            push    af
+0B18: C5      	                push    bc
+0B19: E5      	                push    hl
+0B1A: CDE10A  	gets_loop       call    getc                    ; Get a single character
+0B1D: FE0D    	                cp      cr                      ; Skip CR characters
+0B1F: 28F9    	                jr      z, gets_loop            ; only LF will terminate input
+0B21: CDB90A  	                call    to_upper
+0B24: CD630B  	                call    putc                    ; Echo character
+0B27: FE0A    	                cp      lf                      ; Terminate string at
+0B29: 2804    	                jr      z, gets_exit            ; LF or
+0B2B: 77      	                ld      (hl), a                 ; Copy character to buffer
+0B2C: 23      	                inc     hl
+0B2D: 10EB    	                djnz    gets_loop
+0B2F: 3600    	gets_exit       ld      (hl), 0                 ; Insert termination byte
+0B31: E1      	                pop     hl
+0B32: C1      	                pop     bc
+0B33: F1      	                pop     af
+0B34: C9      	                ret
+              	;
+              	; print_byte prints a single byte in hexadecimal notation to the serial line.
+              	; The byte to be printed is expected to be in A.
+              	;
+0B35: F5      	print_byte      push    af              ; Save the contents of the registers
+0B36: C5      	                push    bc
+0B37: 47      	                ld      b, a
+0B38: 0F      	                rrca
+0B39: 0F      	                rrca
+0B3A: 0F      	                rrca
+0B3B: 0F      	                rrca
+0B3C: CD460B  	                call    print_nibble    ; Print high nibble
+0B3F: 78      	                ld      a, b
+0B40: CD460B  	                call    print_nibble    ; Print low nibble
+0B43: C1      	                pop     bc              ; Restore original register contents
+0B44: F1      	                pop     af
+0B45: C9      	                ret
+              	;
+              	; print_nibble prints a single hex nibble which is contained in the lower 
+              	; four bits of A:
+              	;
+0B46: F5      	print_nibble    push    af              ; We won't destroy the contents of A
+0B47: E60F    	                and     $f              ; Just in case...
+0B49: C630    	                add     '0'             ; If we have a digit we are done here.
+0B4B: FE3A    	                cp      '9' + 1         ; Is the result > 9?
+0B4D: 3802    	                jr      c, print_nibble_1
+0B4F: C607    	                add     'A' - '0' - $a  ; Take care of A-F
+0B51: CD630B  	print_nibble_1  call    putc            ; Print the nibble and
+0B54: F1      	                pop     af              ; restore the original value of A
+0B55: C9      	                ret
+              	;
+              	; print_word prints the four hex digits of a word to the serial line. The 
+              	; word is expected to be in HL.
+              	;
+0B56: E5      	print_word      push    hl
+0B57: F5      	                push    af
+0B58: 7C      	                ld      a, h
+0B59: CD350B  	                call    print_byte
+0B5C: 7D      	                ld      a, l
+0B5D: CD350B  	                call    print_byte
+0B60: F1      	                pop     af
+0B61: E1      	                pop     hl
+0B62: C9      	                ret
+              	;
+              	; Send a single character to the serial line (a contains the character):
+              	;
+0B63: CD820B  	putc            call    tx_ready
+0B66: D300    	                out     (uart_register_0), a
+0B68: C9      	                ret
+              	;
+              	; Send a string to the serial line, HL contains the pointer to the string:
+              	;
+0B69: F5      	puts            push    af
+0B6A: E5      	                push    hl
+0B6B: 7E      	puts_loop       ld      a, (hl)
+0B6C: FE00    	                cp      eos             ; End of string reached?
+0B6E: 2806    	                jr      z, puts_end     ; Yes
+0B70: CD630B  	                call    putc
+0B73: 23      	                inc     hl              ; Increment character pointer
+0B74: 18F5    	                jr      puts_loop       ; Transmit next character
+0B76: E1      	puts_end        pop     hl
+0B77: F1      	                pop     af
+0B78: C9      	                ret
+              	;
+              	; Wait for an incoming character on the serial line:
+              	;
+0B79: F5      	rx_ready        push    af
+0B7A: DB05    	rx_ready_loop   in      a, (uart_register_5)
+0B7C: CB47    	                bit     0, a
+0B7E: 28FA    	                jr      z, rx_ready_loop
+0B80: F1      	                pop     af
+0B81: C9      	                ret
+              	;
+              	; Wait for UART to become ready to transmit a byte:
+              	;
+0B82: F5      	tx_ready        push    af
+0B83: DB05    	tx_ready_loop   in      a, (uart_register_5)
+0B85: CB6F    	                bit     5, a
+0B87: 28FA    	                jr      z, tx_ready_loop
+0B89: F1      	                pop af
+0B8A: C9      	                ret
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** IDE routines
+              	;***
+              	;******************************************************************************
+              	;
+0010:         	ide_data_low    equ     ide_base + $0
+0018:         	ide_data_high   equ     ide_base + $8
+0011:         	ide_error_code  equ     ide_base + $1
+              	;
+              	;       Bit mapping of ide_error_code register:
+              	;
+              	;               0: 1 = DAM not found
+              	;               1: 1 = Track 0 not found
+              	;               2: 1 = Command aborted
+              	;               3: Reserved
+              	;               4: 1 = ID not found
+              	;               5: Reserved
+              	;               6: 1 = Uncorrectable ECC error
+              	;               7: 1 = Bad block detected
+              	;
+0012:         	ide_secnum      equ     ide_base + $2
+              	;
+              	;       Typically set to 1 sector to be transf.
+              	;
+0013:         	ide_lba0        equ     ide_base + $3
+0014:         	ide_lba1        equ     ide_base + $4
+0015:         	ide_lba2        equ     ide_base + $5
+0016:         	ide_lba3        equ     ide_base + $6
+              	;
+              	;       Bit mapping of ide_lba3 register:
+              	;
+              	;               0 - 3: LBA bits 24 - 27
+              	;               4    : Master (0) or slave (1) selection
+              	;               5    : Always 1
+              	;               6    : Set to 1 for LBA access
+              	;               7    : Always 1
+              	;
+0017:         	ide_status_cmd  equ     ide_base + $7
+              	;
+              	;       Useful commands (when written):
+              	;
+              	;               $20: Read sectors with retry
+              	;               $30: Write sectors with retry
+              	;               $EC: Identify drive
+              	;
+              	;       Status bits (when read):
+              	;
+              	;               0 = ERR:  1 = Previous command resulted in an error
+              	;               1 = IDX:  Unused
+              	;               2 = CORR: Unused
+              	;               3 = DRQ:  1 = Data Request Ready (sector buffer ready)
+              	;               4 = DSC:  Unused
+              	;               5 = DF:   1 = Write fault
+              	;               6 = RDY:  1 = Ready to accept command
+              	;               7 = BUSY: 1 = Controller is busy executing a command
+              	;
+00FF:         	ide_retries     equ     $ff                     ; Number of retries for polls
+              	;
+              	;
+              	;  Get ID information from drive. HL is expected to point to a 512 byte byte 
+              	; sector buffer. If carry is set, the function did not complete correctly and 
+              	; was aborted. 
+              	;
+0B8B: F5      	ide_get_id      push    af
+0B8C: C5      	                push    bc
+0B8D: E5      	                push    hl
+0B8E: CDF10C  	                call    ide_ready               ; Is the drive ready?
+0B91: 382E    	                jr      c, ide_get_id_err       ; No - timeout!
+0B93: 3EA0    	                ld      a, $a0                  ; Master, no LBA addressing
+0B95: D317    	                out     (ide_status_cmd), a
+0B97: CDF10C  	                call    ide_ready               ; Did the command complete?
+0B9A: 3825    	                jr      c, ide_get_id_err       ; Timeout!
+0B9C: 3EEC    	                ld      a, $ec                  ; Command to read ID
+0B9E: D317    	                out     (ide_status_cmd), a     ; Write command to drive
+0BA0: CDF10C  	                call    ide_ready               ; Can we proceed?
+0BA3: 381C    	                jr      c, ide_get_id_err       ; No - timeout, propagate carry
+0BA5: CD220C  	                call    ide_error_check         ; Any errors?
+0BA8: 3817    	                jr      c, ide_get_id_err       ; Yes - something went wrong
+0BAA: CDE10B  	                call    ide_bfr_ready           ; Is the buffer ready to read?
+0BAD: 3812    	                jr      c, ide_get_id_err       ; No
+0BAF: 2100FE  	                ld      hl, buffer              ; Load the buffer's address
+0BB2: 0600    	                ld      b, $0                   ; We will read 256 words
+0BB4: DB10    	ide_get_id_lp   in      a, (ide_data_low)       ; Read high (!) byte
+0BB6: 4F      	                ld      c, a
+0BB7: DB18    	                in      a, (ide_data_high)      ; Read low (!) byte
+0BB9: 77      	                ld      (hl), a
+0BBA: 23      	                inc     hl
+0BBB: 71      	                ld      (hl), c
+0BBC: 23      	                inc     hl
+0BBD: 10F5    	                djnz    ide_get_id_lp           ; Read next word
+0BBF: 1806    	                jr      ide_get_id_exit         ; Everything OK, just exit
+0BC1: 21CB0B  	ide_get_id_err  ld      hl, ide_get_id_msg      ; Print error message
+0BC4: CD690B  	                call    puts
+0BC7: E1      	ide_get_id_exit pop     hl
+0BC8: C1      	                pop     bc
+0BC9: F1      	                pop     af
+0BCA: C9      	                ret
+0BCB: 46415441	ide_get_id_msg  defb    "FATAL(IDE): Aborted!", cr, lf
+0BCF: 4C284944	
+0BD3: 45293A20	
+0BD7: 41626F72	
+0BDB: 74656421	
+0BDF: 0D0A    	
+              	;
+              	;  Test if the buffer of the IDE disk drive is ready for transfer. If not, 
+              	; carry will be set, otherwise carry is reset. The contents of register A will 
+              	; be destroyed!
+              	;
+0BE1: C5      	ide_bfr_ready   push    bc
+0BE2: A7      	                and     a                       ; Clear carry assuming no error
+0BE3: 06FF    	                ld      b, ide_retries          ; How many retries?
+0BE5: DB17    	ide_bfr_loop    in      a, (ide_status_cmd)     ; Read IDE status register
+0BE7: CB5F    	                bit     3, a                    ; Check DRQ bit
+0BE9: 2010    	                jr      nz, ide_bfr_exit        ; Buffer is ready
+0BEB: C5      	                push    bc
+0BEC: 0600    	                ld      b, $0                   ; Wait a moment
+0BEE: 00      	ide_bfr_wait    nop
+0BEF: 10FD    	                djnz    ide_bfr_wait
+0BF1: C1      	                pop     bc
+0BF2: 10F1    	                djnz    ide_bfr_loop            ; Retry
+0BF4: 37      	                scf                             ; Set carry to indicate timeout
+0BF5: 21FD0B  	                ld      hl, ide_bfr_rdy_err
+0BF8: CD690B  	                call    puts
+0BFB: C1      	ide_bfr_exit    pop     bc
+0BFC: C9      	                ret
+0BFD: 46415441	ide_bfr_rdy_err defb "FATAL(IDE): ide_bfr_ready timeout!", cr, lf, eos
+0C01: 4C284944	
+0C05: 45293A20	
+0C09: 6964655F	
+0C0D: 6266725F	
+0C11: 72656164	
+0C15: 79207469	
+0C19: 6D656F75	
+0C1D: 74210D0A	
+0C21: 00      	
+              	;
+              	;  Test if there is any error flagged by the drive. If carry is cleared, no 
+              	; error occured, otherwise carry will be set. The contents of register A will 
+              	; be destroyed.
+              	;
+0C22: A7      	ide_error_check and     a                       ; Clear carry (no err expected)
+0C23: DB17    	                in      a, (ide_status_cmd)     ; Read status register
+0C25: CB47    	                bit     0, a                    ; Test error bit
+0C27: 2801    	                jr      z, ide_ec_exit          ; Everything is OK
+0C29: 37      	                scf                             ; Set carry due to error
+0C2A: C9      	ide_ec_exit     ret
+              	;
+              	;  Read a sector from the drive. If carry is set after return, the function did 
+              	; not complete correctly due to a timeout. HL is expected to contain the start 
+              	; address of the sector buffer while BC and DE contain the sector address 
+              	; (LBA3, 2, 1 and 0). Register A's contents will be destroyed!
+              	;
+0C2B: C5      	ide_rs          push    bc
+0C2C: E5      	                push    hl
+0C2D: CDF10C  	                call    ide_ready               ; Is the drive ready?
+0C30: 3829    	                jr      c, ide_rs_err           ; No - timeout!
+0C32: CDDA0C  	                call    ide_set_lba             ; Setup the drive's registers
+0C35: CDF10C  	                call    ide_ready               ; Everything OK?
+0C38: 3821    	                jr      c, ide_rs_err           ; No - timeout!
+0C3A: 3E20    	                ld      a, $20
+0C3C: D317    	                out     (ide_status_cmd), a     ; Issue read command
+0C3E: CDF10C  	                call    ide_ready               ; Can we proceed?
+0C41: 3818    	                jr      c, ide_rs_err           ; No - timeout, set carry 
+0C43: CD220C  	                call    ide_error_check         ; Any errors?
+0C46: 3813    	                jr      c, ide_rs_err           ; Yes - something went wrong
+0C48: CDE10B  	                call    ide_bfr_ready           ; Is the buffer ready to read?
+0C4B: 380E    	                jr      c, ide_rs_err           ; No
+0C4D: 0600    	                ld      b, $0                   ; We will read 256 words
+0C4F: DB10    	ide_rs_loop     in      a, (ide_data_low)       ; Read low byte
+0C51: 77      	                ld      (hl), a                 ; Store this byte
+0C52: 23      	                inc     hl
+0C53: DB18    	                in      a, (ide_data_high)      ; Read high byte
+0C55: 77      	                ld      (hl), a
+0C56: 23      	                inc     hl
+0C57: 10F6    	                djnz    ide_rs_loop             ; Read next word until done
+0C59: 1806    	                jr      ide_rs_exit
+0C5B: 21640C  	ide_rs_err      ld      hl, ide_rs_err_msg      ; Print error message
+0C5E: CD690B  	                call    puts
+0C61: E1      	ide_rs_exit     pop     hl
+0C62: C1      	                pop     bc
+0C63: C9      	                ret
+0C64: 46415441	ide_rs_err_msg  defb    "FATAL(IDE): ide_rs timeout!", cr, lf, eos
+0C68: 4C284944	
+0C6C: 45293A20	
+0C70: 6964655F	
+0C74: 72732074	
+0C78: 696D656F	
+0C7C: 7574210D	
+0C80: 0A00    	
+              	;
+              	;  Write a sector from the drive. If carry is set after return, the function did
+              	; not complete correctly due to a timeout. HL is expected to contain the start 
+              	; address of the sector buffer while BC and DE contain the sector address 
+              	; (LBA3, 2, 1 and 0). Register A's contents will be destroyed!
+              	;
+0C82: C5      	ide_ws          push    bc
+0C83: E5      	                push    hl
+0C84: CDF10C  	                call    ide_ready               ; Is the drive ready?
+0C87: 382A    	                jr      c, ide_ws_err           ; No - timeout!
+0C89: CDDA0C  	                call    ide_set_lba             ; Setup the drive's registers
+0C8C: CDF10C  	                call    ide_ready               ; Everything OK?
+0C8F: 3822    	                jr      c, ide_ws_err           ; No - timeout!
+0C91: 3E30    	                ld      a, $30
+0C93: D317    	                out     (ide_status_cmd), a     ; Issue read command
+0C95: CDF10C  	                call    ide_ready               ; Can we proceed?
+0C98: 3819    	                jr      c, ide_ws_err           ; No - timeout, set carry 
+0C9A: CD220C  	                call    ide_error_check         ; Any errors?
+0C9D: 3814    	                jr      c, ide_ws_err           ; Yes - something went wrong
+0C9F: CDE10B  	                call    ide_bfr_ready           ; Is the buffer ready to read?
+0CA2: 380F    	                jr      c, ide_ws_err           ; No
+0CA4: 0600    	                ld      b, $0                   ; We will write 256 word
+0CA6: 7E      	ide_ws_loop     ld      a, (hl)                 ; Get first byte from memory
+0CA7: 4F      	                ld      c, a
+0CA8: 23      	                inc     hl
+0CA9: 7E      	                ld      a, (hl)                 ; Get next byte
+0CAA: D318    	                out     (ide_data_high), a      ; Write high byte to controller
+0CAC: 79      	                ld      a, c                    ; Recall low byte again
+0CAD: D310    	                out     (ide_data_low), a       ; Write low byte -> strobe
+0CAF: 10F5    	                djnz    ide_ws_loop
+0CB1: 1806    	                jr      ide_ws_exit
+0CB3: 21BC0C  	ide_ws_err      ld      hl, ide_ws_err_msg      ; Print error message
+0CB6: CD690B  	                call    puts
+0CB9: E1      	ide_ws_exit     pop     hl
+0CBA: C1      	                pop     bc
+0CBB: C9      	                ret
+0CBC: 46415441	ide_ws_err_msg  defb    "FATAL(IDE): ide_ws timeout!", cr, lf, eos
+0CC0: 4C284944	
+0CC4: 45293A20	
+0CC8: 6964655F	
+0CCC: 77732074	
+0CD0: 696D656F	
+0CD4: 7574210D	
+0CD8: 0A00    	
+              	;
+              	;  Set sector count and LBA registers of the drive. Registers BC and DE contain 
+              	; the sector address (LBA 3, 2, 1 and 0).
+              	;
+0CDA: F5      	ide_set_lba     push    af
+0CDB: 3E01    	                ld      a, $1                   ; We will transfer 
+0CDD: D312    	                out     (ide_secnum), a         ; one sector at a time
+0CDF: 7B      	                ld      a, e
+0CE0: D313    	                out     (ide_lba0), a           ; Set LBA0, 1 and 2 directly
+0CE2: 7A      	                ld      a, d
+0CE3: D314    	                out     (ide_lba1), a
+0CE5: 79      	                ld      a, c
+0CE6: D315    	                out     (ide_lba2), a
+0CE8: 78      	                ld      a, b                    ; Special treatment for LBA3
+0CE9: E60F    	                and     $0f                     ; Only bits 0 - 3 are LBA3
+0CEB: F6E0    	                or      $e0                     ; Select LBA and master drive
+0CED: D316    	                out     (ide_lba3), a
+0CEF: F1      	                pop     af
+0CF0: C9      	                ret
+              	;
+              	;  Test if the IDE drive is not busy and ready to accept a command. If it is 
+              	; ready the carry flag will be reset and the function returns. If a time out 
+              	; occurs, C will be set prior to returning to the caller. Register A will 
+              	; be destroyed!
+              	;
+0CF1: C5      	ide_ready       push    bc
+0CF2: A7      	                and     a                       ; Clear carry assuming no error
+0CF3: 06FF    	                ld      b, ide_retries          ; Number of retries to timeout
+0CF5: DB17    	ide_ready_loop  in      a, (ide_status_cmd)     ; Read drive status
+0CF7: E6C0    	                and     a, $c0                  ; Only bits 7 and 6 are needed
+0CF9: EE40    	                xor     $40                     ; Invert the ready flag
+0CFB: 2815    	                jr      z, ide_ready_exit       ; Exit if ready and not busy 
+0CFD: C5      	                push    bc
+0CFE: 0600    	                ld      b, $0                   ; Wait a moment
+0D00: 00      	ide_ready_wait  nop
+0D01: 10FD    	                djnz    ide_ready_wait
+0D03: C1      	                pop     bc
+0D04: 10EF    	                djnz    ide_ready_loop          ; Retry
+0D06: 37      	                scf                             ; Set carry due to timeout
+0D07: 21140D  	                ld      hl, ide_rdy_error
+0D0A: CD690B  	                call    puts
+0D0D: DB11    	                in      a, (ide_error_code)
+0D0F: CD350B  	                call    print_byte
+0D12: C1      	ide_ready_exit  pop     bc
+0D13: C9      	                ret
+0D14: 46415441	ide_rdy_error   defb    "FATAL(IDE): ide_ready timeout!", cr, lf, eos
+0D18: 4C284944	
+0D1C: 45293A20	
+0D20: 6964655F	
+0D24: 72656164	
+0D28: 79207469	
+0D2C: 6D656F75	
+0D30: 74210D0A	
+0D34: 00      	
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** Miscellaneous functions
+              	;***
+              	;******************************************************************************
+              	;
+              	; Clear the computer (not to be called - jump into this routine):
+              	;
+0D35: 214CFB  	cold_start      ld      hl, start_type
+0D38: 3600    	                ld      (hl), $00
+0D3A: 21460D  	warm_start      ld      hl, clear_msg
+0D3D: CD690B  	                call    puts
+0D40: 3E00    	                ld      a, $00
+0D42: 32FFFF  	                ld      (ram_end), a
+0D45: C7      	                rst     $00
+0D46: 434C4541	clear_msg       defb    "CLEAR", cr, lf, eos
+0D4A: 520D0A00	
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** Mathematical routines
+              	;***
+              	;******************************************************************************
+              	;
+              	; 32 bit add routine from
+              	;       http://www.andreadrian.de/oldcpu/Z80_number_cruncher.html
+              	;
+              	; ADD ROUTINE 32+32BIT=32BIT
+              	; H'L'HL = H'L'HL + D'E'DE
+              	; CHANGES FLAGS
+              	;
+0D4E: 19      	ADD32:  ADD     HL,DE   ; 16-BIT ADD OF HL AND DE
+0D4F: D9      	        EXX
+0D50: ED5A    	        ADC     HL,DE   ; 16-BIT ADD OF HL AND DE WITH CARRY
+0D52: D9      	        EXX
+0D53: C9      	        RET
+              	;
+              	; 32 bit multiplication routine from
+              	;       http://www.andreadrian.de/oldcpu/Z80_number_cruncher.html
+              	;
+              	; MULTIPLY ROUTINE 32*32BIT=32BIT
+              	; H'L'HL = B'C'BC * D'E'DE; NEEDS REGISTER A, CHANGES FLAGS
+              	;
+0D54: A7      	MUL32:  AND     A               ; RESET CARRY FLAG
+0D55: ED62    	        SBC     HL,HL           ; LOWER RESULT = 0
+0D57: D9      	        EXX
+0D58: ED62    	        SBC     HL,HL           ; HIGHER RESULT = 0
+0D5A: 78      	        LD      A,B             ; MPR IS AC'BC
+0D5B: 0620    	        LD      B,32            ; INITIALIZE LOOP COUNTER
+0D5D:         	MUL32LOOP:
+0D5D: CB2F    	        SRA     A               ; RIGHT SHIFT MPR
+0D5F: CB19    	        RR      C
+0D61: D9      	        EXX
+0D62: CB18    	        RR      B
+0D64: CB19    	        RR      C               ; LOWEST BIT INTO CARRY
+0D66: 3005    	        JR      NC,MUL32NOADD
+0D68: 19      	        ADD     HL,DE           ; RESULT += MPD
+0D69: D9      	        EXX
+0D6A: ED5A    	        ADC     HL,DE
+0D6C: D9      	        EXX
+0D6D:         	MUL32NOADD:
+0D6D: CB23    	        SLA     E               ; LEFT SHIFT MPD
+0D6F: CB12    	        RL      D
+0D71: D9      	        EXX
+0D72: CB13    	        RL      E
+0D74: CB12    	        RL      D
+0D76: 10E5    	        DJNZ    MUL32LOOP
+0D78: D9      	        EXX
+0D79: C9      	        RET
+              	;
+              	;******************************************************************************
+              	;***
+              	;*** FAT file system routines
+              	;***
+              	;******************************************************************************
+              	;
+              	;  Read a single byte from a file. IY points to the FCB. The byte read is
+              	; returned in A, on EOF the carry flag will be set.
+              	;
+0D7A: C5      	fgetc           push    bc
+0D7B: D5      	                push    de
+0D7C: E5      	                push    hl
+              	;  Check if fcb_file_pointer == fcb_file_size. In this case we have reached
+              	; EOF and will return with a set carry bit. (As a side effect, the attempt to
+              	; read from a file which has not been successfully opened before will be
+              	; handled like encountering an EOF at the first fgetc call.)
+0D7D: FD7E0C  	                ld      a, (iy + fcb_file_size)
+0D80: FDBE13  	                cp      (iy + fcb_file_pointer)
+0D83: 201C    	                jr      nz, fgetc_start
+0D85: FD7E0D  	                ld      a, (iy + fcb_file_size + 1)
+0D88: FDBE14  	                cp      (iy + fcb_file_pointer + 1)
+0D8B: 2014    	                jr      nz, fgetc_start
+0D8D: FD7E0E  	                ld      a, (iy + fcb_file_size + 2)
+0D90: FDBE15  	                cp      (iy + fcb_file_pointer + 2)
+0D93: 200C    	                jr      nz, fgetc_start
+0D95: FD7E0F  	                ld      a, (iy + fcb_file_size + 3)
+0D98: FDBE16  	                cp      (iy + fcb_file_pointer + 3)
+0D9B: 2004    	                jr      nz, fgetc_start
+              	; We have reached EOF, so set carry and leave this routine:
+0D9D: 37      	                scf
+0D9E: C38A0E  	                jp      fgetc_exit
+              	;  Check if the lower 9 bits of the file pointer are zero. In this case
+              	; we need to read another sector (maybe from another cluster):
+0DA1: FD7E13  	fgetc_start     ld      a, (iy + fcb_file_pointer)
+0DA4: FE00    	                cp      0
+0DA6: C2560E  	                jp      nz, fgetc_getc          ; Bits 0-7 are not zero
+0DA9: FD7E14  	                ld      a, (iy + fcb_file_pointer + 1)
+0DAC: E601    	                and     1
+0DAE: C2560E  	                jp      nz, fgetc_getc          ; Bit 8 is not zero
+              	; The file_pointer modulo 512 is zero, so we have to load the next sector:
+              	; We have to check if fcb_current_cluster == 0 which will be the case in the
+              	; initial run. Then we will copy fcb_first_cluster into fcb_current_cluster.
+0DB1: FD7E17  	                ld      a, (iy + fcb_current_cluster)
+0DB4: FE00    	                cp      0
+0DB6: 2015    	                jr      nz, fgetc_continue      ; Not the initial case
+0DB8: FD7E18  	                ld      a, (iy + fcb_current_cluster + 1)
+0DBB: FE00    	                cp      0
+0DBD: 200E    	                jr      nz, fgetc_continue      ; Not the initial case
+              	; Initial case: We have to fill fcb_current_cluster with fcb_first_cluste:
+0DBF: FD7E10  	                ld      a, (iy + fcb_first_cluster)
+0DC2: FD7717  	                ld      (iy + fcb_current_cluster), a
+0DC5: FD7E11  	                ld      a, (iy + fcb_first_cluster + 1)
+0DC8: FD7718  	                ld      (iy + fcb_current_cluster + 1), a
+0DCB: 1837    	                jr      fgetc_clu2sec
+              	; Here is the normal case - we will check if fcb_cluster_sector is zero -
+              	; in this case we have to determine the next sector to be loaded by looking
+              	; up the FAT. Otherwise (fcb_cluster_sector != 0) we will just get the next
+              	; sector in the current cluster.
+0DCD: FD7E1D  	fgetc_continue  ld      a, (iy + fcb_cluster_sector)
+0DD0: 2043    	                jr      nz, fgetc_same          ; The current cluster is valid
+              	;  Here we know that we need the first sector of the next cluster of the file.
+              	; The upper eight bits of the fcb_current_cluster point to the sector of the
+              	; FAT where the entry we are looking for is located (this is true since a
+              	; sector contains 512 bytes which corresponds to 256 FAT entries). So we must
+              	; load the sector with the number fatstart + fcb_current_cluster[15-8] into
+              	; the IDE buffer and locate the entry with the address
+              	; fcb_current_cluster[7-0] * 2. This entry contains the sector number we are
+              	; looking for.
+0DD2: 2AF4FD  	                ld      hl, (fat1start)
+0DD5: FD4E18  	                ld      c, (iy + fcb_current_cluster + 1)
+0DD8: 0600    	                ld      b, 0
+0DDA: 09      	                add     hl, bc
+0DDB: 545D    	                ld      de, hl                  ; Needed for ide_rs
+0DDD: 010000  	                ld      bc, 0
+0DE0: 2AF6FD  	                ld      hl, (fat1start + 2)
+0DE3: ED4A    	                adc     hl, bc
+0DE5: 444D    	                ld      bc, hl                  ; Needed for ide_rs
+0DE7: 2100FE  	                ld      hl, buffer
+0DEA: CD2B0C  	                call    ide_rs
+              	;  Now the sector containing the FAT entry we are looking for is available in
+              	; the IDE buffer. Now we need fcb_current_cluster[7-0] * 2
+0DED: 0600    	                ld      b, 0
+0DEF: FD4E17  	                ld      c, (iy + fcb_current_cluster)
+0DF2: CB21    	                sla     c
+0DF4: CB10    	                rl      b
+              	; Now get the entry:
+0DF6: 2100FE  	                ld      hl, buffer
+0DF9: 09      	                add     hl, bc
+0DFA: 4E23462B	                ld      bc, (hl)
+0DFE: FD7117  	                ld      (iy + fcb_current_cluster), c
+0E01: FD7017  	                ld      (iy + fcb_current_cluster), b
+              	; Now we determine the first sector of the cluster to be read:
+0E04: 3AE5FD  	fgetc_clu2sec   ld      a, (clusiz)             ; Initialize fcb_cluster_sector
+0E07: FD771D  	                ld      (iy + fcb_cluster_sector), a
+0E0A: FD6E17  	                ld      l, (iy + fcb_current_cluster)
+0E0D: FD6618  	                ld      h, (iy + fcb_current_cluster + 1)
+0E10: CD4F11  	                call    clu2sec                 ; Convert cluster to sector
+0E13: 1826    	                jr      fgetc_rs
+0E15: A7      	fgetc_same      and     a                       ; Clear carry
+0E16: 010100  	                ld      bc, 1                   ; Increment fcb_current_sector
+0E19: FD6E19  	                ld      l, (iy + fcb_current_sector)
+0E1C: FD661A  	                ld      h, (iy + fcb_current_sector + 1)
+0E1F: 09      	                add     hl, bc
+0E20: FD7519  	                ld      (iy + fcb_current_sector), l
+0E23: 5D      	                ld      e, l                    ; Needed for ide_rs
+0E24: FD741A  	                ld      (iy + fcb_current_sector + 1), h
+0E27: 54      	                ld      d, h                    ; Needed for ide_rs
+0E28: FD6E1B  	                ld      l, (iy + fcb_current_sector + 2)
+0E2B: FD661C  	                ld      h, (iy + fcb_current_sector + 3)
+0E2E: 010000  	                ld      bc, 0
+0E31: ED4A    	                adc     hl, bc
+0E33: FD751B  	                ld      (iy + fcb_current_sector + 2), l
+0E36: 4D      	                ld      c, l                    ; Needed for ide_rs
+0E37: FD741C  	                ld      (iy + fcb_current_sector + 3), h
+0E3A: 44      	                ld      b, h                    ; Neede for ide_rs
+0E3B: FD7319  	fgetc_rs        ld      (iy + fcb_current_sector), e    ; Now read the sector
+0E3E: FD721A  	                ld      (iy + fcb_current_sector + 1), d
+0E41: FD711B  	                ld      (iy + fcb_current_sector + 2), c
+0E44: FD701C  	                ld      (iy + fcb_current_sector + 3), b
+              	; Let HL point to the sector buffer in the FCB:
+0E47: FDE5    	                push    iy                      ; Start of FCB
+0E49: E1      	                pop     hl
+0E4A: C5      	                push    bc
+0E4B: 011E00  	                ld      bc, fcb_file_buffer     ; Displacement of sector buffer
+0E4E: 09      	                add     hl, bc
+0E4F: C1      	                pop     bc
+0E50: CD2B0C  	                call    ide_rs                  ; Read a single sector from disk
+              	; Since we have read a sector we have to decrement fcb_cluster_sector
+0E53: FD351D  	                dec     (iy + fcb_cluster_sector)
+              	; Here we read and return a single character from the sector buffer:
+0E56: FDE5    	fgetc_getc      push    iy
+0E58: E1      	                pop     hl                      ; Copy IY to HL
+0E59: 011E00  	                ld      bc, fcb_file_buffer
+0E5C: 09      	                add     hl, bc                  ; HL points to the sector bfr.
+              	; Get the lower 9 bits of the file pointer as displacement for the buffer:
+0E5D: FD4E13  	                ld      c, (iy + fcb_file_pointer)
+0E60: FD7E14  	                ld      a, (iy + fcb_file_pointer + 1)
+0E63: E601    	                and     1                       ; Get rid of bits 9-15
+0E65: 47      	                ld      b, a
+0E66: 09      	                add     hl, bc                  ; Add byte offset
+0E67: 7E      	                ld      a, (hl)                 ; get one byte from buffer
+              	; Increment the file pointer:
+0E68: FD6E13  	                ld      l, (iy + fcb_file_pointer)
+0E6B: FD6614  	                ld      h, (iy + fcb_file_pointer + 1)
+0E6E: 010100  	                ld      bc, 1
+0E71: 09      	                add     hl, bc
+0E72: FD7513  	                ld      (iy + fcb_file_pointer), l
+0E75: FD7414  	                ld      (iy + fcb_file_pointer + 1), h
+0E78: 010000  	                ld      bc, 0
+0E7B: FD6E15  	                ld      l, (iy + fcb_file_pointer + 2)
+0E7E: FD6616  	                ld      h, (iy + fcb_file_pointer + 3)
+0E81: ED4A    	                adc     hl, bc
+0E83: FD7515  	                ld      (iy + fcb_file_pointer + 2), l
+0E86: FD7416  	                ld      (iy + fcb_file_pointer + 3), h
+              	;
+0E89: A7      	                and     a                       ; Clear carry
+0E8A: E1      	fgetc_exit      pop     hl
+0E8B: D1      	                pop     de
+0E8C: C1      	                pop     bc
+0E8D: C9      	                ret
+              	;
+              	;  Clear the FCB to which IY points -- this should be called every time one
+              	; creates a new FCB. (Please note that fopen does its own call to clear_fcb.)
+              	;
+0E8E: F5      	clear_fcb       push    af                      ; We have to save so many
+0E8F: C5      	                push    bc                      ; Registers since the FCB is
+0E90: D5      	                push    de                      ; cleared using LDIR.
+0E91: E5      	                push    hl
+0E92: 3E00    	                ld      a, 0
+0E94: FDE5    	                push    iy
+0E96: E1      	                pop     hl
+0E97: 77      	                ld      (hl), a                 ; Clear first byte of FCB
+0E98: 545D    	                ld      de, hl
+0E9A: 13      	                inc     de
+0E9B: 011E00  	                ld      bc, fcb_file_buffer
+0E9E: EDB0    	                ldir                            ; And transfer this zero byte
+0EA0: E1      	                pop     hl                      ; down to the relevant rest
+0EA1: D1      	                pop     de                      ; of the buffer.
+0EA2: C1      	                pop     bc
+0EA3: F1      	                pop     af
+0EA4: C9      	                ret
+              	;
+              	; Dump a file control block (FCB) - the start address is expected in IY.
+              	;
+0EA5: F5      	dump_fcb        push    af
+0EA6: E5      	                push    hl
+0EA7: 21370F  	                ld      hl, dump_fcb_1
+0EAA: CD690B  	                call    puts
+0EAD: FDE5    	                push    iy                      ; Load HL with
+0EAF: E1      	                pop     hl                      ; the contents of IY
+0EB0: CD560B  	                call    print_word
+              	; Print the filename:
+0EB3: 21500F  	                ld      hl, dump_fcb_2
+0EB6: CD690B  	                call    puts
+0EB9: FDE5    	                push    iy
+0EBB: E1      	                pop     hl
+0EBC: CD690B  	                call    puts
+              	; Print file size:
+0EBF: 21650F  	                ld      hl, dump_fcb_3
+0EC2: CD690B  	                call    puts
+0EC5: FD660F  	                ld      h, (iy + fcb_file_size + 3)
+0EC8: FD6E0E  	                ld      l, (iy + fcb_file_size + 2)
+0ECB: CD560B  	                call    print_word
+0ECE: FD660D  	                ld      h, (iy + fcb_file_size + 1)
+0ED1: FD6E0C  	                ld      l, (iy + fcb_file_size)
+0ED4: CD560B  	                call    print_word
+              	; Print cluster number:
+0ED7: 217A0F  	                ld      hl, dump_fcb_4
+0EDA: CD690B  	                call    puts
+0EDD: FD6611  	                ld      h, (iy + fcb_first_cluster + 1)
+0EE0: FD6E10  	                ld      l, (iy + fcb_first_cluster)
+0EE3: CD560B  	                call    print_word
+              	; Print file type:
+0EE6: 218F0F  	                ld      hl, dump_fcb_5
+0EE9: CD690B  	                call    puts
+0EEC: FD7E12  	                ld      a, (iy + fcb_file_type)
+0EEF: CD350B  	                call    print_byte
+              	; Print file pointer:
+0EF2: 21A40F  	                ld      hl, dump_fcb_6
+0EF5: CD690B  	                call    puts
+0EF8: FD6616  	                ld      h, (iy + fcb_file_pointer + 3)
+0EFB: FD6E15  	                ld      l, (iy + fcb_file_pointer + 2)
+0EFE: CD560B  	                call    print_word
+0F01: FD6614  	                ld      h, (iy + fcb_file_pointer + 1)
+0F04: FD6E13  	                ld      l, (iy + fcb_file_pointer)
+0F07: CD560B  	                call    print_word
+              	; Print current cluster number:
+0F0A: 21B90F  	                ld      hl, dump_fcb_7
+0F0D: CD690B  	                call    puts
+0F10: FD6618  	                ld      h, (iy + fcb_current_cluster + 1)
+0F13: FD6E17  	                ld      l, (iy + fcb_current_cluster)
+0F16: CD560B  	                call    print_word
+              	; Print current sector:
+0F19: 21CE0F  	                ld      hl, dump_fcb_8
+0F1C: CD690B  	                call    puts
+0F1F: FD661C  	                ld      h, (iy + fcb_current_sector + 3)
+0F22: FD6E1B  	                ld      l, (iy + fcb_current_sector + 2)
+0F25: CD560B  	                call    print_word
+0F28: FD661A  	                ld      h, (iy + fcb_current_sector + 1)
+0F2B: FD6E19  	                ld      l, (iy + fcb_current_sector)
+0F2E: CD560B  	                call    print_word
+0F31: CDD40A  	                call    crlf
+0F34: E1      	                pop     hl
+0F35: F1      	                pop     af
+0F36: C9      	                ret
+0F37: 44756D70	dump_fcb_1      defb    "Dump of FCB at address: ", eos
+0F3B: 206F6620	
+0F3F: 46434220	
+0F43: 61742061	
+0F47: 64647265	
+0F4B: 73733A20	
+0F4F: 00      	
+0F50: 0D0A0946	dump_fcb_2      defb    cr, lf, tab, "File name      : ", eos
+0F54: 696C6520	
+0F58: 6E616D65	
+0F5C: 20202020	
+0F60: 20203A20	
+0F64: 00      	
+0F65: 0D0A0946	dump_fcb_3      defb    cr, lf, tab, "File size      : ", eos
+0F69: 696C6520	
+0F6D: 73697A65	
+0F71: 20202020	
+0F75: 20203A20	
+0F79: 00      	
+0F7A: 0D0A0931	dump_fcb_4      defb    cr, lf, tab, "1st cluster    : ", eos
+0F7E: 73742063	
+0F82: 6C757374	
+0F86: 65722020	
+0F8A: 20203A20	
+0F8E: 00      	
+0F8F: 0D0A0946	dump_fcb_5      defb    cr, lf, tab, "File type      : ", eos
+0F93: 696C6520	
+0F97: 74797065	
+0F9B: 20202020	
+0F9F: 20203A20	
+0FA3: 00      	
+0FA4: 0D0A0946	dump_fcb_6      defb    cr, lf, tab, "File pointer   : ", eos
+0FA8: 696C6520	
+0FAC: 706F696E	
+0FB0: 74657220	
+0FB4: 20203A20	
+0FB8: 00      	
+0FB9: 0D0A0943	dump_fcb_7      defb    cr, lf, tab, "Current cluster: ", eos
+0FBD: 75727265	
+0FC1: 6E742063	
+0FC5: 6C757374	
+0FC9: 65723A20	
+0FCD: 00      	
+0FCE: 0D0A0943	dump_fcb_8      defb    cr, lf, tab, "Current sector : ", eos
+0FD2: 75727265	
+0FD6: 6E742073	
+0FDA: 6563746F	
+0FDE: 72203A20	
+0FE2: 00      	
+              	;
+              	;  Convert a user specified filename to an 8.3-filename without dot and
+              	; with terminating null byte. HL points to the input string, DE points to
+              	; a 12 character buffer for the filename. This function is used by
+              	; fopen which expects a human readable string that will be transformed into
+              	; an 8.3-filename without the dot for the following directory lookup.
+              	;
+0FE3: F5      	str2filename    push    af
+0FE4: C5      	                push    bc
+0FE5: D5      	                push    de
+0FE6: E5      	                push    hl
+0FE7: ED535DFB	                ld      (str2filename_de), de
+0FEB: 3E20    	                ld      a, ' '                  ; Initialize output buffer
+0FED: 060B    	                ld      b, $b                   ; Fill 11 bytes with spaces
+0FEF: 12      	str2filiniloop  ld      (de), a
+0FF0: 13      	                inc     de
+0FF1: 10FC    	                djnz    str2filiniloop
+0FF3: 3E00    	                ld      a, 0                    ; Add terminating null byte
+0FF5: 12      	                ld      (de), a
+0FF6: ED5B5DFB	                ld      de, (str2filename_de)   ; Restore DE pointer
+              	; Start string conversion
+0FFA: 0608    	                ld      b, 8
+0FFC: 7E      	str2filini_nam  ld      a, (hl)
+0FFD: FE00    	                cp      0                       ; End of string reached?
+0FFF: 282F    	                jr      z, str2filini_x
+1001: FE2E    	                cp      '.'                     ; Dot found?
+1003: 2812    	                jr      z, str2filini_ext
+1005: 12      	                ld      (de), a
+1006: 13      	                inc     de
+1007: 23      	                inc     hl
+1008: 05      	                dec     b
+1009: 20F1    	                jr      nz, str2filini_nam
+100B: 7E      	str2filini_skip ld      a, (hl)
+100C: FE00    	                cp      0                       ; End of string without dot?
+100E: 2820    	                jr      z, str2filini_x         ; Nothing more to do
+1010: FE2E    	                cp      '.'
+1012: 2803    	                jr      z, str2filini_ext       ; Take care of extension
+1014: 23      	                inc     hl                      ; Prepare for next character
+1015: 18F4    	                jr      str2filini_skip         ; Skip more characters
+1017: 23      	str2filini_ext  inc     hl                      ; Skip the dot
+1018: E5      	                push    hl                      ; Make sure DE points
+1019: 2A5DFB  	                ld      hl, (str2filename_de)   ; into the filename buffer
+101C: 010800  	                ld      bc, 8                   ; at the start position
+101F: 09      	                add     hl, bc                  ; of the filename extension
+1020: 545D    	                ld      de, hl
+1022: E1      	                pop     hl
+1023: 0603    	                ld      b, 3
+1025: 7E      	str2filini_elp  ld      a, (hl)
+1026: FE00    	                cp      0                       ; End of string reached?
+1028: 2806    	                jr      z, str2filini_x         ; Nothing more to do
+102A: 12      	                ld      (de), a
+102B: 13      	                inc     de
+102C: 23      	                inc     hl
+102D: 05      	                dec     b
+102E: 20F5    	                jr      nz, str2filini_elp      ; Next extension character
+1030: E1      	str2filini_x    pop     hl
+1031: D1      	                pop     de
+1032: C1      	                pop     bc
+1033: F1      	                pop     af
+1034: C9      	                ret
+              	;
+              	;  Open a file with given filename (format: 'FFFFFFFFXXX') in the root directory
+              	; and return the 1st cluster number for that file. If the file can not
+              	; be found, $0000 will be returned.
+              	;  At entry, HL must point to the string buffer while IY points to a valid
+              	; file control block that will hold all necessary data for future file accesses.
+              	;
+1035: F5      	fopen   push    af
+1036: C5      	                push    bc
+1037: D5      	                push    de
+1038: DDE5    	                push    ix
+103A: 2255FB  	                ld      (fopen_scr), hl
+103D: 21DCFD  	                ld      hl, fatname             ; Check if a disk has been
+1040: 7E      	                ld      a, (hl)                 ; mounted.
+1041: FE00    	                cp      0
+1043: CAEC10  	                jp      z, fopen_e1             ; No disk - error exit
+1046: CD8E0E  	                call    clear_fcb
+1049: FDE5    	                push    iy                      ; Copy IY to DE
+104B: D1      	                pop     de
+104C: 2A55FB  	                ld      hl, (fopen_scr) ; Create the filename
+104F: CDE30F  	                call    str2filename            ; Convert string to a filename
+1052: 2100FE  	                ld      hl, buffer              ; Compute buffer overflow
+1055: 010002  	                ld      bc, $0200               ; address - this is the bfr siz.
+1058: 09      	                add     hl, bc                  ; and will be used in the loop
+1059: 225BFB  	                ld      (fopen_eob), hl         ; This is the buffer end addr.
+              	;
+105C: 2AF8FD  	                ld      hl, (rootstart)         ; Remember the initial root
+105F: 2257FB  	                ld      (fopen_rsc), hl         ; sector number
+1062: 2AFAFD  	                ld      hl, (rootstart + 2)
+1065: 2259FB  	                ld      (fopen_rsc + 2), hl
+              	; Read one root directory sector
+1068: ED4B59FB	fopen_nbf       ld      bc, (fopen_rsc + 2)
+106C: ED5B57FB	                ld      de, (fopen_rsc)
+1070: 2100FE  	                ld      hl, buffer
+1073: CD2B0C  	                call    ide_rs                  ; Read one sector
+1076: DAF110  	                jp      c, fopen_e2             ; Exit on read error
+1079: 2255FB  	fopen_lp        ld      (fopen_scr), hl
+107C: AF      	                xor     a                       ; Last entry?
+107D: BE      	                cp      (hl)                    ; The last entry has first
+107E: CAF710  	                jp      z, fopen_x              ; byte = $0
+1081: 3EE5    	                ld      a, $e5                  ; Deleted entry?
+1083: BE      	                cp      (hl)
+1084: 284B    	                jr      z, fopen_nxt            ; Get next entry
+              	;                ld      (fopen_scr), hl
+1086: DD2A55FB	                ld      ix, (fopen_scr)
+108A: DD7E0B  	                ld      a, (ix + $b)            ; Get attribute byte
+108D: FE0F    	                cp      $0f
+108F: 2840    	                jr      z, fopen_nxt            ; Skip long name
+1091: CB67    	                bit     4, a                    ; Skip directories
+1093: 203C    	                jr      nz, fopen_nxt
+              	; Compare the filename with the one we are looking for:
+1095: DD360B00	                ld      (ix + $b), 0            ; Clear attribute byte
+1099: ED5B55FB	                ld      de, (fopen_scr)
+109D: FDE5    	                push    iy                      ; Prepare string comparison
+109F: E1      	                pop     hl
+10A0: CDC20A  	                call    strcmp                  ; Compare filename with string
+10A3: FE00    	                cp      0                       ; Are strings equal?
+10A5: 202A    	                jr      nz, fopen_nxt           ; No - check next entry
+10A7: DD7E1B  	                ld      a, (ix + $1a + 1)       ; Read cluster number and
+              	; Save cluster_number into fcb_first_cluster:
+10AA: FD7711  	                ld      (iy + fcb_first_cluster + 1), a
+10AD: DD7E1A  	                ld      a, (ix + $1a)
+10B0: FD7710  	                ld      (iy + fcb_first_cluster), a
+10B3: DD7E1C  	                ld      a, (ix + $1c)           ; Save file size to FCB
+10B6: FD770C  	                ld      (iy + fcb_file_size), a
+10B9: DD7E1D  	                ld      a, (ix + $1d)           ; Save file size to FCB
+10BC: FD770D  	                ld      (iy + fcb_file_size + 1), a
+10BF: DD7E1E  	                ld      a, (ix + $1e)           ; Save file size to FCB
+10C2: FD770E  	                ld      (iy + fcb_file_size + 2), a
+10C5: DD7E1F  	                ld      a, (ix + $1f)           ; Save file size to FCB
+10C8: FD770F  	                ld      (iy + fcb_file_size + 3), a
+10CB: FD361201	                ld      (iy + fcb_file_type), 1 ; Set file type to found
+10CF: 1826    	                jr      fopen_x                 ; Terminate lookup loop
+10D1: 012000  	fopen_nxt       ld      bc, $20
+10D4: 2A55FB  	                ld      hl, (fopen_scr)
+10D7: 09      	                add     hl, bc
+10D8: 2255FB  	                ld      (fopen_scr), hl
+10DB: ED4B5BFB	                ld      bc, (fopen_eob)         ; Check for end of buffer
+10DF: A7      	                and     a                       ; Clear carry
+10E0: ED42    	                sbc     hl, bc                  ; ...no 16 bit cp :-(
+10E2: C27910  	                jp      nz, fopen_lp            ; Buffer is still valid
+10E5: 2157FB  	                ld      hl, fopen_rsc           ; Increment sector number
+10E8: 34      	                inc     (hl)                    ; 16 bits are enough :-)
+10E9: C36810  	                jp      fopen_nbf               ; Read next directory sector
+10EC: 21FD10  	fopen_e1        ld      hl, fopen_nmn           ; No disk mounted
+10EF: 1803    	                jr      fopen_err               ; Print error message
+10F1: 211E11  	fopen_e2        ld      hl, fopen_rer           ; Directoy sector read error
+10F4: CD690B  	fopen_err       call    puts
+10F7: DDE1    	fopen_x         pop     ix
+10F9: D1      	                pop     de
+10FA: C1      	                pop     bc
+10FB: F1      	                pop     af
+10FC: C9      	                ret
+10FD: 46415441	fopen_nmn       defb    "FATAL(FOPEN): No disk mounted!", cr, lf, eos
+1101: 4C28464F	
+1105: 50454E29	
+1109: 3A204E6F	
+110D: 20646973	
+1111: 6B206D6F	
+1115: 756E7465	
+1119: 64210D0A	
+111D: 00      	
+111E: 46415441	fopen_rer       defb    "FATAL(FOPEN): Could not read directory sector!"
+1122: 4C28464F	
+1126: 50454E29	
+112A: 3A20436F	
+112E: 756C6420	
+1132: 6E6F7420	
+1136: 72656164	
+113A: 20646972	
+113E: 6563746F	
+1142: 72792073	
+1146: 6563746F	
+114A: 7221    	
+114C: 0D0A00  	                defb    cr, lf, eos
+              	;
+              	;  Convert a cluster number into a sector number. The cluster number is
+              	; expected in HL, the corresponding sector number will be returned in
+              	; BC and DE, thus ide_rs or ide_ws can be called afterwards.
+              	;
+              	; SECNUM = (CLUNUM - 2) * CLUSIZ + DATASTART
+              	;
+114F: F5      	clu2sec         push    af                      ; Since the 32 bit
+1150: E5      	                push    hl                      ; multiplication routine
+1151: D9      	                exx                             ; needs shadow registers
+1152: C5      	                push    bc                      ; we have to push many,
+1153: D5      	                push    de                      ; many registers here
+1154: E5      	                push    hl
+1155: 010000  	                ld      bc, 0                   ; Clear BC' and DE' for
+1158: 5059    	                ld      de, bc                  ; 32 bit multiplication
+115A: D9      	                exx
+115B: 010200  	                ld      bc, 2                   ; Subtract 2
+115E: ED42    	                sbc     hl, bc                  ; HL = CLUNUM - 2
+1160: 444D    	                ld      bc, hl                  ; BC = HL; BC' = 0
+1162: 3AE5FD  	                ld      a, (clusiz)
+1165: 1600    	                ld      d, 0                    ; CLUSIZ bits 8 to 15
+1167: 5F      	                ld      e, a                    ; DE = CLUSIZ
+1168: CD540D  	                call    MUL32                   ; HL = (CLUNUM - 2) * CLUSIZ
+116B: ED5BFCFD	                ld      de, (datastart)
+116F: D9      	                exx
+1170: ED5BFEFD	                ld      de, (datastart + 2)
+1174: D9      	                exx
+1175: CD4E0D  	                call    ADD32                   ; HL = HL + DATASTART
+1178: D9      	                exx
+1179: E5      	                push    hl
+117A: D9      	                exx
+117B: C1      	                pop     bc
+117C: 545D    	                ld      de, hl
+117E: D9      	                exx
+117F: E1      	                pop     hl
+1180: D1      	                pop     de
+1181: C1      	                pop     bc
+1182: D9      	                exx
+1183: E1      	                pop     hl
+1184: F1      	                pop     af
+1185: C9      	                ret
+              	;
+              	; Print a directory listing
+              	;
+1186: F5      	dirlist         push    af
+1187: C5      	                push    bc
+1188: D5      	                push    de
+1189: E5      	                push    hl
+118A: DDE5    	                push    ix
+118C: 21DCFD  	                ld      hl, fatname
+118F: 7E      	                ld      a, (hl)
+1190: FE00    	                cp      0
+1192: CA5912  	                jp      z, dirlist_nodisk
+1195: DD216DFB	                ld      ix, string_81_bfr
+1199: DD36082E	                ld      (ix + 8), '.'           ; Dot between name and extens.
+119D: DD360C00	                ld      (ix + 12), 0            ; String terminator
+11A1: 218912  	                ld      hl, dirlist_0           ; Print title line
+11A4: CD690B  	                call    puts
+11A7: 2100FE  	                ld      hl, buffer              ; Compute buffer overflow
+11AA: 010002  	                ld      bc, $0200               ; address - this is the bfr siz.
+11AD: 09      	                add     hl, bc
+11AE: 2251FB  	                ld      (dirlist_eob), hl       ; This is the buffer end addr.
+              	;
+11B1: 2AF8FD  	                ld      hl, (rootstart)         ; Remember the initial root
+11B4: 224DFB  	                ld      (dirlist_rootsec), hl   ; sector number
+11B7: 2AFAFD  	                ld      hl, (rootstart + 2)
+11BA: 224FFB  	                ld      (dirlist_rootsec + 2), hl
+              	; Read one root directory sector
+11BD: ED4B4FFB	dirlist_nbfr    ld      bc, (dirlist_rootsec + 2)
+11C1: ED5B4DFB	                ld      de, (dirlist_rootsec)
+11C5: 2100FE  	                ld      hl, buffer
+11C8: CD2B0C  	                call    ide_rs
+11CB: DA5412  	                jp      c, dirlist_e1
+11CE: AF      	dirlist_loop    xor     a                       ; Last entry?
+11CF: BE      	                cp      (hl)                    ; The last entry has first
+11D0: CA5F12  	                jp      z, dirlist_exit         ; byte = $0
+11D3: 3EE5    	                ld      a, $e5                  ; Deleted entry?
+11D5: BE      	                cp      (hl)
+11D6: 2867    	                jr      z, dirlist_next
+11D8: 2253FB  	                ld      (dirlist_scratch), hl
+11DB: DD2A53FB	                ld      ix, (dirlist_scratch)
+11DF: DD7E0B  	                ld      a, (ix + $b)            ; Get attribute byte
+11E2: FE0F    	                cp      $0f
+11E4: 2859    	                jr      z, dirlist_next         ; Skip long name
+11E6: 116DFB  	                ld      de, string_81_bfr       ; Prepare for output
+11E9: 010800  	                ld      bc, 8                   ; Copy first eight characters
+11EC: EDB0    	                ldir
+11EE: 13      	                inc     de
+11EF: 010300  	                ld      bc, 3                   ; Copy extension
+11F2: EDB0    	                ldir
+              	;                ld      hl, de
+              	;                ld      (hl), 0                 ; String terminator
+11F4: 216DFB  	                ld      hl, string_81_bfr
+11F7: CD690B  	                call    puts       
+11FA: 215E13  	                ld      hl, dirlist_NODIR       ; Flag directories with "DIR"
+11FD: CB67    	                bit     4, a
+11FF: 2803    	                jr      z, dirlist_prtdir
+1201: 215813  	                ld      hl, dirlist_DIR
+1204: CD690B  	dirlist_prtdir  call    puts
+1207: DD661F  	                ld      h, (ix + $1c + 3)       ; Get and print file size
+120A: DD6E1E  	                ld      l, (ix + $1c + 2)
+120D: CD560B  	                call    print_word
+1210: DD661D  	                ld      h, (ix + $1c + 1)
+1213: DD6E1C  	                ld      l, (ix + $1c)
+1216: CD560B  	                call    print_word
+              	; Get and print start sector
+1219: 3E09    	                ld      a, tab
+121B: CD630B  	                call    putc
+121E: DD661B  	                ld      h, (ix + $1a + 1)       ; Get cluster number
+1221: DD6E1A  	                ld      l, (ix + $1a)
+1224: 010000  	                ld      bc, 0                   ; Is file empty?
+1227: A7      	                and     a                       ; Clear carry
+1228: ED42    	                sbc     hl, bc                  ; Empty file -> Z set
+122A: 280D    	                jr      z, dirlist_nosize
+122C: CD4F11  	                call    clu2sec
+122F: 6069    	                ld      hl, bc
+1231: CD560B  	                call    print_word
+1234: 626B    	                ld      hl, de
+1236: CD560B  	                call    print_word
+1239: CDD40A  	dirlist_nosize  call    crlf
+123C: 2A53FB  	                ld      hl, (dirlist_scratch)
+123F: 012000  	dirlist_next    ld      bc, $20
+1242: 09      	                add     hl, bc
+1243: ED4B51FB	                ld      bc, (dirlist_eob)       ; Check for end of buffer
+1247: A7      	                and     a
+1248: ED42    	                sbc     hl, bc
+124A: C2CE11  	                jp      nz, dirlist_loop        ; Buffer is still valid
+124D: 214DFB  	                ld      hl, dirlist_rootsec
+1250: 34      	                inc     (hl)
+1251: C3BD11  	                jp      dirlist_nbfr
+1254: 212613  	dirlist_e1      ld      hl, dirlist_1
+1257: 1803    	                jr      dirlist_x
+1259: 216612  	dirlist_nodisk  ld      hl, dirlist_nomnt
+125C: CD690B  	dirlist_x       call    puts
+125F: DDE1    	dirlist_exit    pop     ix
+1261: E1      	                pop     hl
+1262: D1      	                pop     de
+1263: C1      	                pop     bc
+1264: F1      	                pop     af
+1265: C9      	                ret
+1266: 46415441	dirlist_nomnt   defb    "FATAL(DIRLIST): No disk mounted!", cr, lf, eos
+126A: 4C284449	
+126E: 524C4953	
+1272: 54293A20	
+1276: 4E6F2064	
+127A: 69736B20	
+127E: 6D6F756E	
+1282: 74656421	
+1286: 0D0A00  	
+1289: 44697265	dirlist_0       defb    "Directory contents:", cr, lf
+128D: 63746F72	
+1291: 7920636F	
+1295: 6E74656E	
+1299: 74733A0D	
+129D: 0A      	
+129E: 2D2D2D2D	                defb    "-------------------------------------------", cr, lf
+12A2: 2D2D2D2D	
+12A6: 2D2D2D2D	
+12AA: 2D2D2D2D	
+12AE: 2D2D2D2D	
+12B2: 2D2D2D2D	
+12B6: 2D2D2D2D	
+12BA: 2D2D2D2D	
+12BE: 2D2D2D2D	
+12C2: 2D2D2D2D	
+12C6: 2D2D2D0D	
+12CA: 0A      	
+12CB: 46494C45	                defb    "FILENAME.EXT  DIR?   SIZE (BYTES)"
+12CF: 4E414D45	
+12D3: 2E455854	
+12D7: 20204449	
+12DB: 523F2020	
+12DF: 2053495A	
+12E3: 45202842	
+12E7: 59544553	
+12EB: 29      	
+12EC: 20203153	                defb    "  1ST SECT", cr, lf
+12F0: 54205345	
+12F4: 43540D0A	
+12F8: 2D2D2D2D	                defb    "-------------------------------------------", cr, lf
+12FC: 2D2D2D2D	
+1300: 2D2D2D2D	
+1304: 2D2D2D2D	
+1308: 2D2D2D2D	
+130C: 2D2D2D2D	
+1310: 2D2D2D2D	
+1314: 2D2D2D2D	
+1318: 2D2D2D2D	
+131C: 2D2D2D2D	
+1320: 2D2D2D0D	
+1324: 0A      	
+1325: 00      	                defb    eos
+1326: 46415441	dirlist_1       defb    "FATAL(DIRLIST): Could not read directory sector"
+132A: 4C284449	
+132E: 524C4953	
+1332: 54293A20	
+1336: 436F756C	
+133A: 64206E6F	
+133E: 74207265	
+1342: 61642064	
+1346: 69726563	
+134A: 746F7279	
+134E: 20736563	
+1352: 746F72  	
+1355: 0D0A00  	                defb    cr, lf, eos
+1358: 09444952	dirlist_DIR     defb    tab, "DIR", tab, eos
+135C: 0900    	
+135E: 090900  	dirlist_NODIR   defb    tab, tab, eos
+              	;
+              	; Perform a disk mount
+              	;
+1361: F5      	fatmount        push    af
+1362: C5      	                push    bc
+1363: D5      	                push    de
+1364: E5      	                push    hl
+1365: DDE5    	                push    ix
+1367: 2100FE  	                ld      hl, buffer              ; Read MBR into buffer
+136A: 010000  	                ld      bc, 0
+136D: 110000  	                ld      de, 0
+1370: CD2B0C  	                call    ide_rs
+1373: DAD914  	                jp      c, fatmount_e1          ; Error reading MBR?
+1376: DD21FEFF	                ld      ix, buffer + $1fe       ; Check for $55AA as MBR trailer
+137A: 3E55    	                ld      a, $55
+137C: DDBE00  	                cp      (ix)
+137F: C2DE14  	                jp      nz, fatmount_e2
+1382: 3EAA    	                ld      a, $aa
+1384: DDBE01  	                cp      (ix + 1)
+1387: C2DE14  	                jp      nz, fatmount_e2
+138A: 010800  	                ld      bc, 8                   ; Get partition start and size
+138D: 21C6FF  	                ld      hl, buffer + $1c6
+1390: 11ECFD  	                ld      de, pstart
+1393: EDB0    	                ldir
+1395: 2100FE  	                ld      hl, buffer              ; Read partition boot block
+1398: ED5BECFD	                ld      de, (pstart)
+139C: ED4BEEFD	                ld      bc, (pstart + 2)
+13A0: CD2B0C  	                call    ide_rs
+13A3: DAE314  	                jp      c, fatmount_e3          ; Error reading boot block?
+13A6: 010800  	                ld      bc, 8                   ; Copy FAT name
+13A9: 2103FE  	                ld      hl, buffer + 3
+13AC: 11DCFD  	                ld      de, fatname
+13AF: EDB0    	                ldir
+13B1: DD2100FE	                ld      ix, buffer
+13B5: 3E02    	                ld      a, 2                    ; Check for two FATs
+13B7: DDBE10  	                cp      (ix + $10)
+13BA: C2E814  	                jp      nz, fatmount_e4         ; Wrong number of FATs
+13BD: AF      	                xor     a                       ; Check for 512 bytes / sector
+13BE: DDBE0B  	                cp      (ix + $b)
+13C1: C2ED14  	                jp      nz, fatmount_e5
+13C4: 3E02    	                ld      a, 2
+13C6: DDBE0C  	                cp      (ix + $c)
+13C9: C2ED14  	                jp      nz, fatmount_e5
+13CC: 3A0DFE  	                ld      a, (buffer + $d)        ; Get cluster size
+13CF: 32E5FD  	                ld      (clusiz), a
+13D2: ED4B0EFE	                ld      bc, (buffer + $e)       ; Get reserved sector number
+13D6: ED43E6FD	                ld      (ressec), bc
+13DA: ED4B16FE	                ld      bc, (buffer + $16)      ; Get FAT size in sectors
+13DE: ED43E8FD	                ld      (fatsec), bc
+13E2: ED4B11FE	                ld      bc, (buffer + $11)      ; Get length of root directory
+13E6: ED43EAFD	                ld      (rootlen), bc
+13EA: 2AECFD  	                ld      hl, (pstart)            ; Compute
+13ED: ED4BE6FD	                ld      bc, (ressec)            ; FAT1START = PSTART + RESSEC
+13F1: 09      	                add     hl, bc
+13F2: 22F4FD  	                ld      (fat1start), hl
+13F5: 2AEEFD  	                ld      hl, (pstart + 2)
+13F8: 010000  	                ld      bc, 0
+13FB: ED4A    	                adc     hl, bc
+13FD: 22F6FD  	                ld      (fat1start + 2), hl
+1400: 2AE8FD  	                ld      hl, (fatsec)            ; Compute ROOTSTART for two FATs
+1403: 29      	                add     hl, hl                  ; ROOTSTART = FAT1START +
+1404: 444D    	                ld      bc, hl                  ;             2 * FATSIZ
+1406: 2AF4FD  	                ld      hl, (fat1start)
+1409: 09      	                add     hl, bc
+140A: 22F8FD  	                ld      (rootstart), hl
+140D: 2AF6FD  	                ld      hl, (fat1start + 2)
+1410: 010000  	                ld      bc, 0
+1413: ED4A    	                adc     hl, bc
+1415: 22FAFD  	                ld      (rootstart + 2), hl
+1418: ED4BEAFD	                ld      bc, (rootlen)           ; Compute rootlen / 16
+141C: CB28    	                sra     b                       ; By shifting it four places
+141E: CB19    	                rr      c                       ; to the right
+1420: CB28    	                sra     b                       ; This value will be used
+1422: CB19    	                rr      c                       ; for the calculation of
+1424: CB28    	                sra     b                       ; DATASTART
+1426: CB19    	                rr      c
+1428: CB28    	                sra     b
+142A: CB19    	                rr      c
+142C: 2AF8FD  	                ld      hl, (rootstart)         ; Computer DATASTART
+142F: 09      	                add     hl, bc
+1430: 22FCFD  	                ld      (datastart), hl
+1433: 2AFAFD  	                ld      hl, (rootstart + 2)
+1436: 010000  	                ld      bc, 0
+1439: ED4A    	                adc     hl, bc
+143B: 22FEFD  	                ld      (datastart + 2), hl
+143E: 21D915  	                ld      hl, fatmount_s1         ; Print mount summary
+1441: CD690B  	                call    puts
+1444: 21DCFD  	                ld      hl, fatname
+1447: CD690B  	                call    puts
+144A: 21E415  	                ld      hl, fatmount_s2
+144D: CD690B  	                call    puts
+1450: 3AE5FD  	                ld      a, (clusiz)
+1453: CD350B  	                call    print_byte
+1456: 21F015  	                ld      hl, fatmount_s3
+1459: CD690B  	                call    puts
+145C: 2AE6FD  	                ld      hl, (ressec)
+145F: CD560B  	                call    print_word
+1462: 21FC15  	                ld      hl, fatmount_s4
+1465: CD690B  	                call    puts
+1468: 2AE8FD  	                ld      hl, (fatsec)
+146B: CD560B  	                call    print_word
+146E: 210816  	                ld      hl, fatmount_s5
+1471: CD690B  	                call    puts
+1474: 2AEAFD  	                ld      hl, (rootlen)
+1477: CD560B  	                call    print_word
+147A: 211516  	                ld      hl, fatmount_s6
+147D: CD690B  	                call    puts
+1480: 2AF2FD  	                ld      hl, (psiz + 2)
+1483: CD560B  	                call    print_word
+1486: 2AF0FD  	                ld      hl, (psiz)
+1489: CD560B  	                call    print_word
+148C: 212016  	                ld      hl, fatmount_s7
+148F: CD690B  	                call    puts
+1492: 2AEEFD  	                ld      hl, (pstart + 2)
+1495: CD560B  	                call    print_word
+1498: 2AECFD  	                ld      hl, (pstart)
+149B: CD560B  	                call    print_word
+149E: 212C16  	                ld      hl, fatmount_s8
+14A1: CD690B  	                call    puts
+14A4: 2AF6FD  	                ld      hl, (fat1start + 2)
+14A7: CD560B  	                call    print_word
+14AA: 2AF4FD  	                ld      hl, (fat1start)
+14AD: CD560B  	                call    print_word
+14B0: 213B16  	                ld      hl, fatmount_s9
+14B3: CD690B  	                call    puts
+14B6: 2AFAFD  	                ld      hl, (rootstart + 2)
+14B9: CD560B  	                call    print_word
+14BC: 2AF8FD  	                ld      hl, (rootstart)
+14BF: CD560B  	                call    print_word
+14C2: 214A16  	                ld      hl, fatmount_sa
+14C5: CD690B  	                call    puts
+14C8: 2AFEFD  	                ld      hl, (datastart + 2)
+14CB: CD560B  	                call    print_word
+14CE: 2AFCFD  	                ld      hl, (datastart)
+14D1: CD560B  	                call    print_word
+14D4: CDD40A  	                call    crlf
+14D7: 181A    	                jr      fatmount_exit
+14D9: 21FA14  	fatmount_e1     ld      hl, fatmount_1
+14DC: 1812    	                jr      fatmount_x
+14DE: 212115  	fatmount_e2     ld      hl, fatmount_2
+14E1: 180D    	                jr      fatmount_x
+14E3: 214115  	fatmount_e3     ld      hl, fatmount_3
+14E6: 1808    	                jr      fatmount_x
+14E8: 217815  	fatmount_e4     ld      hl, fatmount_4
+14EB: 1803    	                jr      fatmount_x
+14ED: 21A515  	fatmount_e5     ld      hl, fatmount_5
+14F0: CD690B  	fatmount_x      call    puts
+14F3: DDE1    	fatmount_exit   pop     ix
+14F5: E1      	                pop     hl
+14F6: D1      	                pop     de
+14F7: C1      	                pop     bc
+14F8: F1      	                pop     af
+14F9: C9      	                ret
+14FA: 46415441	fatmount_1      defb    "FATAL(FATMOUNT): Could not read MBR!", cr, lf, eos
+14FE: 4C284641	
+1502: 544D4F55	
+1506: 4E54293A	
+150A: 20436F75	
+150E: 6C64206E	
+1512: 6F742072	
+1516: 65616420	
+151A: 4D425221	
+151E: 0D0A00  	
+1521: 46415441	fatmount_2      defb    "FATAL(FATMOUNT): Illegal MBR!", cr, lf, eos
+1525: 4C284641	
+1529: 544D4F55	
+152D: 4E54293A	
+1531: 20496C6C	
+1535: 6567616C	
+1539: 204D4252	
+153D: 210D0A00	
+1541: 46415441	fatmount_3      defb    "FATAL(FATMOUNT): Could not read partition boot block"
+1545: 4C284641	
+1549: 544D4F55	
+154D: 4E54293A	
+1551: 20436F75	
+1555: 6C64206E	
+1559: 6F742072	
+155D: 65616420	
+1561: 70617274	
+1565: 6974696F	
+1569: 6E20626F	
+156D: 6F742062	
+1571: 6C6F636B	
+1575: 0D0A00  	                defb    cr, lf, eos
+1578: 46415441	fatmount_4      defb    "FATAL(FATMOUNT): FAT number not equal two!"
+157C: 4C284641	
+1580: 544D4F55	
+1584: 4E54293A	
+1588: 20464154	
+158C: 206E756D	
+1590: 62657220	
+1594: 6E6F7420	
+1598: 65717561	
+159C: 6C207477	
+15A0: 6F21    	
+15A2: 0D0A00  	                defb    cr, lf, eos
+15A5: 46415441	fatmount_5      defb    "FATAL(FATMOUNT): Sector size not equal 512 bytes!"
+15A9: 4C284641	
+15AD: 544D4F55	
+15B1: 4E54293A	
+15B5: 20536563	
+15B9: 746F7220	
+15BD: 73697A65	
+15C1: 206E6F74	
+15C5: 20657175	
+15C9: 616C2035	
+15CD: 31322062	
+15D1: 79746573	
+15D5: 21      	
+15D6: 0D0A00  	                defb    cr, lf, eos
+15D9: 09464154	fatmount_s1     defb    tab, "FATNAME:", tab, eos
+15DD: 4E414D45	
+15E1: 3A0900  	
+15E4: 0D0A0943	fatmount_s2     defb    cr, lf, tab, "CLUSIZ:", tab, eos
+15E8: 4C555349	
+15EC: 5A3A0900	
+15F0: 0D0A0952	fatmount_s3     defb    cr, lf, tab, "RESSEC:", tab, eos
+15F4: 45535345	
+15F8: 433A0900	
+15FC: 0D0A0946	fatmount_s4     defb    cr, lf, tab, "FATSEC:", tab, eos
+1600: 41545345	
+1604: 433A0900	
+1608: 0D0A0952	fatmount_s5     defb    cr, lf, tab, "ROOTLEN:", tab, eos
+160C: 4F4F544C	
+1610: 454E3A09	
+1614: 00      	
+1615: 0D0A0950	fatmount_s6     defb    cr, lf, tab, "PSIZ:", tab, tab, eos
+1619: 53495A3A	
+161D: 090900  	
+1620: 0D0A0950	fatmount_s7     defb    cr, lf, tab, "PSTART:", tab, eos
+1624: 53544152	
+1628: 543A0900	
+162C: 0D0A0946	fatmount_s8     defb    cr, lf, tab, "FAT1START:", tab, eos
+1630: 41543153	
+1634: 54415254	
+1638: 3A0900  	
+163B: 0D0A0952	fatmount_s9     defb    cr, lf, tab, "ROOTSTART:", tab, eos
+163F: 4F4F5453	
+1643: 54415254	
+1647: 3A0900  	
+164A: 0D0A0944	fatmount_sa     defb    cr, lf, tab, "DATASTART:", tab, eos
+164E: 41544153	
+1652: 54415254	
+1656: 3A0900  	
+              	;
+              	;  Dismount a FAT volume (invalidate the FAT control block by setting the
+              	; first byte (of fatname) to zero.
+              	;
+1659: F5      	fatunmount      push    af
+165A: E5      	                push    hl
+165B: AF      	                xor     a
+165C: 21DCFD  	                ld      hl, fatname
+165F: 77      	                ld      (hl), a
+1660: E1      	                pop     hl
+1661: F1      	                pop     af
+1662: C9      	                ret
+              	;
+1663: 54484520	                defb    "THE MONITOR ENDS HERE...", eos
+1667: 4D4F4E49	
+166B: 544F5220	
+166F: 454E4453	
+1673: 20484552	
+1677: 452E2E2E	
+167B: 00      	
+***ERROR*** No such file or directory: file = "/pub/Develop/Projects/zasm-4.0/Test/Z80/original/z80mon." (fd108)
+
+
+; +++ segments +++
+
+#CODE          = $0000 =     0,  size = $167C =  5756
+
+; +++ global symbols +++
+
+ADD32               = $0D4E =  3406          z80mon.asm:1669
+MUL32               = $0D54 =  3412          z80mon.asm:1681
+MUL32LOOP           = $0D5D =  3421          z80mon.asm:1687
+MUL32NOADD          = $0D6D =  3437          z80mon.asm:1698
+_end                = $167C =  5756          z80mon.asm:71 (unused)
+_size               = $167C =  5756          z80mon.asm:71 (unused)
+buffer              = $FE00 = 65024          z80mon.asm:78
+cat_file            = $0234 =   564          z80mon.asm:488
+cat_file_exit       = $025B =   603          z80mon.asm:504
+cat_file_loop       = $0251 =   593          z80mon.asm:500
+cat_file_prompt     = $0261 =   609          z80mon.asm:509
+cg_msg              = $019D =   413          z80mon.asm:461
+clear_fcb           = $0E8E =  3726          z80mon.asm:1872
+clear_msg           = $0D46 =  3398          z80mon.asm:1654
+clu2sec             = $114F =  4431          z80mon.asm:2124
+clusiz              = $FDE5 = 64997          z80mon.asm:90
+cluster_sector      = $FBDB = 64475          z80mon.asm:97
+cmd_error           = $0147 =   327          z80mon.asm:451
+cold_start          = $0D35 =  3381          z80mon.asm:1647
+cold_start_msg      = $0204 =   516          z80mon.asm:467
+command_err_msg     = $01BA =   442          z80mon.asm:465
+cr                  = $000D =    13          z80mon.asm:150
+crlf                = $0AD4 =  2772          z80mon.asm:1228
+current_cluster     = $FBD5 = 64469          z80mon.asm:99
+current_sector      = $FBD7 = 64471          z80mon.asm:98
+datastart           = $FDFC = 65020          z80mon.asm:82
+dg_msg              = $01A6 =   422          z80mon.asm:462
+directory           = $0270 =   624          z80mon.asm:514
+directory_msg       = $027C =   636          z80mon.asm:520
+dirlist             = $1186 =  4486          z80mon.asm:2161
+dirlist_0           = $1289 =  4745          z80mon.asm:2258
+dirlist_1           = $1326 =  4902          z80mon.asm:2264
+dirlist_DIR         = $1358 =  4952          z80mon.asm:2266
+dirlist_NODIR       = $135E =  4958          z80mon.asm:2267
+dirlist_e1          = $1254 =  4692          z80mon.asm:2247
+dirlist_eob         = $FB51 = 64337          z80mon.asm:132
+dirlist_exit        = $125F =  4703          z80mon.asm:2251
+dirlist_loop        = $11CE =  4558          z80mon.asm:2190
+dirlist_nbfr        = $11BD =  4541          z80mon.asm:2185
+dirlist_next        = $123F =  4671          z80mon.asm:2238
+dirlist_nodisk      = $1259 =  4697          z80mon.asm:2249
+dirlist_nomnt       = $1266 =  4710          z80mon.asm:2257
+dirlist_nosize      = $1239 =  4665          z80mon.asm:2236
+dirlist_prtdir      = $1204 =  4612          z80mon.asm:2215
+dirlist_rootsec     = $FB4D = 64333          z80mon.asm:133
+dirlist_scratch     = $FB53 = 64339          z80mon.asm:131
+dirlist_x           = $125C =  4700          z80mon.asm:2250
+disk_group          = $00A3 =   163          z80mon.asm:386
+disk_info           = $0288 =   648          z80mon.asm:524
+disk_info_msg       = $02AC =   684          z80mon.asm:540
+disk_trampoline     = $0331 =   817          z80mon.asm:611
+disk_transfer       = $02B4 =   692          z80mon.asm:544
+disk_trx_1          = $02FA =   762          z80mon.asm:573
+disk_trx_exit       = $032A =   810          z80mon.asm:605
+disk_trx_loop       = $030B =   779          z80mon.asm:585
+disk_trx_main       = $02DE =   734          z80mon.asm:562
+disk_trx_msg_0      = $0333 =   819          z80mon.asm:612
+disk_trx_msg_1r     = $033D =   829          z80mon.asm:613
+disk_trx_msg_1w     = $0357 =   855          z80mon.asm:614
+disk_trx_msg_2      = $0372 =   882          z80mon.asm:615
+disk_trx_msg_3      = $0390 =   912          z80mon.asm:616
+disk_trx_msg_4      = $039F =   927          z80mon.asm:617
+disk_trx_nr         = $02D3 =   723          z80mon.asm:558
+disk_trx_rwlp       = $02C0 =   704          z80mon.asm:551
+disk_trx_skip       = $031D =   797          z80mon.asm:596
+dispatch_table      = $001D =    29          z80mon.asm:233
+dump                = $03C1 =   961          z80mon.asm:621
+dump_al_1           = $040C =  1036          z80mon.asm:662
+dump_ascii_loop     = $0404 =  1028          z80mon.asm:658
+dump_fcb            = $0EA5 =  3749          z80mon.asm:1892
+dump_fcb_1          = $0F37 =  3895          z80mon.asm:1953
+dump_fcb_2          = $0F50 =  3920          z80mon.asm:1954
+dump_fcb_3          = $0F65 =  3941          z80mon.asm:1955
+dump_fcb_4          = $0F7A =  3962          z80mon.asm:1956
+dump_fcb_5          = $0F8F =  3983          z80mon.asm:1957
+dump_fcb_6          = $0FA4 =  4004          z80mon.asm:1958
+dump_fcb_7          = $0FB9 =  4025          z80mon.asm:1959
+dump_fcb_8          = $0FCE =  4046          z80mon.asm:1960
+dump_line           = $03DF =   991          z80mon.asm:638
+dump_loop           = $03ED =  1005          z80mon.asm:645
+dump_msg_1          = $0421 =  1057          z80mon.asm:677
+dump_msg_2          = $042E =  1070          z80mon.asm:678
+dump_msg_3          = $0434 =  1076          z80mon.asm:679
+eos                 = $0000 =     0          z80mon.asm:149
+examine             = $0437 =  1079          z80mon.asm:683
+examine_exit        = $045E =  1118          z80mon.asm:702
+examine_loop        = $0449 =  1097          z80mon.asm:691
+examine_msg_1       = $0465 =  1125          z80mon.asm:707
+examine_msg_2       = $0483 =  1155          z80mon.asm:708
+fat1start           = $FDF4 = 65012          z80mon.asm:84
+fatcb               = $FDDC = 64988          z80mon.asm:92
+fatmount            = $1361 =  4961          z80mon.asm:2271
+fatmount_1          = $14FA =  5370          z80mon.asm:2421
+fatmount_2          = $1521 =  5409          z80mon.asm:2422
+fatmount_3          = $1541 =  5441          z80mon.asm:2423
+fatmount_4          = $1578 =  5496          z80mon.asm:2425
+fatmount_5          = $15A5 =  5541          z80mon.asm:2427
+fatmount_e1         = $14D9 =  5337          z80mon.asm:2405
+fatmount_e2         = $14DE =  5342          z80mon.asm:2407
+fatmount_e3         = $14E3 =  5347          z80mon.asm:2409
+fatmount_e4         = $14E8 =  5352          z80mon.asm:2411
+fatmount_e5         = $14ED =  5357          z80mon.asm:2413
+fatmount_exit       = $14F3 =  5363          z80mon.asm:2415
+fatmount_s1         = $15D9 =  5593          z80mon.asm:2429
+fatmount_s2         = $15E4 =  5604          z80mon.asm:2430
+fatmount_s3         = $15F0 =  5616          z80mon.asm:2431
+fatmount_s4         = $15FC =  5628          z80mon.asm:2432
+fatmount_s5         = $1608 =  5640          z80mon.asm:2433
+fatmount_s6         = $1615 =  5653          z80mon.asm:2434
+fatmount_s7         = $1620 =  5664          z80mon.asm:2435
+fatmount_s8         = $162C =  5676          z80mon.asm:2436
+fatmount_s9         = $163B =  5691          z80mon.asm:2437
+fatmount_sa         = $164A =  5706          z80mon.asm:2438
+fatmount_x          = $14F0 =  5360          z80mon.asm:2414
+fatname             = $FDDC = 64988          z80mon.asm:91
+fatsec              = $FDE8 = 65000          z80mon.asm:88
+fatunmount          = $1659 =  5721          z80mon.asm:2443
+fcb                 = $FBBE = 64446          z80mon.asm:105
+fcb_cluster_sector  = $001D =    29          z80mon.asm:114
+fcb_current_cluster = $0017 =    23          z80mon.asm:112
+fcb_current_sector  = $0019 =    25          z80mon.asm:113
+fcb_file_buffer     = $001E =    30          z80mon.asm:115
+fcb_file_pointer    = $0013 =    19          z80mon.asm:111
+fcb_file_size       = $000C =    12          z80mon.asm:108
+fcb_file_type       = $0012 =    18          z80mon.asm:110
+fcb_filename        = $0000 =     0          z80mon.asm:107 (unused)
+fcb_first_cluster   = $0010 =    16          z80mon.asm:109
+fg_msg              = $01AC =   428          z80mon.asm:463
+fgetc               = $0D7A =  3450          z80mon.asm:1717
+fgetc_clu2sec       = $0E04 =  3588          z80mon.asm:1800
+fgetc_continue      = $0DCD =  3533          z80mon.asm:1766
+fgetc_exit          = $0E8A =  3722          z80mon.asm:1864
+fgetc_getc          = $0E56 =  3670          z80mon.asm:1838
+fgetc_rs            = $0E3B =  3643          z80mon.asm:1823
+fgetc_same          = $0E15 =  3605          z80mon.asm:1806
+fgetc_start         = $0DA1 =  3489          z80mon.asm:1741
+file_buffer         = $FBDC = 64476          z80mon.asm:96
+file_group          = $00CE =   206          z80mon.asm:404
+file_name           = $FBBE = 64446          z80mon.asm:104
+file_pointer        = $FBD1 = 64465          z80mon.asm:100
+file_size           = $FBCA = 64458          z80mon.asm:103
+file_type           = $FBD0 = 64464          z80mon.asm:101
+fill                = $048A =  1162          z80mon.asm:713
+fill_exit           = $04DF =  1247          z80mon.asm:763
+fill_get_length     = $04A9 =  1193          z80mon.asm:729
+fill_get_value      = $04CA =  1226          z80mon.asm:747
+fill_msg_1          = $04E4 =  1252          z80mon.asm:768
+fill_msg_2          = $04F1 =  1265          z80mon.asm:769
+fill_msg_3          = $04FA =  1274          z80mon.asm:770
+fill_msg_4          = $0502 =  1282          z80mon.asm:771
+fill_msg_5          = $0516 =  1302          z80mon.asm:772
+first_cluster       = $FBCE = 64462          z80mon.asm:102
+fopen               = $1035 =  4149          z80mon.asm:2028
+fopen_e1            = $10EC =  4332          z80mon.asm:2105
+fopen_e2            = $10F1 =  4337          z80mon.asm:2107
+fopen_eob           = $FB5B = 64347          z80mon.asm:128
+fopen_err           = $10F4 =  4340          z80mon.asm:2108
+fopen_lp            = $1079 =  4217          z80mon.asm:2057
+fopen_nbf           = $1068 =  4200          z80mon.asm:2052
+fopen_nmn           = $10FD =  4349          z80mon.asm:2114
+fopen_nxt           = $10D1 =  4305          z80mon.asm:2094
+fopen_rer           = $111E =  4382          z80mon.asm:2115
+fopen_rsc           = $FB57 = 64343          z80mon.asm:129
+fopen_scr           = $FB55 = 64341          z80mon.asm:130
+fopen_x             = $10F7 =  4343          z80mon.asm:2109
+get_byte            = $0AE7 =  2791          z80mon.asm:1246
+get_nibble          = $0AFA =  2810          z80mon.asm:1263
+get_word            = $0B0C =  2828          z80mon.asm:1275
+getc                = $0AE1 =  2785          z80mon.asm:1238
+gets                = $0B17 =  2839          z80mon.asm:1286
+gets_exit           = $0B2F =  2863          z80mon.asm:1299
+gets_loop           = $0B1A =  2842          z80mon.asm:1289
+group_err_msg       = $01E0 =   480          z80mon.asm:466
+group_error         = $0142 =   322          z80mon.asm:449
+hello_msg           = $0153 =   339          z80mon.asm:458
+help                = $0531 =  1329          z80mon.asm:776
+help_group          = $00F2 =   242          z80mon.asm:419
+help_msg            = $053A =  1338          z80mon.asm:781
+ide_base            = $0010 =    16          z80mon.asm:138
+ide_bfr_exit        = $0BFB =  3067          z80mon.asm:1505
+ide_bfr_loop        = $0BE5 =  3045          z80mon.asm:1493
+ide_bfr_rdy_err     = $0BFD =  3069          z80mon.asm:1507
+ide_bfr_ready       = $0BE1 =  3041          z80mon.asm:1490
+ide_bfr_wait        = $0BEE =  3054          z80mon.asm:1498
+ide_data_high       = $0018 =    24          z80mon.asm:1393
+ide_data_low        = $0010 =    16          z80mon.asm:1392
+ide_ec_exit         = $0C2A =  3114          z80mon.asm:1518
+ide_error_check     = $0C22 =  3106          z80mon.asm:1513
+ide_error_code      = $0011 =    17          z80mon.asm:1394
+ide_get_id          = $0B8B =  2955          z80mon.asm:1450
+ide_get_id_err      = $0BC1 =  3009          z80mon.asm:1478
+ide_get_id_exit     = $0BC7 =  3015          z80mon.asm:1480
+ide_get_id_lp       = $0BB4 =  2996          z80mon.asm:1469
+ide_get_id_msg      = $0BCB =  3019          z80mon.asm:1484
+ide_lba0            = $0013 =    19          z80mon.asm:1411
+ide_lba1            = $0014 =    20          z80mon.asm:1412
+ide_lba2            = $0015 =    21          z80mon.asm:1413
+ide_lba3            = $0016 =    22          z80mon.asm:1414
+ide_rdy_error       = $0D14 =  3348          z80mon.asm:1637
+ide_ready           = $0CF1 =  3313          z80mon.asm:1617
+ide_ready_exit      = $0D12 =  3346          z80mon.asm:1635
+ide_ready_loop      = $0CF5 =  3317          z80mon.asm:1620
+ide_ready_wait      = $0D00 =  3328          z80mon.asm:1626
+ide_retries         = $00FF =   255          z80mon.asm:1443
+ide_rs              = $0C2B =  3115          z80mon.asm:1525
+ide_rs_err          = $0C5B =  3163          z80mon.asm:1549
+ide_rs_err_msg      = $0C64 =  3172          z80mon.asm:1554
+ide_rs_exit         = $0C61 =  3169          z80mon.asm:1551
+ide_rs_loop         = $0C4F =  3151          z80mon.asm:1541
+ide_secnum          = $0012 =    18          z80mon.asm:1407
+ide_set_lba         = $0CDA =  3290          z80mon.asm:1596
+ide_status_cmd      = $0017 =    23          z80mon.asm:1424
+ide_ws              = $0C82 =  3202          z80mon.asm:1561
+ide_ws_err          = $0CB3 =  3251          z80mon.asm:1586
+ide_ws_err_msg      = $0CBC =  3260          z80mon.asm:1591
+ide_ws_exit         = $0CB9 =  3257          z80mon.asm:1588
+ide_ws_loop         = $0CA6 =  3238          z80mon.asm:1577
+ih_load             = $0701 =  1793          z80mon.asm:811
+ih_load_chk         = $077E =  1918          z80mon.asm:872
+ih_load_chk_err     = $074B =  1867          z80mon.asm:845
+ih_load_data        = $0753 =  1875          z80mon.asm:848
+ih_load_eol         = $0762 =  1890          z80mon.asm:857
+ih_load_error       = $0771 =  1905          z80mon.asm:864
+ih_load_exit        = $0777 =  1911          z80mon.asm:866
+ih_load_loop        = $070A =  1802          z80mon.asm:816
+ih_load_msg_1       = $0784 =  1924          z80mon.asm:878
+ih_load_msg_2       = $0795 =  1941          z80mon.asm:879
+ih_load_msg_3       = $07A4 =  1956          z80mon.asm:880
+info                = $07B5 =  1973          z80mon.asm:884
+info_msg            = $07C4 =  1988          z80mon.asm:891
+initialize          = $003D =    61          z80mon.asm:326
+is_hex              = $0A91 =  2705          z80mon.asm:1157
+is_hex_1            = $0A9A =  2714          z80mon.asm:1163
+is_hex_2            = $0AA3 =  2723          z80mon.asm:1169
+is_print            = $0AA5 =  2725          z80mon.asm:1175
+is_print_1          = $0AAB =  2731          z80mon.asm:1179
+lf                  = $000A =    10          z80mon.asm:151
+load                = $07CB =  1995          z80mon.asm:897
+load_exit           = $0823 =  2083          z80mon.asm:943
+load_file           = $0879 =  2169          z80mon.asm:959
+load_file_1         = $089B =  2203          z80mon.asm:975
+load_file_exit      = $08C3 =  2243          z80mon.asm:991
+load_file_loop      = $08B9 =  2233          z80mon.asm:985
+load_file_msg_1     = $08D8 =  2264          z80mon.asm:1002
+load_file_msg_2     = $08E9 =  2281          z80mon.asm:1003
+load_file_msg_3     = $08FB =  2299          z80mon.asm:1004
+load_file_msg_4     = $090C =  2316          z80mon.asm:1005
+load_file_scrat     = $FB5F = 64351          z80mon.asm:126
+load_loop           = $07ED =  2029          z80mon.asm:919
+load_msg_1          = $0836 =  2102          z80mon.asm:953
+load_msg_2          = $0856 =  2134          z80mon.asm:954
+load_msg_3          = $0867 =  2151          z80mon.asm:955
+main_loop           = $0074 =   116          z80mon.asm:363
+memory_group        = $00FA =   250          z80mon.asm:422 (unused)
+mg_msg              = $01B2 =   434          z80mon.asm:464
+monitor_key         = $0223 =   547          z80mon.asm:471
+monitor_prompt      = $0197 =   407          z80mon.asm:460
+monitor_start       = $0000 =     0          z80mon.asm:70
+mount               = $0917 =  2327          z80mon.asm:1009
+mount_msg           = $0923 =  2339          z80mon.asm:1015
+move                = $092D =  2349          z80mon.asm:1019
+move_exit           = $0965 =  2405          z80mon.asm:1048
+move_get_length     = $0957 =  2391          z80mon.asm:1040
+move_msg_1          = $096D =  2413          z80mon.asm:1054
+move_msg_2          = $0979 =  2425          z80mon.asm:1055
+move_msg_3          = $097E =  2430          z80mon.asm:1056
+move_msg_4          = $0987 =  2439          z80mon.asm:1057
+nibble2val          = $0AAE =  2734          z80mon.asm:1185
+nibble2val_1        = $0AB4 =  2740          z80mon.asm:1188
+print_byte          = $0B35 =  2869          z80mon.asm:1308
+print_error         = $014A =   330          z80mon.asm:452
+print_nibble        = $0B46 =  2886          z80mon.asm:1325
+print_nibble_1      = $0B51 =  2897          z80mon.asm:1331
+print_word          = $0B56 =  2902          z80mon.asm:1338
+psiz                = $FDF0 = 65008          z80mon.asm:85
+pstart              = $FDEC = 65004          z80mon.asm:86
+putc                = $0B63 =  2915          z80mon.asm:1350
+puts                = $0B69 =  2921          z80mon.asm:1356
+puts_end            = $0B76 =  2934          z80mon.asm:1364
+puts_loop           = $0B6B =  2923          z80mon.asm:1358
+ram_end             = $FFFF = 65535          z80mon.asm:77
+ram_start           = $8000 = 32768          z80mon.asm:76
+rdump               = $09A5 =  2469          z80mon.asm:1061
+rdump_msg_1         = $09EC =  2540          z80mon.asm:1096
+rdump_msg_2         = $0A03 =  2563          z80mon.asm:1097
+rdump_msg_3         = $0A09 =  2569          z80mon.asm:1098
+rdump_msg_4         = $0A13 =  2579          z80mon.asm:1099
+rdump_msg_5         = $0A18 =  2584          z80mon.asm:1100
+rdump_one_set       = $0A1D =  2589          z80mon.asm:1102
+rdump_os_msg_1      = $0A4D =  2637          z80mon.asm:1122
+rdump_os_msg_2      = $0A52 =  2642          z80mon.asm:1123
+rdump_os_msg_3      = $0A57 =  2647          z80mon.asm:1124
+rdump_os_msg_4      = $0A5C =  2652          z80mon.asm:1125
+ressec              = $FDE6 = 64998          z80mon.asm:89
+rom_end             = $7FFF = 32767          z80mon.asm:75 (unused)
+rom_start           = $0000 =     0          z80mon.asm:74 (unused)
+rootlen             = $FDEA = 65002          z80mon.asm:87
+rootstart           = $FDF8 = 65016          z80mon.asm:83
+rst_00              = $0000 =     0          z80mon.asm:157 (unused)
+rst_08              = $0008 =     8          z80mon.asm:220 (unused)
+rx_ready            = $0B79 =  2937          z80mon.asm:1370
+rx_ready_loop       = $0B7A =  2938          z80mon.asm:1371
+space               = $0020 =    32          z80mon.asm:152
+start               = $0A61 =  2657          z80mon.asm:1130
+start_msg           = $0A6E =  2670          z80mon.asm:1135
+start_type          = $FB4C = 64332          z80mon.asm:135
+str2filename        = $0FE3 =  4067          z80mon.asm:1968
+str2filename_de     = $FB5D = 64349          z80mon.asm:127
+str2filini_elp      = $1025 =  4133          z80mon.asm:2008
+str2filini_ext      = $1017 =  4119          z80mon.asm:2000
+str2filini_nam      = $0FFC =  4092          z80mon.asm:1983
+str2filini_skip     = $100B =  4107          z80mon.asm:1993
+str2filini_x        = $1030 =  4144          z80mon.asm:2016
+str2filiniloop      = $0FEF =  4079          z80mon.asm:1975
+strcmp              = $0AC2 =  2754          z80mon.asm:1205
+strcmp_exit         = $0AD0 =  2768          z80mon.asm:1215
+strcmp_loop         = $0AC4 =  2756          z80mon.asm:1207
+string_12_bfr       = $FB61 = 64353          z80mon.asm:120
+string_81_bfr       = $FB6D = 64365          z80mon.asm:119
+tab                 = $0009 =     9          z80mon.asm:153
+to_upper            = $0AB9 =  2745          z80mon.asm:1194
+tx_ready            = $0B82 =  2946          z80mon.asm:1379
+tx_ready_loop       = $0B83 =  2947          z80mon.asm:1380
+uart_base           = $0000 =     0          z80mon.asm:137
+uart_register_0     = $0000 =     0          z80mon.asm:140
+uart_register_1     = $0001 =     1          z80mon.asm:141
+uart_register_2     = $0002 =     2          z80mon.asm:142 (unused)
+uart_register_3     = $0003 =     3          z80mon.asm:143
+uart_register_4     = $0004 =     4          z80mon.asm:144 (unused)
+uart_register_5     = $0005 =     5          z80mon.asm:145
+uart_register_6     = $0006 =     6          z80mon.asm:146 (unused)
+uart_register_7     = $0007 =     7          z80mon.asm:147 (unused)
+unmount             = $0A7B =  2683          z80mon.asm:1140
+unmount_msg         = $0A87 =  2695          z80mon.asm:1146
+warm_start          = $0D3A =  3386          z80mon.asm:1649
+
+
+total time: 0.0489 sec.
+1 error

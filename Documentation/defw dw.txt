@@ -1,0 +1,13 @@
+
+h3	defw, dw, .dw, .word
+	defw, dw, .word
+	
+pre	defw  <value> [,<value>...]
+	dw    <value> [,<value>...]
+	.dw   <value> [,<value>...]
+	.word <value> [,<value>...]
+
+p	This pseudo instruction inserts a single or a series of 2-byte words into the code. Words are stored with their least significant byte first. This means, $1234 is stored as $34, $12. 
+
+p	If you need them to be stored 'as seen' then use the 'defm' pseudo instruction.
+	

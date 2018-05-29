@@ -1,0 +1,11 @@
+.NOLIST
+#define equ .equ
+#define EQU .equ
+#define END .end
+#include "ti83plusAsm.inc" ;Remember, we're using an include file, though in this program, an include file is not nessasary because no ROM calls are used.
+.LIST
+.org 9D95h
+set 3,(iy+$24) ;Set the lowercase alpha
+ret ;Return from program
+.end
+END

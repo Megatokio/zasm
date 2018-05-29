@@ -1,0 +1,36 @@
+
+
+//-----------------------------------------------------------------
+h3	#target
+
+pre	#target	<name>
+
+p	The #target directive defines the kind of output file. If no #target directive is given in the source, then zasm will default to a rom file. The #target directive must occur before any #code definition and any opcode. Best put it directly at the start of the source. The <name> defines the extension of the output file. Depending on the desired target your source must consist of multiple #code segments. See section about target files. The #target directive is required if you include c source files, because the c compiler requires code and data segments.
+
+p.b	<name> is one of:
+
+pre	bin		plain binary data, presumably to be loaded into ram
+	rom		plain binary data, presumably for a rom
+	sna		ZX Spectrum NMI snapshot
+	z80		ZX Spectrum snapshot
+	tap		ZX Spectrum or Jupiter Ace tape file
+	o		ZX80 tape file
+	80		ZX80 tape file
+	p		ZX81 tape file
+	81		ZX81 tape file
+	p81		ZX81 tape file
+	ace		Jupiter Ace snapshot file
+
+p	Only target bin and rom can be written as Intel hex or Motorola S-Record file. All other file types can only be written as binary file. This is controlled by the comand line options '-x' or '-s'.
+
+p.b	Simple source file example:
+
+pre	#target rom
+	;
+	#code	_ROM0,0,4000h
+	;
+	; <-- your code goes here -->
+	;
+	#end
+
+

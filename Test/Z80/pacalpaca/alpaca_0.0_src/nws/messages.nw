@@ -1,0 +1,59 @@
+\chapter{Message Queue}
+\label{chp:messagequeue}
+
+This chapter describes how all of the messaging in the system is handled.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Message Format}
+
+TBD
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Queue Implementation}
+
+Two pointers are maintained into the Message queue; the head and
+tail pointers.  There is also a variable which contains the number
+of messages currently in the queue.  These variables are global for
+all tasks, and thus the mechanisms for queueing and dequeueing
+messages into the system are provided by the kernel.
+
+<<Message RAM>>=
+	    ; messages
+	msgbase		= (ram + 0x0ca0)
+	msgmax		= (msgbase + 0x003f)
+@
+
+\subsection{Queueing a Message}
+
+We need a way to continue adding messages onto the queue while
+circulating around the ram buffer, so we will have a ram buffer
+that is 256 bytes large, so that we can just [[AND]] the offset
+with [[0x00FF]] to determine the correct offset into the message
+queue.
+
+\begin{enumerate}     
+    \item If number of messages is greater than 256, fail.
+    \item Store the message at the RAM location that the tail pointer references
+    \item Increment the tail pointer
+    \item [[AND]] the tail pointer with [[0x00FF]]
+    \item Add the tail pointer with the base of the message queue
+    \item increment the number of messages
+\end{enumerate}
+
+
+\subsection{Dequeueing a Message}
+
+Similarly, we need a way to pop a message off of the queue, so a  
+similar process is used.
+
+\begin{enumerate}
+    \item If number of messages is 0, fail
+    \item Set the message at the head pointer aside
+    \item Increment the head pointer
+    \item [[AND]] the head pointer with [[0x00FF]]
+    \item Add the head pointer with the base of the message queue    
+    \item Decrement the number of messages
+    \item Return the message
+\end{enumerate}
+

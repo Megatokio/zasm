@@ -1,0 +1,241 @@
+\chapter{Task Exec}
+\label{chp:taskexec}
+
+This chapter describes how a task is started up within the \OS system.
+We also describe how a task needs to be formated within the ROMspace
+such that the kernel can find the tasks, run them and interact with
+them.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Task Format Header}
+
+This is basically just a simple header that has all of the information
+that the OS needs to work with a task.  The four byte cookie is there
+for the task searcher, which is not currently implemented, but will be
+in future versions of \OS.
+
+\begin{itemize}
+
+    \item 4 bytes - magic cookie [[0xc9 0x4a 0x73 0x4c]]
+    ('ret' 'J' 's' 'L') (for the searcher)
+
+    \item 1 byte - task format version [[0x01]] (version 1)
+
+    \item 1 byte - requested priority. This is the number of timeslices
+		   the task wants at a particular run between switching
+		    out.
+
+    \item 2 bytes - pointer to an pascal/asciz string for task name.
+		    The data this points to should consist of a byte
+		    with the string length in it, followed immediately
+		    by that string, null terminated.
+
+    \item 2 bytes - task entry point.  This is just the address to
+		    the task's main routine.
+
+\end{itemize}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Task Entry Point}
+
+This is the routine that the ``exec'' will jump to when the task is
+started up.  This routine should not return.  It should end with a
+[[halt]] opcode, and possibly call the [[kill]] routine to dequeue
+itself from the system, and open the slot.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Start Task (exectask)}
+
+This will take in two values.  First is  a value which specifies
+which task to run.  This is used as an index into the [[tasklist]]
+array, defined in \S\ref{sec:tasklist}. Secondly, it takes in a 
+value which specifies in which slot to run that task.
+
+The name ``execute'' is really a misnomer.  The task will not really
+be executed in this section, but rather, the task will be scheduled
+to be run in a specified task slot.  This task will then be started
+within the task switcher routine, in \S\ref{sec:taskswitch}.
+
+And this is why all of the information about actually starting a
+task or killing a task (later on) is covered in \S\ref{chp:isr}.
+
+In a nutshell, to start up a task in a slot, we set the task number
+into [[A]], and the slot into [[D]].  This will set the control
+register for the specific slot at [[taskctrl[d]]] with the task to
+run.  We just need to be sure that bit 7 of the task number is
+clear.  We also need to limit the slot to [0..3].
+
+<<Exec start implementation>>=
+    ;; execstart - starts up a new task
+	;		in	E	task number to start
+	;		in 	D	task slot to use (0..3)
+	;		out	-
+	;		mod	-
+execstart:
+	    ; save registers we're using
+	push	af
+	push	de
+	push	bc
+	push	hl
+	    ; limit E (task) to 127
+	res	7, e		; limit task number to 127
+	    ; limit D (slot)
+	ld	a, d		; a=d
+	and	#0x03		; slot is 0,1,2, or 3
+	ld	c, a		; c=a
+	ld	b, #0x00	; b=0x00, bc = 0x000S
+	    ; set the control value
+	ld	hl, #(taskctrl)	; set up the control register
+	add	hl, bc		; hl = base + offset
+	ld	(hl), e		; taskctrl[d] = e
+	    ; restore the registers	
+	pop	hl
+	pop	bc
+	pop 	de
+	pop	af
+	    ; return
+	ret
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Stop Task (kill)}
+
+We also might need a way to stop or ``kill'' a task.  In traditional
+*NIX systems, ``kill'' sends a signal to the program to tell it to
+stop running.  We don't have signals (yet), so we will just implement
+this in the same mindset as the above.  We will just signal the
+task switcher to remove the references to this task.  Again, this
+does not happen in here, but rather, over in \S\ref{sec:taskswitch}.
+
+We basically just set the value in the appropriate 
+
+<<Exec kill implementation>>=
+    ;; execkill - kills a running task 
+	;		in	D	task slot to kill 
+	;		out	-
+	;		mod	-
+execkill:
+	    ; save registers we're using
+	push	af
+	push	de
+	push	bc
+	push	hl
+	    ; limit D (slot) and shove it into C
+	ld	a, d		; a=d
+	and	#0x03		; slot is 0,1,2, or 3
+	ld	c, a		; c=a
+	ld	b, #0x00	; b=0x00,  bc = 0x000S
+	    ; set the control value
+	ld	hl, #(taskctrl)	; set up the control register
+	add	hl, bc		; hl = base + offset
+	ld	(hl), #(killslot)	; taskctrl[d] = KILL!
+	    ; restore the registers	
+	pop	hl
+	pop	bc
+	pop 	de
+	pop	af
+	    ; return
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Sleep for some time (sleep)}
+
+One thing that is very useful to have is a way for a process to
+wait for a specified amount of time.  This is accomplished through
+this ``sleep'' command.  The task puts the number of ticks to wait
+(60 per second) into [[BC]] then calls this routine.
+
+Future versions might relinquish remaining clock cycles to other
+tasks by this communicating somehow to the task switcher, but this
+one just sits in a loop, waiting for the clock to be the right
+value.
+
+But for this version, we will compute the timeout [[current time +
+ticks to wait]], and just store it in [[BC]] while we loop.
+
+The loop simply loads the current time into [[HL]], then subtracts
+[[BC]] from it.  We then compare it with a [[sbc]], and loop if
+we're not there yet.
+
+\emph{NOTE} that this is not completely accurate.  There might be 1-N more
+ticks between when this routine returns past when you expect it to
+return.  This is due to the multitasking nature of /OS.  Your timer
+might be up, but another task has the processing cycles currently. As
+soon as we have the cpu again, we will time out and return.
+
+<<Exec sleep implementation>>=
+	;; sleep - wait a specified number of ticks
+	;		in	bc	number of ticks to wait
+	;		out	-
+	;		mod	-
+sleep:
+	    ; set side some registers
+	push	bc
+	push	af
+	push	hl
+	    ;; this is where we would set the flag for
+	    ;; the exec system to relinquish the rest of our time.
+	    ; compute the timeout into BC
+	ld 	hl, (timer)	; hl = timer
+	add	hl, bc		; hl += ticks to wait
+	push	hl		; bc = 
+	pop 	bc		;    = hl
+.slp:
+	    ; loop until the timeout comes
+	ld	hl, (timer)	; hl = current time
+	sbc	hl, bc		; set flags
+	jp	M, .slp		; if (HL >= BC) then JP .slp2
+	    ; restore the registers
+	pop 	hl
+	pop	af
+	pop	bc
+	    ; return
+	ret
+@
+
+
+Here's what I had originally wrote.  Notice that it keeps the timeout
+persistant by keeping it on the stack.  This required an extra pop and
+push for each iteration through the loop, and also required an extra
+push and pop wrapped around that.
+
+The above implementation only uses the stack to move the value of [[hl]]
+over into [[bc]], and that happens once per call.
+
+<<original sleep implementation>>=
+	;; oldsleep - wait a specified number of ticks
+	;		in	bc	number of ticks to wait
+	;		out	-
+	;		mod	-
+oldsleep:
+	    ; set aside some registers
+	push	bc
+	push	af
+	push	hl
+	    ; compute the timeout into HL
+	ld 	hl, (timer)	; hl = timer
+	add	hl, bc		; hl += ticks to wait
+	push 	hl		; top of stack now contains the timeout value
+.slp2:
+	    ; loop until the timeout comes
+	pop	hl		; restore hl...
+	push	hl		;           ...and shove it back on the stack
+	ld	bc, (timer)	; bc = current time
+	sbc	hl, bc		; set flags
+	jr	P, .slp2	; if (HL < BC) then JR .slp2
+	pop 	hl
+	    ; restore the registers
+	pop 	hl
+	pop	af
+	pop	bc
+	    ; return
+	ret
+@

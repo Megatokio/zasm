@@ -1,0 +1,36 @@
+
+Asserted facts:
+	ZX48k	224 cc/row
+		34944*2 = 69888 cc/frame
+		Ram at $4000 contended
+		restl. RAM und ROM nicht
+		
+	ZX128	TODO
+		35454*2 = 70908 cc/frame
+
+	WAIT increments R register
+	
+	
+
+Contention:
+
+	zx128	Pages 1,2,3,5		Pattern: 16*(6WAIT+2) + 100
+	zx48k	Ram at $4000		Pattern: 16*(6WAIT+2) + 96
+		
+	
+cc per irpt ackn:
+
+	im0	13
+	im1	13
+	im2	19
+		
+Start of contention:
+
+	ZX48k	14337	kalte Maschine		irpt wird 'früh' erkannt
+		14336	warme Maschine		irpt wird 'spät' erkannt
+		
+	HALT scheint den Irpt. länger als andere Opcodes noch 'früh' zu erkennen.
+
+	ZX128	TODO
+	
+	

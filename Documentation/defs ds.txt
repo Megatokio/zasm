@@ -1,0 +1,21 @@
+
+h3	defs, ds, .ds, .block, .blkb and data
+	defs, ds, block, data
+	
+pre	defs   <value1> [,<value2>]
+	ds     <value1> [,<value2>]
+	.block <value1> [,<value2>]
+	.blkb  <value1> [,<value2>]
+	data   <value1>
+
+p	This pseudo instruction inserts a block of <value1> bytes into the current code or data segment. The default fill pattern is $FF for ROMs and $00 for all other target formats. If you append a <value2>, this byte is used as pattern instead.
+
+p	If the current segment is a data segment, then no fill pattern is allowed, as no actual code is stored.
+
+p	Instruction 'data' is only allowed in a data segment and therefore it can never have a fill pattern assigned.
+
+p	Multitiple names are recognized to support sources for different assemblers. <tt>defs</tt> or <tt>ds</tt> are recommended, the others are deprecated for new source.
+
+
+
+	

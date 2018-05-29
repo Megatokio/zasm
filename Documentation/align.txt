@@ -1,0 +1,23 @@
+
+
+h3	align, .align
+	align
+
+pre		align <value> [, <fillbyte>]
+p	e.g.:
+pre		align 8
+
+p	Add fill bytes until the current logical address is a multiple of the given value.
+
+p	Base for the alignment is the current logical code address, as accessible with '$'. 
+
+p	Positive addresses can be aligned to any value. If you happen to organize your addresses from -0x8000 to +0x7FFF then negative addresses can only be aligned to 2^N.
+
+p	If only one argument is given, then 'align' inserts the default fill byte; 0xFF for target ROM and 0x00 for all others.
+
+p	If a different fillbyte is required, then it can be appended as a second argument.
+
+pre		align $100, 'E'|0x80
+
+
+ 

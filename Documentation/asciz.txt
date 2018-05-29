@@ -1,0 +1,24 @@
+
+h3	.asciz
+
+pre	.asciz <text>
+
+p	Store a 0-terminated character strings into the code segment. 
+
+p	The text string may be given in the following formats:
+
+pre	'text'          character string, delimited by <'>, must not contain <'>
+	"text"          character string, delimited by <">, must not contain <">
+
+p	After the characters of the string an additional 0x00 byte is stored, which typically used in c sources as the string end marker.
+
+p	Your assembler source is expected to be either 7-bit clean ascii or utf-8 encoded. 
+
+p	Characters in character strings are utf-8 decoded and then translated into the target system's character set if a #charset conversion has been defined. Characters must be representable in the target system's character set or an error will be flagged.
+
+p	If no character set translation was defined, then the characters must, after utf-8 decoding, fit in a byte, e.g. 'ä' is allowed, '€' is not.
+
+p	Note: some computers use a character set which contains character 0x00 as an ordinary character, most notably the ZX80 and ZX81. zxsp tries to detect this and will report an error if you try to use .asciz for these targets.
+
+
+

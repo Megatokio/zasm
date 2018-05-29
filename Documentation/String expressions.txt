@@ -1,0 +1,23 @@
+
+h3	String expressions
+
+pre		defm "<some text>" [ + <value> ]
+		defm '<some text>' [ + <value> ]
+		
+p	Strings cannot be stored in labels and therefore most string operations make no sense. Strings can just occur as a string literal, either enclosed in a pair of ''' or a pair of '"'. Whichever character is chosen it must not occur inside the string.
+p	<b>Note:</b> special characters in string cannot be escaped with '\'. This syntax was (probably) invented later for the programming language 'C'.
+
+pre		defm "say 'Hello!'",0
+		defm 'say "Hello!"',0
+
+p	Characters in the string are translated to the target system's character set if the assembler directive '#charset' was used to define one. Else the characters must be in range 0 to 255. If the character is not available in the target character set the assembler reports an error.
+
+p	The last character of a string may be modified by a numeric operation, most commonly used is setting bit 7 of the last character:
+
+pre		defm "foobar"+0x80
+
+p	The following operators are allowed: '+', '-', '&', '|', '^'.
+
+p	There are 4 predefined strings available in the 'defm' instruction:
+	__date__, __time__, __file__ and __line__.
+

@@ -1,0 +1,45 @@
+
+h3	defm, dm, .dm, .text and .ascii
+	defm, dm, text, ascii
+
+pre	defm   <text> [,<text>]
+	dm     <text> [,<text>]
+	.dm    <text> [,<text>]
+	.text  <text> [,<text>]
+	.ascii <text> [,<text>]
+
+p	Store one or more text strings into the code segment. 
+
+p	Note: Due to the various methods for using 'defb' and 'defm' found in the wild zasm handles these two instructions in exactly the same way. This paragraph describes the 'string oriented' usage cases. For the 'byte oriented' usage cases see 'defb'.
+
+p	The text string may be given in the following formats:
+
+pre	$12345678....   packed hex string
+	12345678h       packed hex string
+	'text'          character string, delimited by <'>, must not contain <'>
+	"text"          character string, delimited by <">, must not contain <">
+
+p	The hex bytes or ascii bytes are stored in the same order as they appear in the string, e.g. $1234 is stored as $12,$34 and 'ab' is stored as 'a','b'.
+
+p	The last byte of a character string or a packed hex string may be modified with an expression; commonly used is setting bit 7 of the last character of a message:
+
+pre	defm   "this is my message"+$80
+
+p	There are 4 predefined names for text strings:
+
+pre	__date__        current date:      "Jan.31.96"
+	__time__        current time:      "23:56:30"
+	__file__        current file name  "filename.ext"
+	__line__		current line numer "815"
+
+p	Your assembler source is expected to be either 7-bit clean ascii or utf-8 encoded. 
+
+p	Characters in character strings are utf-8 decoded and then translated into the target system's character set if a #charset conversion has been defined. Characters must be representable in the target system's character set or an error will be flagged.
+
+p	If no character set translation was defined, then the characters must, after utf-8 decoding, fit in a byte, e.g. 'ä' is allowed, '€' is not.
+
+
+
+	
+	
+	

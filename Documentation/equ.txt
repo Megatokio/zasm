@@ -1,0 +1,31 @@
+
+h3	equ
+	named values
+
+p	Named values:
+
+pre	<name>[:][:] equ <value>
+
+p	Frequently you start your source with a buch of definitions for const values, like printing control codes or port addresses. These definitions require a keyword after the label, in exchange a colon is never required, but may be present. 
+
+pre	foo:	equ	255 -1
+	bar		equ	255 -2
+	shelf	equ	0xffff
+	#define foobar foo & bar
+
+
+p	You can append two colons '::' to the label name if you define a label inside a local context (after #local) but want to make it globally visible:
+
+pre	#local
+			...
+	foo::	equ	$+2
+			...
+	#endlocal
+
+p	Additionally zasm supports the use of the c preprocessor-style definition using '#define'. Labels defined with '#define' are always global.
+
+p	For more information see the chapter about label definition.
+
+
+	
+	

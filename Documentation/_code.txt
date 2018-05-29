@@ -1,0 +1,58 @@
+
+//-----------------------------------------------------------------
+h3	#code
+
+pre	#code <name>,<start>,<size>,<flags>
+
+p	This defines a code segment where the generated code will be stored. If the assembler directive #target has been used then at least one #code segment must be defined. Depending on the desired target your source must consist of multiple #code segments. See the section about target files.
+
+p	Arguments may be left unspecified from right to left. If you need to specify the size but not the address, you can use '*' to mark an argument as unspecified, e.g.:
+
+pre	#code	BLOCK1, *, 0x400 	; appended to the previous code block, size = 1kB; no flag
+
+p	If you define more than one code segment, then the segments (and thus the code therein) will be appended in the output file in the sequence of definition. Typically you define all used segments at the start of your source file in the sequence they shall be appended to the output file and then later re-enter the segments as required. The following is an example as it might be used if you also include c sources:
+
+pre	#code	_BOOT,0x0000		; segment with Reset, RST and NMI vectors
+	#code 	_GSINIT				; init code: the compiler adds some code here and there as required
+	#code 	_HOME				; code that must not be put in a bank switched part of memory.
+	#code 	_CODE				; most code and const data go here
+	#code 	_INITIALIZER		; initializer for initialized data in ram
+
+p	The name can be chosen freely, but must be a valid label name. zasm generates a label for the start address, end address and length (since 4.0.24) of each segment. If you include c source, then the c compiler requires the above code segments to be defined. Names for segments are case sensitive like all labels, except if command line option --casefold was used. 
+
+pre	#code FOO, 100, 1000
+p	will define these labels:
+pre	FOO      = $0064 =    100
+	FOO_end  = $044C =   1100
+	FOO_size = $03E8 =   1000
+
+p	The start address is required for the first segment only or it will default to 0. Following segments will be automatically assigned start addresses without gap if no address is defined.
+
+p	The start address should define the 'physical' address for the segment, the address where it is visible to the cpu. It also sets the 'logical' address (the org) for the code which can be 'shifted' with .phase and .dephase. 
+
+p	If a start address is given and does not exactly match the end address of the previous code segment, then the following segments is still appended without gap in the output file. It is assumed that the code will be moved to this address before it is executed.
+
+p	You can use the start address if you have a rom which is paged into the Z80 address space, e.g. a 32k rom which consists of 2 pages might be defined like this:
+
+pre	#target rom
+	#code	PAGE1,0,0x4000		; boot rom
+	#code	PAGE2,0,0x4000		; basic rom
+
+p	If given, the size defines the size for this segment. If you store less bytes in it, then the segment will be padded up to this size with the default fill byte: 0xff for rom and 0x00 for any other target. If your code exceeds the size, then the assembler will generate an error.
+
+p	If no size is defined, then the segment is exactly as long as the code stored into it.
+
+p	The 3rd argument is not required and actually not allowed in most cases. But some targets require a flag for the code segment, e.g. #target tap requires a flag byte for each tape block.
+
+p	A code segment can be re-entered by using the #code directive with the name only or by using the .area pseudo opcode:
+
+pre	#code _HOME			; following code will be stored in code segment _HOME
+pre		  .area _CODE	; following code will be stored in segment _CODE   (sdcc syntax)
+
+p	You can switch between code segments whenever you like in your source. A typical application is initialization code:
+
+p	You define a segment for init code, e.g. _GSINIT and a segment for most other code, e.g. _CODE. Then at any point in your source where you have some data which need initialization you temporarily switch to the _GSINIT segment and add the init code. This is what the c compiler does for initialized variables.
+
+
+
+

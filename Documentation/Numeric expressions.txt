@@ -1,0 +1,207 @@
+
+h3	Numeric expressions
+
+p	The assembler has an expression evaluator which supports various formats for numbers and operations with priority order. You may also use brackets, but don't start an expression for an immediate value with an opening bracket. The assembler thinks that an expression which starts with an opening bracket indicates direct memory addressing. If you really need to start an immediate value expression with brackets, precede it with the '+' monadic operator or a hash '#'.
+
+h4	Number literals
+
+p	Number literals are the 'number' in an expression. They can be written in a multitude of formats:
+
+pre	12345    decimal number
+	12345d   decimal number
+	$1234    hexadecimal number
+	1234h    hexadecimal number
+	0x1234   hexadecimal number
+	%1010    binary number
+	1010b    binary number
+	0b1010   binary number
+	'a'      character literal
+
+p	All number literals may be prefixed by a sign, either '+' or '-', which is actually handled as a monadic operator internally.
+
+p	A character literal must be either a 7-bit ascii character or it is converted from utf-8. (note: all source files are expected to be either 7-bit ascii or utf-8 encoded.)
+p	Character literals are translated to the target system's character set if the assembler directive '#charset' was used to define one. Else the character must be in range 0 to 255. If the character is not available in the target character set the assembler reports an error.
+p	If the values are stored with 'defb' or similar, all values must fit in a byte each. Then characters like '€' will raise an error. If they are stored with 'defw' then '€' will be ok.
+
+h4	Labels 
+p	Of course labels can be used in expressions. Labels may refer to local or global symbols, depending on whether they were defined inside the current #local context (if any) or outside any local context. See chapter '#local' for more information.
+
+h5	Predefined labels
+p	The assembler defines labels which can be tested with 'defined(NAME)' if certain command line options are set.
+
+p	<b>_z80_</b> This label is defined if you are using the 8080 assembler syntax and the target cpu is a Z80 or Z180.
+p	<b>_z180_</b> This label is defined if the target cpu is a Z180.
+p	<b>_8080_</b> This label is defined if you are using standard Z80 assembler syntax and the target cpu is a Intel 8080.
+p	<b>_reqcolon_</b> This label is defined if the option '--reqcolon' was set on the command line or with the pseudo instruction '.reqcolon'.
+p	<b>_dotnames_</b> This label is defined if the option '--dotnames' was set on the command line or with the pseudo instruction '.dotnames'.
+p	<b>_casefold_</b> This label is defined if the option '--casefold' was set on the command line or with the pseudo instruction '.casefold'. It is also defined if this option was set implicitely, e.g. with '--asm8080' or '.8080'.
+p	<b>_flatops_</b> This label is defined if the option '--flatops' was set on the command line or with the pseudo instruction '.flatops'.
+p	<b>_ixcbr2_</b> This label is defined if the option '--ixcbr2' was set on the command line or with the pseudo instruction '.ixcbr2'.
+p	<b>_ixcbxh_</b> This label is defined if the option '--ixcbxh' was set on the command line or with the pseudo instruction '.ixcbxh'.
+
+
+
+h4	'$' and '.' (code address)
+p	<b>'$'</b> and <b>'.'</b> are used to get the value of the current logical code position. It always refers to the start of a statement, e.g. to the first byte of an instruction or the postition of the first byte in a 'defb' instruction:
+
+pre	foo:	djnz $		; jump to foo
+	bar:	defb $,$,$	; stores 3x the value of bar
+	
+p	'.' is recognized for old sources only, do not use it in new code.
+
+h4	'$$' (physical code address)
+p	<b>'$$'</b> refers to the physical code position. For an explanation of 'physical' vs. 'logical' code position see instruction '.phase'.
+
+h4	__line__
+p	Inserts the current line number. E.g.:
+
+pre	.macro abort
+		ld	de, __line__
+		jp	abort
+	.endm
+
+h4	hi() and lo()
+p	<b>hi(NN)</b> gets the high byte of a 2-byte word. Similar to <tt>NN >> 8</tt>.
+p	<b>lo(NN)</b> gets the low byte of a 2-byte word. Similar to <tt>NN & 0xFF</tt>.
+p	E.g. if you have a table which must be located completely inside a page, then you can automatically raise the table base if the table would cross a page boundary: (note: use a calculated expression for .align if the code address is not yet valid in pass 1.)
+
+pre	.align hi($) != hi($+table_size-1)  ? 256 : 1
+	table:	ds	table_size
+
+h4	min() and max()
+p	<b>min(N1,N2)</b> gets the value of the smaller of two values.
+p	<b>max(N1,N2)</b> gets the value of the bigger of two values.
+p	You can also pass more than 2 arguments to min and max.
+p	e.g. calculate size for a scratch pad:
+
+pre	scratch: ds	max(fp_scratch,txt_scratch,gfx_scratch)
+
+
+h4	sin() and cos()
+p	<b>sin(ANGLE,N2,N3)</b> calculate the sinus of an angle. 
+p	<b>cos(ANGLE,N2,N3)</b> calculate the cosinus of an angle. 
+
+p	The angle is scaled according to argument N2, which defines the value for a full circle. The result is scaled with argument N3. E.g. to generate a sine table with 256 values scaled to range ±127 use it in conjuction with pseudo instruction .rept:
+
+pre	angle = 0
+	.rept 256
+		db	sin(angle,256,127)
+	angle = angle +1
+	.endm
+
+
+h4	opcode()
+p	Function 'opcode(…)' can be used to get the major byte of an opcode. This is useful if you want to poke an opcode byte into some self-modifying portions of code or to skip over the first 1-byte opcode of a second entry point to a subroutine with <tt>db opcode(cp a,N)</tt>, which is faster and shorter than <tt>jr $+3</tt>.
+
+p	The 'major byte' is the first byte for most opcodes, the byte after 0xCB, 0xED, 0xDD or 0xFD for most others or the 4th byte of a 0xDD 0xCB or 0xFD 0xCB instruction. (note: 0xDD and 0xFD are the index register prefixes.)
+	
+p	Currently only opcodes for the Z80 cpu are supported. The additional opcodes of the Z180 or 8080 assembler mnemonics are not recognized.
+
+p	Opcode names follow these rules:
+p	• names should be in lower case
+	• arguments can be:
+	  • a register name: af, af', bc, de, hl, sp, ix, iy, pc, a, f, b, c, d, e, h, l, r, i, xh, xl, yh, yl or ixh, ixl, iyh, iyl
+	  • a flag name: z, nz, c, nc, po, pe, m, p
+	  • register indirect: (bc), (de), (hl), (sp), (c)
+	  • index register with offset: (ix+N), (iy+N) and variants: (ix+dis), (iy+dis), (ix+offs), (iy+offs) 
+	  • immediate value and memory: N, NN, (N), (NN) and variants: dis, offs
+	  • fixed values: 0, 1, 2, 3, 4, 5, 6, 7, 8, 16, .. 56 and variants: $00, $08 .. $38, 0x00 … 0x38, 00h .. 38h
+
+p	E.g.:
+
+pre	db opcode(nop)				just the name for opcodes without argument
+	db opcode(ld a,b)			name plus arguments which go into the opcode
+	db opcode(bit 3,(hl))		'3' is part of the opcode!
+	db opcode(rst 8)
+	db opcode(ld a,N)
+	db opcode(ld a,(NN))
+	db opcode(ld a,(bc))
+	db opcode(ld a,(ix+offs))	actually you can use 'ld a,(hl)' here as well
+	db opcode(jr c,NN)
+	db opcode(ex af,af')
+	db opcode(ld a,xh)			illegals allowed
+
+p	Examples:
+pre	; jump over an opcode:
+		db	opcode(cp a,N)	; shorter and faster than 'jr'
+	1$:	ld	a,e
+	 
+	; self modifying code:
+		ld	(opcode1), opcode(inc l)
+		ld	(opcode2), opcode(inc h)
+		
+
+h4	defined(LABEL)
+p	This results in 0 or 1 depending on whether the named label is already defined at this position in source.
+	<i>note: use of this function in a local context may malfunction if a local name of this name is defined after this test.</i>
+	E.g.:
+
+pre	#if defined(logline)
+		ld	hl, __line__
+		call	logline
+	#endif
+
+h4	required(LABEL)
+p	This results in 0 or 1 depending on whether the named label was used but not yet defined at this position in source.
+	E.g.:
+
+pre	#if required(mul_hl_de)
+	#include "lib/mul_hl_de.s"
+	#endif		
+
+h4	target(NAME)
+p	Test whether the named #target is selected. Use this if you made it selectable for some reason in your source. Result is 0 or 1.
+p	Possible targets are: ROM, BIN, Z80, SNA, TAP, TAPE, O, P, 80, 81, P81 and ACE.
+p	Example:
+
+pre	; include a tape header if #target is set to TAPE:
+	#if target(TAPE)
+	#code CODE_HEADER, 0, 17, headerflag
+		defb    3, "mcode     "
+		defw    code_size,load_address,0
+	#endif
+
+h4	segment(NAME)
+p	Test whether the named segment is the currently selected #code or #data segment. Result is 0 or 1.
+p	Example:
+
+pre	; don't include 'ret' opcode if this is in boot code:
+	#if !segment(GSINIT)
+		ret
+	#endif
+
+
+
+
+	
+h4	Operators
+	operator priority, priority
+
+p	The following operators are recognized and listed in order of precedence:
+
+pre	brackets            ( ... )
+	monadic operators   + - ~ !       	plus sign, minus sign, 2's complement, negation
+	shifting            << >>       	shift left or right; left operand is target
+	bit masking         & | ^			bitwise and, or, xor
+						and or xor
+	mult/div            * / %     	    multiply, divide, remainder ('\' is no longer recognized)
+	add/sub             + -         	add, subtract
+	comparisions        > < >= <= = <>	greater than etc.; result is 0 or 1
+						== != eq ne 
+						gt lt ge le
+	boolean				&& ||			pruning
+	selector			? :				pruning
+
+p	Since 4.0.21: The backslash '\' is no longer recognized as the remainder operation. The backslash is now used to separate multiple opcodes in one line.
+p	Up to 4.0.22: The first argument of a pruning operator must be valid in pass 1. 
+
+p	Since 4.0.23: The first argument of a pruning operator should be valid in pass 1. 
+	If it isn't, then <u>both</u> sub expressions are evaluated in pass 1. If there is an undefined label referenced in a later pruned path it will be still required and the assembler will report it as undefined.
+
+p	If you used command line option '--flatops' then all operators are evaluated strictly from left to right.
+
+
+
+
+
+

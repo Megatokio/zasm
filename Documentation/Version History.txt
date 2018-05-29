@@ -1,0 +1,40 @@
+
+// zasm
+
+h4	Version history
+
+pre	1.0.0  1996: First version for private use. Mac OS 7.0. No public release.
+	2.0.0  2000: Total rework with new libraries.
+	2.0.7  2002: started port of MacOS classic version to unix
+	3.0.0  2002: MacOS X command line version released
+	3.0.2        .tap and .sna support implemented
+	3.0.13 2005: #code statement now also sets the physical address for intel hex files
+	3.0.14       #target, #end and #code now optional. default target = rom
+	3.0.15       added illegals with XL,XH,YL,YH to: cp, or, ld, and, xor, sub, sbc, adc
+	4.0.0  2014: rewrite with more C++ inside
+	4.0.0  2014: .tap .sna .z80 .o .p .ace
+	4.0.0  2014: c compiler support
+	4.0.0  2014: rework of segment handling
+	4.0.0  2014: #local #endlocal
+	4.0.0  2014: #charset
+	4.0.0  2014: #assert and directive '!' for self test
+	4.0.0  2014: 8080 and HD64180 support
+	4.0.0  2014: list accumulated cpu cycles
+	4.0.1  2014: write Motorola S-Record files
+	4.0.2  2015: added support for native 8080 assembler source
+	4.0.3  2015: added more support for alternate/various/weird syntax
+	4.0.4  2015: added macro and rept, .phase and .dephase
+	4.0.5  2015: #define, test suite, --flatops, Linux version
+	4.0.7  2015: "extended arguments" in macros with '<' … '>'
+	4.0.8  2015: fixed bug in .ACE file export
+	4.0.9  2015: fixed bug in .81 export, secure cgi mode
+	4.0.10 2015: bug fixes, added Z80 instructions in 8080 assembler syntax
+	4.0.11 2015: Made Linux happy again
+	4.0.16 2016: FreeBSD version
+	4.0.18 2016: illegals: allow 'ixh' … 'iyl' for index register halfes
+	4.0.19 2016: included TextMate bundle, added #cpath to set c-compiler path in source
+	4.0.20 2017: minor rework of c-compiler handling, bug fixes
+	4.0.21 2017: allow multiple opcodes per line after '\'
+	4.0.24 2017: define NAME_size and NAME_end labels for all segments
+	4.1.0  2017: included Einar Saukas' ZX7 "optimal" LZ77 compressor  
+	

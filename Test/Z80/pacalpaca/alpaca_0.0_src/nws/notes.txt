@@ -1,0 +1,20 @@
+
+cp
+zero set if equal
+carry set, argument is greater
+neither, A is greater
+
+cp 6
+	(a-6)
+
+;HL=L*E
+
+    LD H, 0
+    LD D, H
+    LD B, 8
+MULT:
+    ADD HL,HL
+    JR NC, NOADD
+    ADD HL,DE
+NOADD:
+    DJNZ MULT

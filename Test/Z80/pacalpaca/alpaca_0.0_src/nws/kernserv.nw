@@ -1,0 +1,146 @@
+\chapter{Kernel Services and API}
+\label{chp:kernserv}
+
+This chapter describes and defines the interface that tasks use
+to access the services of the OS kernel.
+
+The services provided by the kernel are provided through the [[RST]]
+calls of the Z80 processor.  There are 8 of these calls, as well
+as an interrupt routine that the Z80 provides.  The interrupt
+routine is used by the task switcher, and is described in
+\S\ref{chp:isr}, however an overview of the 8 RST functions is
+provided next.
+
+Each of these start 8 bytes off from the previous, so we need to
+be sure that we don't overwrite previous ones, as well as be sure
+that we start each of them at the right location.  We can fill
+these with five [[nop]]s, but instead, we'll use the [[.org]]
+directive on following calls.  We just need to be sure that we
+don't use more than 8 bytes for each of these.
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 00H - Startup/Reboot}
+
+This is the startup/reboot call.  This will setup the system and
+restart it appropriately according to the initialization routines
+as defined and implemented in \S\ref{chp:init}.
+We will just call that routine from here.
+
+The basic initialization starts off at [[0x0000]] in ROM.  This
+doubles as the implementation for [[RST 00]].  So we need to be
+sure that we are at [[0x0000]]. This simply jumps to the [[.startup]]
+routine.  
+
+
+<<RST 00 implementation>>=
+.org 0x000
+.reset00:			; RST 00 - Init
+        jp .start
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 08H - Semaphores}
+
+Semaphore control
+
+<<RST 08 implementation>>=
+.org 0x0008
+.reset08:			; RST 08 - Semaphore control
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 10H - TBD}
+
+TBD
+
+<<RST 10 implementation>>=
+.org 0x0010
+.reset10: 			; RST 10 - TBD
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 18H - TBD}
+
+TBD
+
+<<RST 18 implementation>>=
+.org 0x0018
+.reset18:			; RST 18 - TBD
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 20H - TBD}
+
+TBD
+
+<<RST 20 implementation>>=
+.org 0x0020
+.reset20: 			; RST 20 - TBD
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 28H - TBD}
+
+TBD 
+
+<<RST 28 implementation>>=
+.org 0x0028
+.reset28:			; RST 28 - TBD
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 30H - TBD}
+
+TBD
+
+<<RST 30 implementation>>=
+.org 0x0030
+.reset30:			; RST 30 - TBD
+	ret
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{RST 38H - VBlank handler}
+
+VBLANK IRQ interrupt. This should never be called directly by a
+task.  We will simply jump to the [[.isr]] function from here,
+which sits after the below NMI handler, in ROMspace.
+
+<<RST 38 implementation>>=
+.org 0x0038
+.reset38:			; RST 38 - Vblank Interrupt Service Routine
+	jp	.isr
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{NMI handler}
+
+We're not using an NMI in this implementation, but we'll leave this
+here in case we want to use it in the future.
+This sits at [[0x0066]], 38 bytes from the [[RST 38]] handler.  We're 
+basically wasting this space, but we might come back later and fill it in
+or just drop the NMI handler altogether.  Regardless, this handler is here
+even though it's not used in Pac/Pengo hardware.
+
+<<NMI implementation>>=
+.org 0x0066
+.nmi:				; NMI handler
+	retn
+@
+

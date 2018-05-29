@@ -1,0 +1,30 @@
+
+______________________________________________________
+Labels:
+
+Legale Zeichen:  A-Z, a-z, 0-9, _ . $
+Label immer mit ":" abgeschlossen
+Label mit "::" sind GLOBAL
+Mehrere Label pro Zeile möglich (used by sdcc?)
+Reusable Labels: "1234$:" (dez.) gelten nur zwischen zwei normalen Labels
+		der sdcc recyclet sie tatsächlich (pro neuer Funktion). 
+		--> 00100$ aufwärts
+
+______________________________________________________
+	$$	temp. radix 16
+
+
+______________________________________________________
+	.globl name
+
+Deklariert ein globales Label, das in dieser Datei definiert oder benutzt wird. 
+Die vom sdcc erzeugten globalen Label sind nur mit ":" abgeschlossen!
+
+______________________________________________________
+	ld a,5(IX)
+	ld a,-5(IX)
+
+Syntax für Indexregister + Offset
+
+
+

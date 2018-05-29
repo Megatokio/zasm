@@ -1,0 +1,1639 @@
+              	; --------------------------------------
+              	; zasm: assemble "VZ RS232.asm"
+              	; opts: --reqcolon
+              	; date: 2018-05-18 20:49:25
+              	; --------------------------------------
+
+
+              	#!/usr/local/bin/zasm --reqcolon -o ../original/
+              	;
+              	title VZ-200/300 RS-232 terminal rom software
+              	subttl Version 1.5 last revised 11th June 1985 at 2am in the morning !!!! SLE.
+              	;
+              	;VZ-200/300 RS-232/TERMINAL cartridge pack
+              	;
+              	;This source code and the ROM program it generates is copyright (c) 1985
+              	;by Dick Smith Electronics Pty Ltd and may not be used for any commercial
+              	;gain in any form whatsoever. The Dick Smith Electronics copyright message
+              	;must not be removed from this source code or from the ROM program. All rights
+              	;commercial and otherwise are retained by the copyright holder
+              	;
+              	;Permission is granted for constructors of the VZ 200/300 terminal
+              	;interface to use these routines for construction of said project 
+              	;and for instructional use ONLY.
+              	;
+              	;This source code (and all routines contained herein) shall remain the
+              	;property of Dick Smith Electronics Pty Ltd. Any variation of these copyright
+              	;notices must be in writing from Dick Smith Electronics Pty Ltd.
+              	;
+              	;
+              	;This source code file is set up to be assembled using Microsoft's M80
+              	;macro assembler and was developed on a DSE Bondwell 14 portable computer.
+              	;
+              	;
+4000:         	crtdge	equ	04000h
+9000:         	stack	equ	09000h
+0060:         	vzdelay equ	060h		;rom delay routine, delay value in bc
+3450:         	beep	equ	03450h		;beep routine
+3AE2:         	pcrlf1	equ	03ae2h		;send cr and lf to printer
+058D:         	list	equ	058dh		;printer driver
+05C4:         	listst	equ	05c4h		;printer status, bit 0 of A=0 if ready
+033A:         	chrot	equ	033ah		;character output routine
+0065:         	exitkey equ	101		;shift 'X' is exit from term
+5800:         	outadr	equ	05800h		;transmit latch address
+5000:         	inadr	equ	05000h		;input address
+7000:         	toplin	equ	28672		;top line of screen
+01E0:         	nolin	equ	480		;(number of lines - 1) * 32
+              	;
+              	;ascii definitions.
+              	;
+001C:         	home	equ	28
+000D:         	cr	equ	13
+001B:         	esc	equ	27
+0007:         	bell	equ	7
+000C:         	ff	equ	12
+000A:         	lf	equ	10
+0008:         	bs	equ	8
+0009:         	ht	equ	9
+              	;
+              	;Now define our storage area, where basic text usually starts
+              	;
+8000:         	dumsg	equ	08000h		;part of the signon message that changes
+8019:         	pntmsg	equ	dumsg+25	;printer on/off message
+8031:         	dbits	equ	pntmsg+24	;dbits message
+8049:         	sbits	equ	dbits+24	;sbits message
+8061:         	parmsg	equ	sbits+24	;parity message
+8079:         	p1msg	equ	parmsg+24	;strip parity message
+80DF:         	pntflg	equ	p1msg+count3	;printer on/off flag
+80E0:         	dupflg	equ	pntflg+1	;duplex flag, 0=full
+80E1:         	p1flg	equ	dupflg+1	;add lf to cr flag
+80E2:         	char	equ	p1flg+1		;character found
+80E3:         	flag	equ	char+1		;keyboard flag
+80E4:         	curpos	equ	flag+1		;column counter for output routine
+80E5:         	cursor	equ	curpos+1	;cursor location
+9000:         	bufend	equ	09000h		;to accomodate VZ-200/300
+              	;
+              		.z80
+              		aseg
+0100:         		org	0100h
+              		.phase	crtdge		;place that it will run
+              	;
+4000:         	begadr	equ	$
+              	;
+0100: AA      		defb	0aah		;mask for rom pack installation recognition
+0101: 55      		defb	055h		;checked at power-up by the basic roms
+0102: E7      		defb	0e7h
+0103: 18      		defb	018h
+              	;
+0104: C38441  		jp	start
+              	;
+              	;A few messages....
+              	;
+0107: 4F4E20  	onmsg:	defb	'ON '
+010A: 4F4646  	offmsg: defb	'OFF'
+010D: 46554C4C	fullmsg:defb	'FULL'
+0111: 48414C46	halfmsg:defb	'HALF'
+              	;
+0115: 0C      	signon: defb	ff
+0116: 565A2D32		defb	'VZ-200/300 RS-232 - VERSION 1.5',cr
+011A: 30302F33	
+011E: 30302052	
+0122: 532D3233	
+0126: 32202D20	
+012A: 56455253	
+012E: 494F4E20	
+0132: 312E350D	
+0136: 28432920		defb	'(C) 1985 DICK SMITH ELECTRONICS',cr
+013A: 31393835	
+013E: 20444943	
+0142: 4B20534D	
+0146: 49544820	
+014A: 454C4543	
+014E: 54524F4E	
+0152: 4943530D	
+0156: 2D2D2D2D		defb	'-------------------------------',cr
+015A: 2D2D2D2D	
+015E: 2D2D2D2D	
+0162: 2D2D2D2D	
+0166: 2D2D2D2D	
+016A: 2D2D2D2D	
+016E: 2D2D2D2D	
+0172: 2D2D2D0D	
+0176: 305D2045		defb	'0] ENTER TERMINAL',cr
+017A: 4E544552	
+017E: 20544552	
+0182: 4D494E41	
+0186: 4C0D    	
+0188: 315D2046		defb	'1] FULL/HALF DUPLEX:',0
+018C: 554C4C2F	
+0190: 48414C46	
+0194: 20445550	
+0198: 4C45583A	
+019C: 00      	
+              	;
+019D: 46554C4C	ivals:	defb	'FULL',cr
+01A1: 0D      	
+01A2: 325D2054		defb	'2] TOGGLE PRINTER  :'
+01A6: 4F47474C	
+01AA: 45205052	
+01AE: 494E5445	
+01B2: 5220203A	
+01B6: 4F46460D		defb	'OFF',cr
+01BA: 335D2053		defb	'3] SET # DATA BITS :'
+01BE: 45542023	
+01C2: 20444154	
+01C6: 41204249	
+01CA: 5453203A	
+01CE: 3820200D		defb	'8  ',cr
+01D2: 345D2053		defb	'4] SET # STOP BITS :'
+01D6: 45542023	
+01DA: 2053544F	
+01DE: 50204249	
+01E2: 5453203A	
+01E6: 3120200D		defb	'1  ',cr
+01EA: 355D2053		defb	'5] SET PARITY      :'
+01EE: 45542050	
+01F2: 41524954	
+01F6: 59202020	
+01FA: 2020203A	
+01FE: 4E20200D		defb	'N  ',cr
+0202: 365D2041		defb	'6] ADD LF TO CR    :'
+0206: 4444204C	
+020A: 4620544F	
+020E: 20435220	
+0212: 2020203A	
+4116:         	count1	equ	$
+0216: 4F4646  		defb	'OFF'
+0219: 0D0D    		defb	cr,cr
+021B: 2A2A2A2A		defb	'******* WHEN IN TERMINAL *******'
+021F: 2A2A2A20	
+0223: 5748454E	
+0227: 20494E20	
+022B: 5445524D	
+022F: 494E414C	
+0233: 202A2A2A	
+0237: 2A2A2A2A	
+023B: 2A202053		defb	'*  SHIFT - X TO EXIT TERMINAL  *'
+023F: 48494654	
+0243: 202D2058	
+0247: 20544F20	
+024B: 45584954	
+024F: 20544552	
+0253: 4D494E41	
+0257: 4C20202A	
+025B: 2A2A2A2A		defb	'********************************',0
+025F: 2A2A2A2A	
+0263: 2A2A2A2A	
+0267: 2A2A2A2A	
+026B: 2A2A2A2A	
+026F: 2A2A2A2A	
+0273: 2A2A2A2A	
+0277: 2A2A2A2A	
+027B: 00      	
+417C:         	count2	equ	$
+0066:         	count3	defl	count2-count1
+417C:         	ivals2	equ	$
+              	
+027C: 00      		defb	0	;printer on/off flag
+027D: 00      		defb	0	;duplex flag
+027E: 00      		defb	0	;add lf to cr flag
+027F: 00      		defb	0	;where characters are placed when recvd from the keybrd
+0280: 00      		defb	0	;a flag for the keyboard driver
+0281: 00      		defb	0	;column counter
+0282: 0000    		defw	0	;cursor position
+              	;
+4184:         	ivalend equ	$
+              	;
+0284: F3      	start:	di			;get rid of the 6847 interrupt
+0285: 310090  		ld	sp,stack	;make a stack
+0288: 219D40  		ld	hl,ivals	;point to initial values
+028B: 110080  		ld	de,dumsg	;where to put them
+028E: 01E700  		ld	bc,ivalend-ivals ;number to put
+0291: EDB0    		ldir			;init the system
+0293: 3AE180  	start1: ld	a,(p1flg)	;get crlf flag
+0296: F5      		push	af		;save it
+0297: 3E01    		ld	a,1		;we want crlf on signon
+0299: 32E180  		ld	(p1flg),a
+029C: 211540  		ld	hl,signon	;point to signon
+029F: CD4D43  		call	msgout
+02A2: 210080  		ld	hl,dumsg
+02A5: CD4D43  		call	msgout
+02A8: F1      		pop	af		;restore crlf flag
+02A9: 32E180  		ld	(p1flg),a	;and save it here
+02AC: CD5034  		call	beep		;make a noise
+02AF: 219341  		ld	hl,start1	;set return address
+02B2: E5      		push	hl		;put it on the stack
+02B3: CD6644  	kget:	call	getkey		;get a key
+02B6: B7      		or	a
+02B7: 28FA    		jr	z,kget		;loop till key ready
+02B9: D630    		sub	'0'		;make it 0-10
+02BB: 38F6    		jr	c,kget		;continue if error
+02BD: FE07    		cp	6+1
+02BF: 30F2    		jr	nc,kget		;continue if error
+02C1: 21CE41  		ld	hl,cmdtab	;point to command table address
+02C4: 87      		add	a,a		;make it *2
+02C5: 5F      		ld	e,a		;put it in de
+02C6: 1600    		ld	d,0
+02C8: 19      		add	hl,de		;now hl points to correct table entry
+02C9: 5E      		ld	e,(hl)		;get lsb
+02CA: 23      		inc	hl
+02CB: 56      		ld	d,(hl)		;get msb, now hl points to correct address
+02CC: EB      		ex	de,hl
+02CD: E9      		jp	(hl)		;go to that address
+              	;
+              	;table of addresses for the command table options
+              	;
+02CE: 5642    	cmdtab: defw	term		;actual terminal
+02D0: DC41    		defw	setfh		;set full/half duplex
+02D2: F741    		defw	prnton		;turn printer on/off
+02D4: 3842    		defw	sdbits		;set # of data bits
+02D6: 4742    		defw	ssbits		;set # of stop bits
+02D8: 0B42    		defw	spar		;set parity
+02DA: 0142    		defw	addlf		;add on lf to cr
+              	;
+              	;set full or half duplex
+              	;
+02DC: 3AE080  	setfh:	ld	a,(dupflg)	;check current
+02DF: B7      		or	a		;check for full already
+02E0: 3E01    		ld	a,1		;make half just in case
+02E2: 211140  		ld	hl,halfmsg
+02E5: 2804    		jr	z,setfh1
+02E7: AF      		xor	a		;else make full
+02E8: 210D40  		ld	hl,fullmsg
+02EB: 32E080  	setfh1: ld	(dupflg),a
+02EE: 110080  		ld	de,dumsg	;where to go to
+02F1: 010400  		ld	bc,4		;move it
+02F4: EDB0    		ldir
+02F6: C9      		ret
+              	;
+              	;toggle printer
+              	;
+02F7: 21DF80  	prnton: ld	hl,pntflg	;check printer flag
+02FA: 111980  		ld	de,pntmsg
+02FD: CD2142  		call	toggle
+0300: C9      		ret
+              	;
+              	;add lf to cr flag
+              	;
+0301: 21E180  	addlf:	ld	hl,p1flg
+0304: 117980  		ld	de,p1msg
+0307: CD2142  		call	toggle
+030A: C9      		ret
+              	;
+              	;set parity
+              	;
+030B: 3A6180  	spar:	ld	a,(parmsg)	;get parity message
+030E: FE4E    		cp	'N'		;none ?
+0310: 0E45    		ld	c,'E'		;make it an even then
+0312: 2808    		jr	z,stpar1	;save this one if z flag set
+0314: FE45    		cp	'E'
+0316: 0E4F    		ld	c,'O'
+0318: 2802    		jr	z,stpar1	;if even, make an odd
+031A: 0E4E    		ld	c,'N'		;must be odd, make none
+031C: 79      	stpar1: ld	a,c
+031D: 326180  		ld	(parmsg),a
+0320: C9      		ret
+              	;
+0321: 7E      	toggle: ld	a,(hl)		;get current flag value
+0322: B7      		or	a		;is it zero
+0323: 3E01    		ld	a,1		;make it one if so
+0325: 2801    		jr	z,togg1
+0327: AF      		xor	a		;else make it a zero
+0328: 77      	togg1:	ld	(hl),a		;save new value
+0329: 210A40  		ld	hl,offmsg
+032C: B7      		or	a
+032D: 2803    		jr	z,moveit1
+032F: 210740  		ld	hl,onmsg
+0332: 010300  	moveit1:ld	bc,3
+0335: EDB0    	moveit: ldir
+0337: C9      		ret
+              	;
+              	;set databits
+              	;
+0338: 3A3180  	sdbits: ld	a,(dbits)	;get current value
+033B: FE37    		cp	'7'		;seven ?
+033D: 3E38    		ld	a,'8'		;just in case
+033F: 2802    		jr	z,sdb1
+0341: 3E37    		ld	a,'7'
+0343: 323180  	sdb1:	ld	(dbits),a
+0346: C9      		ret
+              	;
+              	;set stop bits
+              	;
+0347: 3A4980  	ssbits: ld	a,(sbits)	;get current value
+034A: FE31    		cp	'1'		;seven ?
+034C: 3E32    		ld	a,'2'		;just in case
+034E: 2802    		jr	z,ssb2		;if z, must be 8, make it 7
+0350: 3E31    		ld	a,'1'
+0352: 324980  	ssb2:	ld	(sbits),a
+0355: C9      		ret
+              	;
+0356: CD5643  	term:	call	clrscr		;clear the screen
+0359: CD1D43  	tryser: call	chkstr		;check for incoming serial stuff
+035C: 200E    		jr	nz,term1	;no-look for keyboard input then
+035E: CD8F42  		call	inchr		;stuff there, get it
+0361: CD6E43  		call	chrout		;and print it on the screen
+0364: 4F      		ld	c,a		;put char in correct register for list routine
+0365: 3ADF80  		ld	a,(pntflg)
+0368: B7      		or	a
+0369: C45344  		call	nz,list1
+036C: CD6644  	term1:	call	getkey		;see if user has typed anything
+036F: B7      		or	a
+0370: 28E7    		jr	z,tryser	;no, try the serial instead
+0372: FE65    		cp	exitkey		;see if a return to main loop key
+0374: C8      		ret	z		;return if so
+0375: F5      		push	af		;save char
+0376: CDC642  		call	outchr		;send to RS-232
+0379: F1      		pop	af		;restore for screen output
+037A: 4F      		ld	c,a
+037B: 3AE080  		ld	a,(dupflg)	;check duplex first
+037E: B7      		or	a
+037F: 79      		ld	a,c
+0380: 28D7    		jr	z,tryser	;jump if full duplex
+0382: CD6E43  		call	chrout		;and screen as well if 1/2 duplex
+0385: 4F      		ld	c,a		;put char in correct register for list routine
+0386: 3ADF80  		ld	a,(pntflg)
+0389: B7      		or	a
+038A: C45344  		call	nz,list1
+038D: 18CA    		jr	tryser
+              	;
+              	;get a character from the board
+              	;
+              	;incoming char must have been checked by a call to chkstr
+              	;
+              	;This routine is time critical and as i took be a long time to get it right,
+              	;i would suggest that it not be touched.
+              	;
+038F: CD2E43  	inchr:	call	del3a		;wait for 1/2 bit time, half way thru start bit
+0392: CD2343  		call	del300		;and 1 bit time, half way thru data bit 0
+0395: 3A3180  		ld	a,(dbits)	;get data bit value
+0398: D630    		sub	'0'		;remove ascii offset, 8 for 8 bits 7 for 7
+039A: 5F      		ld	e,a		;and put the calculated data bit value in e
+039B: 0608    		ld	b,8		;must always do 8 shifts to get bit 0 correct
+039D: 0E00    		ld	c,0		;accumulator for our serial bit stream
+039F: 78      	inchr1: ld	a,b		;check for last loop
+03A0: FE01    		cp	1		;are we nearly finished (we are if seven bits)
+03A2: 2007    		jr	nz,inchr2	;no-continue
+03A4: 7B      		ld	a,e		;see if 7 or 8 data bits required
+03A5: FE08    		cp	8		;if e=8, 8 bits are needed and one further loop
+03A7: 280E    		jr	z,inchr3
+03A9: 180E    		jr	inchr4		;finish up if seven
+              	;
+03AB: 3A0050  	inchr2: ld	a,(inadr)	;get the entered bit
+03AE: E680    		and	10000000b	;mask off invalid bits
+03B0: B1      		or	c		;mask on our accumulated value
+03B1: 4F      		ld	c,a		;and save it here
+03B2: CB39    		srl	c		;and shift it into the next bit position
+03B4: CD2343  		call	del300		;delay one 300 baud bit time
+03B7: 10E6    	inchr3: djnz	inchr1		;loop for all data bits
+03B9: CD3A43  	inchr4: call	del302		;wait till end of data bit
+03BC: 3A6180  		ld	a,(parmsg)	;check if parity delay needed
+03BF: FE4E    		cp	'N'
+03C1: C42343  		call	nz,del300
+03C4: 79      		ld	a,c		;get the char back
+03C5: C9      		ret
+              	;
+              	;output char
+              	;
+03C6: F5      	outchr: push	af		;save the char
+03C7: 3EFF    		ld	a,255		;make a start bit
+03C9: 320058  		ld	(outadr),a	;send it
+03CC: CD2343  		call	del300		;and do a delay for 1 bit time
+03CF: 3A3180  		ld	a,(dbits)	;get # of data bits
+03D2: D630    		sub	'0'
+03D4: 47      		ld	b,a		;and put the calculated data bit value in b
+03D5: F1      		pop	af
+03D6: F5      		push	af
+03D7: 4F      		ld	c,a
+03D8: CB39    	snd1:	srl	c		;rotate bit 0 of c into carry flag
+03DA: 3E00    		ld	a,00000000b	;in case of carry
+03DC: 3802    		jr	c,snd2		;send if bit was 1
+03DE: 3E80    		ld	a,10000000b	;make it one
+03E0: 320058  	snd2:	ld	(outadr),a	;send the char
+03E3: CD2343  		call	del300		;delay for one bit time
+03E6: 10F0    		djnz	snd1
+03E8: F1      		pop	af		;restore char that was sent
+03E9: 4F      		ld	c,a		;save it in c
+03EA: 3A6180  		ld	a,(parmsg)	;check for parity
+03ED: FE4E    		cp	'N'
+03EF: 281C    		jr	z,nopar0	;z if no parity
+03F1: 79      		ld	a,c		;get back restored character
+03F2: B7      		or	a		;set parity flags
+03F3: 3A6180  		ld	a,(parmsg)	;and get parity type for later testing
+03F6: E20343  		jp	po,oddpar	;jump if parity of the byte is odd
+03F9: FE45    		cp	'E'		;was it supposed to be even
+03FB: 3E80    	tstpar: ld	a,10000000b
+03FD: 2808    		jr	z,sndpar
+03FF: 3E00    		ld	a,00000000b
+0401: 1804    		jr	sndpar
+              	;
+0403: FE4F    	oddpar: cp	'O'		;set z flag if it was supposed to be odd
+0405: 18F4    		jr	tstpar
+              	
+0407: 320058  	sndpar: ld	(outadr),a
+040A: CD2343  		call	del300
+040D: 3A4980  	nopar0: ld	a,(sbits)	;get # of stop bits
+0410: D630    		sub	'0'		;make it hex 1 or 2
+0412: 47      		ld	b,a
+0413: AF      	sbdel1: xor	a		;make a stop bit
+0414: 320058  		ld	(outadr),a
+0417: CD2343  		call	del300		;delay for middle of stop bit
+041A: 10F7    		djnz	sbdel1
+041C: C9      		ret
+              	;
+              	;check for a character coming in
+              	;
+              	;RX provides an active low input to the address buffer
+              	;
+              	;i.e. returned value is nz if a char is ready, z if not
+              	;
+041D: 3A0050  	chkstr: ld	a,(inadr)	;check input address
+0420: CB7F    		bit	7,a
+0422: C9      		ret
+              	;
+              	;These delay routines provide a correct mark to space ratio for checking
+              	;and sending the serial bit stream and are VERY VERY VERY critical.
+              	;if you send a series of 'U' (a character with the same mark to space ratio)
+              	;characters and look at the output of the interface on a CRO, you will
+              	;see what i mean.
+              	;
+              	;
+0423: F5      	del300: push	af
+0424: C5      		push	bc
+0425: CD2E43  		call	del3a
+0428: CD2E43  		call	del3a
+042B: C1      		pop	bc
+042C: F1      		pop	af
+042D: C9      		ret
+              	;
+042E: C5      	del3a:	push	bc
+042F: 3E23    		ld	a,215/6		;300 baud delay
+0431: 060B    	loop0:	ld	b,11
+0433: 10FE    	loop1:	djnz	loop1
+0435: 3D      		dec	a
+0436: 20F9    		jr	nz,loop0
+0438: C1      		pop	bc
+0439: C9      		ret
+              	;
+043A: CD2E43  	del302: call	del3a		;one 1/2 300 baud delay
+043D: C5      		push	bc		;save this
+043E: 3E22    		ld	a,205/6		;nex timing constant
+0440: 18EF    		jr	loop0
+              	;
+0442: F5      	kdelay: push	af
+0443: C5      		push	bc
+0444: 01FF4F  		ld	bc,04fffh	;delay value
+0447: CD6000  		call	vzdelay		;delay it
+044A: C1      		pop	bc		;get registers back
+044B: F1      		pop	af
+044C: C9      		ret
+              	;
+044D: 7E      	msgout: ld	a,(hl)
+044E: B7      		or	a
+044F: C8      		ret	z
+0450: CD6E43  		call	chrout
+0453: 23      		inc	hl
+0454: 18F7    		jr	msgout
+              	;
+              	;Character output routine
+              	;
+0456: 210070  	clrscr: ld	hl,toplin
+0459: 22E580  		ld	(cursor),hl
+045C: 110170  		ld	de,toplin+1
+045F: 01FF01  		ld	bc,nolin+31
+0462: 3660    		ld	(hl),96
+0464: EDB0    		ldir
+0466: AF      		xor	a
+0467: 32E480  		ld	(curpos),a
+046A: 320068  		ld	(26624),a
+046D: C9      		ret
+              	;
+046E: F5      	chrout: push	af
+046F: E5      		push	hl
+0470: C5      		push	bc
+0471: D5      		push	de
+0472: CD7A43  		call	pntit
+0475: D1      		pop	de
+0476: C1      		pop	bc
+0477: E1      		pop	hl
+0478: F1      		pop	af
+0479: C9      		ret
+              	;
+047A: ED5BE580	pntit:	ld	de,(cursor)
+047E: FE0C    		cp	ff
+0480: 28D4    		jr	z,clrscr
+0482: FE0D    		cp	cr
+0484: 287E    		jr	z,crt		;do a cr
+0486: FE08    		cp	bs
+0488: 2835    		jr	z,bsp
+048A: FE09    		cp	ht
+048C: 2816    		jr	z,fsp
+048E: FE0A    		cp	lf
+0490: 284A    		jr	z,lfd
+0492: FE07    		cp	bell
+0494: CA5034  		jp	z,beep
+0497: CB7F    		bit	7,a
+0499: 2008    		jr	nz,grap
+049B: FE20    		cp	32		;if not recognised control char, return
+049D: F8      		ret	m
+049E: CD5D44  		call	fold		;fold lower to upper
+04A1: CBF7    		set	6,a		;change non-alphabetical char
+              					;to black with white background
+              	;
+04A3: 12      	grap:	ld	(de),a
+04A4: 13      	fsp:	inc	de
+04A5: ED53E580		ld	(cursor),de
+04A9: 3AE480  		ld	a,(curpos)
+04AC: 3C      		inc	a
+04AD: 32E480  		ld	(curpos),a
+04B0: FE20    		cp	32
+04B2: F8      		ret	m
+04B3: CDF343  		call	docrlf
+04B6: 3ADF80  		ld	a,(pntflg)	;printer on ?
+04B9: B7      		or	a
+04BA: C8      		ret	z		;return if not
+04BB: CD4944  		call	pcrlf
+04BE: C9      		ret
+              	;
+04BF: 3AE480  	bsp:	ld	a,(curpos)
+04C2: B7      		or	a
+04C3: 280A    		jr	z,bsp1
+04C5: 3D      		dec	a
+04C6: 32E480  	bsp2:	ld	(curpos),a
+04C9: 1B      		dec	de
+04CA: ED53E580		ld	(cursor),de
+04CE: C9      		ret
+              	;
+04CF: E5      	bsp1:	push	hl
+04D0: 210070  		ld	hl,toplin
+04D3: B7      		or	a
+04D4: ED52    		sbc	hl,de
+04D6: E1      		pop	hl
+04D7: C8      		ret	z
+04D8: 3E1F    		ld	a,31
+04DA: 18EA    		jr	bsp2
+              	;
+04DC: 3AE480  	lfd:	ld	a,(curpos)
+04DF: 4F      		ld	c,a
+04E0: 0600    		ld	b,0
+04E2: C5      		push	bc
+04E3: CDF343  		call	docrlf
+04E6: C1      		pop	bc
+04E7: EB      		ex	de,hl
+04E8: 09      		add	hl,bc
+04E9: EB      		ex	de,hl
+04EA: ED53E580		ld	(cursor),de
+04EE: 79      		ld	a,c
+04EF: 32E480  		ld	(curpos),a
+04F2: C9      		ret
+              	;
+04F3: 3AE180  	docrlf: ld	a,(p1flg)	;get current setting
+04F6: F5      		push	af		;save it
+04F7: 3E01    		ld	a,1		;make it so it does add on lf
+04F9: 32E180  		ld	(p1flg),a
+04FC: CD0444  		call	crt		;do it
+04FF: F1      		pop	af		;get back original flag
+0500: 32E180  		ld	(p1flg),a	;and save it again
+0503: C9      		ret
+              	;
+0504: E5      	crt:	push	hl
+0505: EB      		ex	de,hl
+0506: 3AE480  		ld	a,(curpos)
+0509: 5F      		ld	e,a
+050A: 1600    		ld	d,0
+050C: B7      		or	a
+050D: ED52    		sbc	hl,de
+050F: 3AE180  		ld	a,(p1flg)	;do we want to add on an lf to a cr
+0512: B7      		or	a		;if zero we don't
+0513: 2804    		jr	z,nolf
+0515: 112000  		ld	de,32		;add on an lf if cr
+0518: 19      		add	hl,de
+0519: EB      	nolf:	ex	de,hl
+051A: 210072  		ld	hl,29184
+051D: B7      		or	a
+051E: ED52    		sbc	hl,de		;check for end of screen
+0520: 280A    		jr	z,scroll	;scroll if so
+0522: ED53E580	write4: ld	(cursor),de
+0526: AF      		xor	a
+0527: 32E480  		ld	(curpos),a
+052A: E1      		pop	hl
+052B: C9      		ret
+              	;
+052C: 212070  	scroll: ld	hl,toplin+32
+052F: 110070  		ld	de,toplin
+0532: 01E001  		ld	bc,nolin
+0535: EDB0    		ldir
+0537: 21E071  		ld	hl,29152
+053A: 11E171  		ld	de,29153
+053D: 011F00  		ld	bc,31
+0540: 3660    		ld	(hl),96
+0542: EDB0    		ldir
+0544: 11E071  		ld	de,29152
+0547: 18D9    		jr	write4
+              	;
+0549: CDC405  	pcrlf:	call	listst		;check printer status
+054C: CB47    		bit	0,a
+054E: C0      		ret	nz		;return if printer not ready
+054F: CDE23A  		call	pcrlf1		;send crlf to printer if printer is ready
+0552: C9      		ret
+              	;
+              	;
+0553: CDC405  	list1:	call	listst
+0556: CB47    		bit	0,a
+0558: C0      		ret	nz		;return if printer not ready
+0559: 79      		ld	a,c
+055A: C38D05  		jp	list		;list it and return
+              	;
+055D: FE61    	fold:	cp	'a'
+055F: D8      		ret	c
+0560: FE7B    		cp	'z'+1
+0562: D0      		ret	nc
+0563: E65F    		and	05fh		;make upper if lower
+0565: C9      		ret
+              	;
+              	;Keyboard driver for VZ-200/300
+              	;
+              	;This keyboard drive is (c) Dick Smith Electronics and (c) 1982,1983,1984
+              	;Video Technology HK Ltd.
+              	;
+68FE:         	row1	equ	068feh
+68DF:         	row2	equ	068dfh
+              	;
+0566: 21FE68  	getkey: ld	hl,row1		;point to first row
+0569: 0E08    		ld	c,8		;row counter
+056B: 0606    	scan1:	ld	b,6		;column counter
+056D: 7E      		ld	a,(hl)		;get first key
+056E: F604    		or	4		;mask out bit 2
+0570: 1F      	rot:	rra			;rotate bits
+0571: 3058    		jr	nc,found	;exit if key pressed
+0573: 10FB    		djnz	rot		;else try next bit
+0575: CB05    		rlc	l		;get next address
+0577: 0D      		dec	c		;dec row counter
+0578: 20F1    		jr	nz,scan1	;try next row
+057A: 0604    		ld	b,4		;get col counter
+057C: 21DF68  		ld	hl,row2		;get next address
+057F: 7E      		ld	a,(hl)		;read key
+0580: CB57    		bit	2,a		;test bit 2 for keypress
+0582: 283D    		jr	z,minus		;exit if key pressed
+0584: CB05    		rlc	l		;get next address
+0586: 7E      		ld	a,(hl)		;read key
+0587: CB57    		bit	2,a		;test for keypress
+0589: 283A    		jr	z,carret	;exit if cr key pressed
+058B: CB05    		rlc	l		;get next addr
+058D: CB57    		bit	2,a
+058F: 2838    		jr	z,colon		;test if : pressed
+0591: CB05    		rlc	l		;get next addr
+0593: CB05    		rlc	l		;last addr had no char
+0595: 7E      		ld	a,(hl)		;get the key
+0596: CB57    		bit	2,a		;test for cntrl
+0598: 2811    		jr	z,ctrl
+059A: CB05    		rlc	l		;get next address
+059C: 7E      		ld	a,(hl)		;read key
+059D: CB57    		bit	2,a
+059F: 2811    		jr	z,shift		;exit if shift key pressed
+05A1: 3EFF    		ld	a,0ffh		;get no char code
+05A3: 32E280  		ld	(char),a
+05A6: AF      		xor	a
+05A7: 32E380  		ld	(flag),a	;clear shift flag
+05AA: C9      		ret
+              	;
+05AB: 3AE380  	ctrl:	ld	a,(flag)
+05AE: CBD7    		set	2,a
+05B0: 1805    		jr	keyexit
+              	;
+05B2: 3AE380  	shift:	ld	a,(flag)	;get flag
+05B5: CBCF    		set	1,a		;set bit 1 flag
+05B7: 32E380  	keyexit:ld	(flag),a
+05BA: 3EFF    		ld	a,0ffh		;make no char code
+05BC: 32E280  		ld	(char),a
+05BF: AF      	same:	xor	a		;if char the same, return no char so as to
+              					;remove the key repeat
+05C0: C9      		ret
+              	;
+05C1: 0E03    	minus:	ld	c,3		;set row count
+05C3: 1806    		jr	found		;exit
+              	;
+05C5: 0E02    	carret: ld	c,2		;set row count
+05C7: 1802    		jr	found
+              	;
+05C9: 0E01    	colon:	ld	c,1		;set row count
+              	;
+05CB: 210545  	found:	ld	hl,txtble	;point to lookup table
+05CE: 1E00    		ld	e,0		;clear shift/control offset
+05D0: 3AE380  		ld	a,(flag)
+05D3: CB57    		bit	2,a		;test for ctrl key hit last time
+05D5: 2804    		jr	z,noctrl
+05D7: 1E60    		ld	e,48*2		;make up control table offset
+05D9: 1806    		jr	noshift
+              	;
+05DB: CB4F    	noctrl: bit	1,a		;test for the shift key
+05DD: 2802    		jr	z,noshift
+05DF: 1E30    		ld	e,48		;set shifted offset
+05E1: 3E08    	noshift:ld	a,8		;setup row count
+05E3: 91      		sub	c		;calc offset
+05E4: 4F      		ld	c,a		;store in C
+05E5: 3E06    		ld	a,6		;setup column count
+05E7: 90      		sub	b		;calc offset
+05E8: 47      		ld	b,a		;store in b
+05E9: CDFA44  		call	cond		;get table offset in A
+05EC: 83      		add	a,e		;add shift offset
+05ED: 0600    		ld	b,0		;clear b
+05EF: 4F      		ld	c,a		;offset in C
+05F0: 09      		add	hl,bc		;get character position
+05F1: 7E      		ld	a,(hl)		;get char in A
+05F2: 21E280  		ld	hl,char		;get last char
+05F5: BE      		cp	(hl)		;same as last ?
+05F6: 28C7    		jr	z,same
+05F8: 77      		ld	(hl),a		;if not same, save the char
+05F9: C9      		ret
+              	;
+05FA: AF      	cond:	xor	a		;clear a reg.
+05FB: B9      		cp	c		;is c=0
+05FC: 2805    		jr	z,hre		;bypass if yes
+05FE: C606    	mult:	add	a,6		;inc by six
+0600: 0D      		dec	c		;dec counter
+0601: 20FB    		jr	nz,mult
+0603: 80      	hre:	add	a,b		;add bit count
+0604: C9      		ret
+              	;
+0605: 54572045	txtble: defb	'TW EQRGS DAFBX CZV52 314N. , M'
+0609: 51524753	
+060D: 20444146	
+0611: 42582043	
+0615: 5A563532	
+0619: 20333134	
+061D: 4E2E202C	
+0621: 204D    	
+0623: 36392D38		defb	'69-807YO'
+0627: 3037594F	
+062B: 0D      		defb	0dh
+062C: 49505548		defb	'IPUHL:K;J'
+0630: 4C3A4B3B	
+0634: 4A      	
+              	;
+              	;shifted characters
+              	;
+0635: 00      		defb	0		;shift T
+0636: 00      		defb	0		;shift w
+0637: 00      		defb	0
+0638: 00      		defb	0		;shift e
+0639: 00      		defb	0		;shift q
+063A: 00      		defb	0		;shift r
+063B: 00      		defb	0		;shift g
+063C: 00      		defb	0		;shift s
+063D: 00      		defb	0		;cntrl
+063E: 00      		defb	0		;shift d
+063F: 00      		defb	0		;shift a
+0640: 00      		defb	0		;shift f
+0641: 00      		defb	0		;shift b
+0642: 65      		defb	101		;shift x
+0643: 00      		defb	0		;null
+0644: 00      		defb	0		;shift c
+0645: 0000    		defw	0		;null
+0647: 25222023		defb	'%" #!$'        ;shifted 52 314
+064B: 2124    	
+064D: 00      		defb	0		;shift n
+064E: 3E      		defb	'>'		;shift .
+064F: 00      		defb	0
+0650: 3C      		defb	'<'		;shift ,
+0651: 00      		defb	0		;null
+0652: 5C      		defb	92		;shift m
+0653: 26293D28		defb	'&)=('		;shifted 69-8
+0657: 40      		defb	'@'		;shift 0
+0658: 00      		defb	0		;shift 7
+0659: 00      		defb	0		;shift y
+065A: 00      		defb	0		;shift o
+065B: 00      		defb	0		;shift cr
+065C: 00      		defb	0		;shift i
+065D: 00      		defb	0		;shift p
+065E: 00      		defb	0		;shift u
+065F: 00      		defb	0		;shift h
+0660: 3F      		defb	'?'		;shift l
+0661: 2A      		defb	'*'		;shift :
+0662: 2F      		defb	'/'		;shift k
+0663: 2B      		defb	'+'		;shift ;
+0664: 00      		defb	0		;shift j
+              	;
+              	;control characters
+              	;
+0665: 14      		defb	'T'-040h	;control t
+0666: 17      		defb	'W'-040h	;control w
+0667: 00      		defb	0
+0668: 05      		defb	'E'-040h	;control e
+0669: 11      		defb	'Q'-040h	;control q
+066A: 12      		defb	'R'-040h	;control r
+066B: 07      		defb	'G'-040h	;control g
+066C: 13      		defb	'S'-040h	;control s
+066D: 00      		defb	0
+066E: 00      		defb	0		;control d
+066F: 01      		defb	'A'-040h	;control a
+0670: 06      		defb	'F'-040h	;control f
+0671: 02      		defb	'B'-040h	;control b
+0672: 18      		defb	'X'-040h	;control x
+0673: 00      		defb	0
+0674: 03      		defb	'C'-040h	;control c
+0675: 1A      		defb	'Z'-040h	;control z
+0676: 16      		defb	'V'-040h	;control v
+0677: 00      		defb	0
+0678: 00      		defb	0
+0679: 00      		defb	0
+067A: 00      		defb	0
+067B: 00      		defb	0
+067C: 00      		defb	0
+067D: 0E      		defb	'N'-040h	;control n
+067E: 00      		defb	0
+067F: 00      		defb	0
+0680: 00      		defb	0
+0681: 00      		defb	0
+0682: 0D      		defb	cr		;control m
+0683: 00      		defb	0
+0684: 00      		defb	0
+0685: 00      		defb	0
+0686: 00      		defb	0
+0687: 00      		defb	0
+0688: 00      		defb	0
+0689: 19      		defb	'Y'-040h	;control y
+068A: 0F      		defb	'O'-040h	;control o
+068B: 00      		defb	0
+068C: 09      		defb	ht		;control i
+068D: 10      		defb	'P'-040h	;control p
+068E: 15      		defb	'U'-040h	;control u
+068F: 08      		defb	bs		;control h
+0690: 0C      		defb	ff		;control l
+0691: 00      		defb	0
+0692: 0B      		defb	'K'-040h	;control k
+0693: 00      		defb	0
+0694: 0A      		defb	lf		;control j
+              	;
+4595:         	endadr	equ	$
+              	.xlist				;xlist is so you don't see heaps of ff's
+              					;in a printer listing !!
+026B:         	bytes	defl	2048-(endadr-begadr)	;figure out how big the program is
+              		rept	bytes		;and fill the rest of it with ff's
+              		defb	0ffh		;means that the eprom programmer works
+              		endm			;heaps faster.
+0695: FF      		defb	0ffh		;means that the eprom programmer works
+0696: FF      		defb	0ffh		;means that the eprom programmer works
+0697: FF      		defb	0ffh		;means that the eprom programmer works
+0698: FF      		defb	0ffh		;means that the eprom programmer works
+0699: FF      		defb	0ffh		;means that the eprom programmer works
+069A: FF      		defb	0ffh		;means that the eprom programmer works
+069B: FF      		defb	0ffh		;means that the eprom programmer works
+069C: FF      		defb	0ffh		;means that the eprom programmer works
+069D: FF      		defb	0ffh		;means that the eprom programmer works
+069E: FF      		defb	0ffh		;means that the eprom programmer works
+069F: FF      		defb	0ffh		;means that the eprom programmer works
+06A0: FF      		defb	0ffh		;means that the eprom programmer works
+06A1: FF      		defb	0ffh		;means that the eprom programmer works
+06A2: FF      		defb	0ffh		;means that the eprom programmer works
+06A3: FF      		defb	0ffh		;means that the eprom programmer works
+06A4: FF      		defb	0ffh		;means that the eprom programmer works
+06A5: FF      		defb	0ffh		;means that the eprom programmer works
+06A6: FF      		defb	0ffh		;means that the eprom programmer works
+06A7: FF      		defb	0ffh		;means that the eprom programmer works
+06A8: FF      		defb	0ffh		;means that the eprom programmer works
+06A9: FF      		defb	0ffh		;means that the eprom programmer works
+06AA: FF      		defb	0ffh		;means that the eprom programmer works
+06AB: FF      		defb	0ffh		;means that the eprom programmer works
+06AC: FF      		defb	0ffh		;means that the eprom programmer works
+06AD: FF      		defb	0ffh		;means that the eprom programmer works
+06AE: FF      		defb	0ffh		;means that the eprom programmer works
+06AF: FF      		defb	0ffh		;means that the eprom programmer works
+06B0: FF      		defb	0ffh		;means that the eprom programmer works
+06B1: FF      		defb	0ffh		;means that the eprom programmer works
+06B2: FF      		defb	0ffh		;means that the eprom programmer works
+06B3: FF      		defb	0ffh		;means that the eprom programmer works
+06B4: FF      		defb	0ffh		;means that the eprom programmer works
+06B5: FF      		defb	0ffh		;means that the eprom programmer works
+06B6: FF      		defb	0ffh		;means that the eprom programmer works
+06B7: FF      		defb	0ffh		;means that the eprom programmer works
+06B8: FF      		defb	0ffh		;means that the eprom programmer works
+06B9: FF      		defb	0ffh		;means that the eprom programmer works
+06BA: FF      		defb	0ffh		;means that the eprom programmer works
+06BB: FF      		defb	0ffh		;means that the eprom programmer works
+06BC: FF      		defb	0ffh		;means that the eprom programmer works
+06BD: FF      		defb	0ffh		;means that the eprom programmer works
+06BE: FF      		defb	0ffh		;means that the eprom programmer works
+06BF: FF      		defb	0ffh		;means that the eprom programmer works
+06C0: FF      		defb	0ffh		;means that the eprom programmer works
+06C1: FF      		defb	0ffh		;means that the eprom programmer works
+06C2: FF      		defb	0ffh		;means that the eprom programmer works
+06C3: FF      		defb	0ffh		;means that the eprom programmer works
+06C4: FF      		defb	0ffh		;means that the eprom programmer works
+06C5: FF      		defb	0ffh		;means that the eprom programmer works
+06C6: FF      		defb	0ffh		;means that the eprom programmer works
+06C7: FF      		defb	0ffh		;means that the eprom programmer works
+06C8: FF      		defb	0ffh		;means that the eprom programmer works
+06C9: FF      		defb	0ffh		;means that the eprom programmer works
+06CA: FF      		defb	0ffh		;means that the eprom programmer works
+06CB: FF      		defb	0ffh		;means that the eprom programmer works
+06CC: FF      		defb	0ffh		;means that the eprom programmer works
+06CD: FF      		defb	0ffh		;means that the eprom programmer works
+06CE: FF      		defb	0ffh		;means that the eprom programmer works
+06CF: FF      		defb	0ffh		;means that the eprom programmer works
+06D0: FF      		defb	0ffh		;means that the eprom programmer works
+06D1: FF      		defb	0ffh		;means that the eprom programmer works
+06D2: FF      		defb	0ffh		;means that the eprom programmer works
+06D3: FF      		defb	0ffh		;means that the eprom programmer works
+06D4: FF      		defb	0ffh		;means that the eprom programmer works
+06D5: FF      		defb	0ffh		;means that the eprom programmer works
+06D6: FF      		defb	0ffh		;means that the eprom programmer works
+06D7: FF      		defb	0ffh		;means that the eprom programmer works
+06D8: FF      		defb	0ffh		;means that the eprom programmer works
+06D9: FF      		defb	0ffh		;means that the eprom programmer works
+06DA: FF      		defb	0ffh		;means that the eprom programmer works
+06DB: FF      		defb	0ffh		;means that the eprom programmer works
+06DC: FF      		defb	0ffh		;means that the eprom programmer works
+06DD: FF      		defb	0ffh		;means that the eprom programmer works
+06DE: FF      		defb	0ffh		;means that the eprom programmer works
+06DF: FF      		defb	0ffh		;means that the eprom programmer works
+06E0: FF      		defb	0ffh		;means that the eprom programmer works
+06E1: FF      		defb	0ffh		;means that the eprom programmer works
+06E2: FF      		defb	0ffh		;means that the eprom programmer works
+06E3: FF      		defb	0ffh		;means that the eprom programmer works
+06E4: FF      		defb	0ffh		;means that the eprom programmer works
+06E5: FF      		defb	0ffh		;means that the eprom programmer works
+06E6: FF      		defb	0ffh		;means that the eprom programmer works
+06E7: FF      		defb	0ffh		;means that the eprom programmer works
+06E8: FF      		defb	0ffh		;means that the eprom programmer works
+06E9: FF      		defb	0ffh		;means that the eprom programmer works
+06EA: FF      		defb	0ffh		;means that the eprom programmer works
+06EB: FF      		defb	0ffh		;means that the eprom programmer works
+06EC: FF      		defb	0ffh		;means that the eprom programmer works
+06ED: FF      		defb	0ffh		;means that the eprom programmer works
+06EE: FF      		defb	0ffh		;means that the eprom programmer works
+06EF: FF      		defb	0ffh		;means that the eprom programmer works
+06F0: FF      		defb	0ffh		;means that the eprom programmer works
+06F1: FF      		defb	0ffh		;means that the eprom programmer works
+06F2: FF      		defb	0ffh		;means that the eprom programmer works
+06F3: FF      		defb	0ffh		;means that the eprom programmer works
+06F4: FF      		defb	0ffh		;means that the eprom programmer works
+06F5: FF      		defb	0ffh		;means that the eprom programmer works
+06F6: FF      		defb	0ffh		;means that the eprom programmer works
+06F7: FF      		defb	0ffh		;means that the eprom programmer works
+06F8: FF      		defb	0ffh		;means that the eprom programmer works
+06F9: FF      		defb	0ffh		;means that the eprom programmer works
+06FA: FF      		defb	0ffh		;means that the eprom programmer works
+06FB: FF      		defb	0ffh		;means that the eprom programmer works
+06FC: FF      		defb	0ffh		;means that the eprom programmer works
+06FD: FF      		defb	0ffh		;means that the eprom programmer works
+06FE: FF      		defb	0ffh		;means that the eprom programmer works
+06FF: FF      		defb	0ffh		;means that the eprom programmer works
+0700: FF      		defb	0ffh		;means that the eprom programmer works
+0701: FF      		defb	0ffh		;means that the eprom programmer works
+0702: FF      		defb	0ffh		;means that the eprom programmer works
+0703: FF      		defb	0ffh		;means that the eprom programmer works
+0704: FF      		defb	0ffh		;means that the eprom programmer works
+0705: FF      		defb	0ffh		;means that the eprom programmer works
+0706: FF      		defb	0ffh		;means that the eprom programmer works
+0707: FF      		defb	0ffh		;means that the eprom programmer works
+0708: FF      		defb	0ffh		;means that the eprom programmer works
+0709: FF      		defb	0ffh		;means that the eprom programmer works
+070A: FF      		defb	0ffh		;means that the eprom programmer works
+070B: FF      		defb	0ffh		;means that the eprom programmer works
+070C: FF      		defb	0ffh		;means that the eprom programmer works
+070D: FF      		defb	0ffh		;means that the eprom programmer works
+070E: FF      		defb	0ffh		;means that the eprom programmer works
+070F: FF      		defb	0ffh		;means that the eprom programmer works
+0710: FF      		defb	0ffh		;means that the eprom programmer works
+0711: FF      		defb	0ffh		;means that the eprom programmer works
+0712: FF      		defb	0ffh		;means that the eprom programmer works
+0713: FF      		defb	0ffh		;means that the eprom programmer works
+0714: FF      		defb	0ffh		;means that the eprom programmer works
+0715: FF      		defb	0ffh		;means that the eprom programmer works
+0716: FF      		defb	0ffh		;means that the eprom programmer works
+0717: FF      		defb	0ffh		;means that the eprom programmer works
+0718: FF      		defb	0ffh		;means that the eprom programmer works
+0719: FF      		defb	0ffh		;means that the eprom programmer works
+071A: FF      		defb	0ffh		;means that the eprom programmer works
+071B: FF      		defb	0ffh		;means that the eprom programmer works
+071C: FF      		defb	0ffh		;means that the eprom programmer works
+071D: FF      		defb	0ffh		;means that the eprom programmer works
+071E: FF      		defb	0ffh		;means that the eprom programmer works
+071F: FF      		defb	0ffh		;means that the eprom programmer works
+0720: FF      		defb	0ffh		;means that the eprom programmer works
+0721: FF      		defb	0ffh		;means that the eprom programmer works
+0722: FF      		defb	0ffh		;means that the eprom programmer works
+0723: FF      		defb	0ffh		;means that the eprom programmer works
+0724: FF      		defb	0ffh		;means that the eprom programmer works
+0725: FF      		defb	0ffh		;means that the eprom programmer works
+0726: FF      		defb	0ffh		;means that the eprom programmer works
+0727: FF      		defb	0ffh		;means that the eprom programmer works
+0728: FF      		defb	0ffh		;means that the eprom programmer works
+0729: FF      		defb	0ffh		;means that the eprom programmer works
+072A: FF      		defb	0ffh		;means that the eprom programmer works
+072B: FF      		defb	0ffh		;means that the eprom programmer works
+072C: FF      		defb	0ffh		;means that the eprom programmer works
+072D: FF      		defb	0ffh		;means that the eprom programmer works
+072E: FF      		defb	0ffh		;means that the eprom programmer works
+072F: FF      		defb	0ffh		;means that the eprom programmer works
+0730: FF      		defb	0ffh		;means that the eprom programmer works
+0731: FF      		defb	0ffh		;means that the eprom programmer works
+0732: FF      		defb	0ffh		;means that the eprom programmer works
+0733: FF      		defb	0ffh		;means that the eprom programmer works
+0734: FF      		defb	0ffh		;means that the eprom programmer works
+0735: FF      		defb	0ffh		;means that the eprom programmer works
+0736: FF      		defb	0ffh		;means that the eprom programmer works
+0737: FF      		defb	0ffh		;means that the eprom programmer works
+0738: FF      		defb	0ffh		;means that the eprom programmer works
+0739: FF      		defb	0ffh		;means that the eprom programmer works
+073A: FF      		defb	0ffh		;means that the eprom programmer works
+073B: FF      		defb	0ffh		;means that the eprom programmer works
+073C: FF      		defb	0ffh		;means that the eprom programmer works
+073D: FF      		defb	0ffh		;means that the eprom programmer works
+073E: FF      		defb	0ffh		;means that the eprom programmer works
+073F: FF      		defb	0ffh		;means that the eprom programmer works
+0740: FF      		defb	0ffh		;means that the eprom programmer works
+0741: FF      		defb	0ffh		;means that the eprom programmer works
+0742: FF      		defb	0ffh		;means that the eprom programmer works
+0743: FF      		defb	0ffh		;means that the eprom programmer works
+0744: FF      		defb	0ffh		;means that the eprom programmer works
+0745: FF      		defb	0ffh		;means that the eprom programmer works
+0746: FF      		defb	0ffh		;means that the eprom programmer works
+0747: FF      		defb	0ffh		;means that the eprom programmer works
+0748: FF      		defb	0ffh		;means that the eprom programmer works
+0749: FF      		defb	0ffh		;means that the eprom programmer works
+074A: FF      		defb	0ffh		;means that the eprom programmer works
+074B: FF      		defb	0ffh		;means that the eprom programmer works
+074C: FF      		defb	0ffh		;means that the eprom programmer works
+074D: FF      		defb	0ffh		;means that the eprom programmer works
+074E: FF      		defb	0ffh		;means that the eprom programmer works
+074F: FF      		defb	0ffh		;means that the eprom programmer works
+0750: FF      		defb	0ffh		;means that the eprom programmer works
+0751: FF      		defb	0ffh		;means that the eprom programmer works
+0752: FF      		defb	0ffh		;means that the eprom programmer works
+0753: FF      		defb	0ffh		;means that the eprom programmer works
+0754: FF      		defb	0ffh		;means that the eprom programmer works
+0755: FF      		defb	0ffh		;means that the eprom programmer works
+0756: FF      		defb	0ffh		;means that the eprom programmer works
+0757: FF      		defb	0ffh		;means that the eprom programmer works
+0758: FF      		defb	0ffh		;means that the eprom programmer works
+0759: FF      		defb	0ffh		;means that the eprom programmer works
+075A: FF      		defb	0ffh		;means that the eprom programmer works
+075B: FF      		defb	0ffh		;means that the eprom programmer works
+075C: FF      		defb	0ffh		;means that the eprom programmer works
+075D: FF      		defb	0ffh		;means that the eprom programmer works
+075E: FF      		defb	0ffh		;means that the eprom programmer works
+075F: FF      		defb	0ffh		;means that the eprom programmer works
+0760: FF      		defb	0ffh		;means that the eprom programmer works
+0761: FF      		defb	0ffh		;means that the eprom programmer works
+0762: FF      		defb	0ffh		;means that the eprom programmer works
+0763: FF      		defb	0ffh		;means that the eprom programmer works
+0764: FF      		defb	0ffh		;means that the eprom programmer works
+0765: FF      		defb	0ffh		;means that the eprom programmer works
+0766: FF      		defb	0ffh		;means that the eprom programmer works
+0767: FF      		defb	0ffh		;means that the eprom programmer works
+0768: FF      		defb	0ffh		;means that the eprom programmer works
+0769: FF      		defb	0ffh		;means that the eprom programmer works
+076A: FF      		defb	0ffh		;means that the eprom programmer works
+076B: FF      		defb	0ffh		;means that the eprom programmer works
+076C: FF      		defb	0ffh		;means that the eprom programmer works
+076D: FF      		defb	0ffh		;means that the eprom programmer works
+076E: FF      		defb	0ffh		;means that the eprom programmer works
+076F: FF      		defb	0ffh		;means that the eprom programmer works
+0770: FF      		defb	0ffh		;means that the eprom programmer works
+0771: FF      		defb	0ffh		;means that the eprom programmer works
+0772: FF      		defb	0ffh		;means that the eprom programmer works
+0773: FF      		defb	0ffh		;means that the eprom programmer works
+0774: FF      		defb	0ffh		;means that the eprom programmer works
+0775: FF      		defb	0ffh		;means that the eprom programmer works
+0776: FF      		defb	0ffh		;means that the eprom programmer works
+0777: FF      		defb	0ffh		;means that the eprom programmer works
+0778: FF      		defb	0ffh		;means that the eprom programmer works
+0779: FF      		defb	0ffh		;means that the eprom programmer works
+077A: FF      		defb	0ffh		;means that the eprom programmer works
+077B: FF      		defb	0ffh		;means that the eprom programmer works
+077C: FF      		defb	0ffh		;means that the eprom programmer works
+077D: FF      		defb	0ffh		;means that the eprom programmer works
+077E: FF      		defb	0ffh		;means that the eprom programmer works
+077F: FF      		defb	0ffh		;means that the eprom programmer works
+0780: FF      		defb	0ffh		;means that the eprom programmer works
+0781: FF      		defb	0ffh		;means that the eprom programmer works
+0782: FF      		defb	0ffh		;means that the eprom programmer works
+0783: FF      		defb	0ffh		;means that the eprom programmer works
+0784: FF      		defb	0ffh		;means that the eprom programmer works
+0785: FF      		defb	0ffh		;means that the eprom programmer works
+0786: FF      		defb	0ffh		;means that the eprom programmer works
+0787: FF      		defb	0ffh		;means that the eprom programmer works
+0788: FF      		defb	0ffh		;means that the eprom programmer works
+0789: FF      		defb	0ffh		;means that the eprom programmer works
+078A: FF      		defb	0ffh		;means that the eprom programmer works
+078B: FF      		defb	0ffh		;means that the eprom programmer works
+078C: FF      		defb	0ffh		;means that the eprom programmer works
+078D: FF      		defb	0ffh		;means that the eprom programmer works
+078E: FF      		defb	0ffh		;means that the eprom programmer works
+078F: FF      		defb	0ffh		;means that the eprom programmer works
+0790: FF      		defb	0ffh		;means that the eprom programmer works
+0791: FF      		defb	0ffh		;means that the eprom programmer works
+0792: FF      		defb	0ffh		;means that the eprom programmer works
+0793: FF      		defb	0ffh		;means that the eprom programmer works
+0794: FF      		defb	0ffh		;means that the eprom programmer works
+0795: FF      		defb	0ffh		;means that the eprom programmer works
+0796: FF      		defb	0ffh		;means that the eprom programmer works
+0797: FF      		defb	0ffh		;means that the eprom programmer works
+0798: FF      		defb	0ffh		;means that the eprom programmer works
+0799: FF      		defb	0ffh		;means that the eprom programmer works
+079A: FF      		defb	0ffh		;means that the eprom programmer works
+079B: FF      		defb	0ffh		;means that the eprom programmer works
+079C: FF      		defb	0ffh		;means that the eprom programmer works
+079D: FF      		defb	0ffh		;means that the eprom programmer works
+079E: FF      		defb	0ffh		;means that the eprom programmer works
+079F: FF      		defb	0ffh		;means that the eprom programmer works
+07A0: FF      		defb	0ffh		;means that the eprom programmer works
+07A1: FF      		defb	0ffh		;means that the eprom programmer works
+07A2: FF      		defb	0ffh		;means that the eprom programmer works
+07A3: FF      		defb	0ffh		;means that the eprom programmer works
+07A4: FF      		defb	0ffh		;means that the eprom programmer works
+07A5: FF      		defb	0ffh		;means that the eprom programmer works
+07A6: FF      		defb	0ffh		;means that the eprom programmer works
+07A7: FF      		defb	0ffh		;means that the eprom programmer works
+07A8: FF      		defb	0ffh		;means that the eprom programmer works
+07A9: FF      		defb	0ffh		;means that the eprom programmer works
+07AA: FF      		defb	0ffh		;means that the eprom programmer works
+07AB: FF      		defb	0ffh		;means that the eprom programmer works
+07AC: FF      		defb	0ffh		;means that the eprom programmer works
+07AD: FF      		defb	0ffh		;means that the eprom programmer works
+07AE: FF      		defb	0ffh		;means that the eprom programmer works
+07AF: FF      		defb	0ffh		;means that the eprom programmer works
+07B0: FF      		defb	0ffh		;means that the eprom programmer works
+07B1: FF      		defb	0ffh		;means that the eprom programmer works
+07B2: FF      		defb	0ffh		;means that the eprom programmer works
+07B3: FF      		defb	0ffh		;means that the eprom programmer works
+07B4: FF      		defb	0ffh		;means that the eprom programmer works
+07B5: FF      		defb	0ffh		;means that the eprom programmer works
+07B6: FF      		defb	0ffh		;means that the eprom programmer works
+07B7: FF      		defb	0ffh		;means that the eprom programmer works
+07B8: FF      		defb	0ffh		;means that the eprom programmer works
+07B9: FF      		defb	0ffh		;means that the eprom programmer works
+07BA: FF      		defb	0ffh		;means that the eprom programmer works
+07BB: FF      		defb	0ffh		;means that the eprom programmer works
+07BC: FF      		defb	0ffh		;means that the eprom programmer works
+07BD: FF      		defb	0ffh		;means that the eprom programmer works
+07BE: FF      		defb	0ffh		;means that the eprom programmer works
+07BF: FF      		defb	0ffh		;means that the eprom programmer works
+07C0: FF      		defb	0ffh		;means that the eprom programmer works
+07C1: FF      		defb	0ffh		;means that the eprom programmer works
+07C2: FF      		defb	0ffh		;means that the eprom programmer works
+07C3: FF      		defb	0ffh		;means that the eprom programmer works
+07C4: FF      		defb	0ffh		;means that the eprom programmer works
+07C5: FF      		defb	0ffh		;means that the eprom programmer works
+07C6: FF      		defb	0ffh		;means that the eprom programmer works
+07C7: FF      		defb	0ffh		;means that the eprom programmer works
+07C8: FF      		defb	0ffh		;means that the eprom programmer works
+07C9: FF      		defb	0ffh		;means that the eprom programmer works
+07CA: FF      		defb	0ffh		;means that the eprom programmer works
+07CB: FF      		defb	0ffh		;means that the eprom programmer works
+07CC: FF      		defb	0ffh		;means that the eprom programmer works
+07CD: FF      		defb	0ffh		;means that the eprom programmer works
+07CE: FF      		defb	0ffh		;means that the eprom programmer works
+07CF: FF      		defb	0ffh		;means that the eprom programmer works
+07D0: FF      		defb	0ffh		;means that the eprom programmer works
+07D1: FF      		defb	0ffh		;means that the eprom programmer works
+07D2: FF      		defb	0ffh		;means that the eprom programmer works
+07D3: FF      		defb	0ffh		;means that the eprom programmer works
+07D4: FF      		defb	0ffh		;means that the eprom programmer works
+07D5: FF      		defb	0ffh		;means that the eprom programmer works
+07D6: FF      		defb	0ffh		;means that the eprom programmer works
+07D7: FF      		defb	0ffh		;means that the eprom programmer works
+07D8: FF      		defb	0ffh		;means that the eprom programmer works
+07D9: FF      		defb	0ffh		;means that the eprom programmer works
+07DA: FF      		defb	0ffh		;means that the eprom programmer works
+07DB: FF      		defb	0ffh		;means that the eprom programmer works
+07DC: FF      		defb	0ffh		;means that the eprom programmer works
+07DD: FF      		defb	0ffh		;means that the eprom programmer works
+07DE: FF      		defb	0ffh		;means that the eprom programmer works
+07DF: FF      		defb	0ffh		;means that the eprom programmer works
+07E0: FF      		defb	0ffh		;means that the eprom programmer works
+07E1: FF      		defb	0ffh		;means that the eprom programmer works
+07E2: FF      		defb	0ffh		;means that the eprom programmer works
+07E3: FF      		defb	0ffh		;means that the eprom programmer works
+07E4: FF      		defb	0ffh		;means that the eprom programmer works
+07E5: FF      		defb	0ffh		;means that the eprom programmer works
+07E6: FF      		defb	0ffh		;means that the eprom programmer works
+07E7: FF      		defb	0ffh		;means that the eprom programmer works
+07E8: FF      		defb	0ffh		;means that the eprom programmer works
+07E9: FF      		defb	0ffh		;means that the eprom programmer works
+07EA: FF      		defb	0ffh		;means that the eprom programmer works
+07EB: FF      		defb	0ffh		;means that the eprom programmer works
+07EC: FF      		defb	0ffh		;means that the eprom programmer works
+07ED: FF      		defb	0ffh		;means that the eprom programmer works
+07EE: FF      		defb	0ffh		;means that the eprom programmer works
+07EF: FF      		defb	0ffh		;means that the eprom programmer works
+07F0: FF      		defb	0ffh		;means that the eprom programmer works
+07F1: FF      		defb	0ffh		;means that the eprom programmer works
+07F2: FF      		defb	0ffh		;means that the eprom programmer works
+07F3: FF      		defb	0ffh		;means that the eprom programmer works
+07F4: FF      		defb	0ffh		;means that the eprom programmer works
+07F5: FF      		defb	0ffh		;means that the eprom programmer works
+07F6: FF      		defb	0ffh		;means that the eprom programmer works
+07F7: FF      		defb	0ffh		;means that the eprom programmer works
+07F8: FF      		defb	0ffh		;means that the eprom programmer works
+07F9: FF      		defb	0ffh		;means that the eprom programmer works
+07FA: FF      		defb	0ffh		;means that the eprom programmer works
+07FB: FF      		defb	0ffh		;means that the eprom programmer works
+07FC: FF      		defb	0ffh		;means that the eprom programmer works
+07FD: FF      		defb	0ffh		;means that the eprom programmer works
+07FE: FF      		defb	0ffh		;means that the eprom programmer works
+07FF: FF      		defb	0ffh		;means that the eprom programmer works
+0800: FF      		defb	0ffh		;means that the eprom programmer works
+0801: FF      		defb	0ffh		;means that the eprom programmer works
+0802: FF      		defb	0ffh		;means that the eprom programmer works
+0803: FF      		defb	0ffh		;means that the eprom programmer works
+0804: FF      		defb	0ffh		;means that the eprom programmer works
+0805: FF      		defb	0ffh		;means that the eprom programmer works
+0806: FF      		defb	0ffh		;means that the eprom programmer works
+0807: FF      		defb	0ffh		;means that the eprom programmer works
+0808: FF      		defb	0ffh		;means that the eprom programmer works
+0809: FF      		defb	0ffh		;means that the eprom programmer works
+080A: FF      		defb	0ffh		;means that the eprom programmer works
+080B: FF      		defb	0ffh		;means that the eprom programmer works
+080C: FF      		defb	0ffh		;means that the eprom programmer works
+080D: FF      		defb	0ffh		;means that the eprom programmer works
+080E: FF      		defb	0ffh		;means that the eprom programmer works
+080F: FF      		defb	0ffh		;means that the eprom programmer works
+0810: FF      		defb	0ffh		;means that the eprom programmer works
+0811: FF      		defb	0ffh		;means that the eprom programmer works
+0812: FF      		defb	0ffh		;means that the eprom programmer works
+0813: FF      		defb	0ffh		;means that the eprom programmer works
+0814: FF      		defb	0ffh		;means that the eprom programmer works
+0815: FF      		defb	0ffh		;means that the eprom programmer works
+0816: FF      		defb	0ffh		;means that the eprom programmer works
+0817: FF      		defb	0ffh		;means that the eprom programmer works
+0818: FF      		defb	0ffh		;means that the eprom programmer works
+0819: FF      		defb	0ffh		;means that the eprom programmer works
+081A: FF      		defb	0ffh		;means that the eprom programmer works
+081B: FF      		defb	0ffh		;means that the eprom programmer works
+081C: FF      		defb	0ffh		;means that the eprom programmer works
+081D: FF      		defb	0ffh		;means that the eprom programmer works
+081E: FF      		defb	0ffh		;means that the eprom programmer works
+081F: FF      		defb	0ffh		;means that the eprom programmer works
+0820: FF      		defb	0ffh		;means that the eprom programmer works
+0821: FF      		defb	0ffh		;means that the eprom programmer works
+0822: FF      		defb	0ffh		;means that the eprom programmer works
+0823: FF      		defb	0ffh		;means that the eprom programmer works
+0824: FF      		defb	0ffh		;means that the eprom programmer works
+0825: FF      		defb	0ffh		;means that the eprom programmer works
+0826: FF      		defb	0ffh		;means that the eprom programmer works
+0827: FF      		defb	0ffh		;means that the eprom programmer works
+0828: FF      		defb	0ffh		;means that the eprom programmer works
+0829: FF      		defb	0ffh		;means that the eprom programmer works
+082A: FF      		defb	0ffh		;means that the eprom programmer works
+082B: FF      		defb	0ffh		;means that the eprom programmer works
+082C: FF      		defb	0ffh		;means that the eprom programmer works
+082D: FF      		defb	0ffh		;means that the eprom programmer works
+082E: FF      		defb	0ffh		;means that the eprom programmer works
+082F: FF      		defb	0ffh		;means that the eprom programmer works
+0830: FF      		defb	0ffh		;means that the eprom programmer works
+0831: FF      		defb	0ffh		;means that the eprom programmer works
+0832: FF      		defb	0ffh		;means that the eprom programmer works
+0833: FF      		defb	0ffh		;means that the eprom programmer works
+0834: FF      		defb	0ffh		;means that the eprom programmer works
+0835: FF      		defb	0ffh		;means that the eprom programmer works
+0836: FF      		defb	0ffh		;means that the eprom programmer works
+0837: FF      		defb	0ffh		;means that the eprom programmer works
+0838: FF      		defb	0ffh		;means that the eprom programmer works
+0839: FF      		defb	0ffh		;means that the eprom programmer works
+083A: FF      		defb	0ffh		;means that the eprom programmer works
+083B: FF      		defb	0ffh		;means that the eprom programmer works
+083C: FF      		defb	0ffh		;means that the eprom programmer works
+083D: FF      		defb	0ffh		;means that the eprom programmer works
+083E: FF      		defb	0ffh		;means that the eprom programmer works
+083F: FF      		defb	0ffh		;means that the eprom programmer works
+0840: FF      		defb	0ffh		;means that the eprom programmer works
+0841: FF      		defb	0ffh		;means that the eprom programmer works
+0842: FF      		defb	0ffh		;means that the eprom programmer works
+0843: FF      		defb	0ffh		;means that the eprom programmer works
+0844: FF      		defb	0ffh		;means that the eprom programmer works
+0845: FF      		defb	0ffh		;means that the eprom programmer works
+0846: FF      		defb	0ffh		;means that the eprom programmer works
+0847: FF      		defb	0ffh		;means that the eprom programmer works
+0848: FF      		defb	0ffh		;means that the eprom programmer works
+0849: FF      		defb	0ffh		;means that the eprom programmer works
+084A: FF      		defb	0ffh		;means that the eprom programmer works
+084B: FF      		defb	0ffh		;means that the eprom programmer works
+084C: FF      		defb	0ffh		;means that the eprom programmer works
+084D: FF      		defb	0ffh		;means that the eprom programmer works
+084E: FF      		defb	0ffh		;means that the eprom programmer works
+084F: FF      		defb	0ffh		;means that the eprom programmer works
+0850: FF      		defb	0ffh		;means that the eprom programmer works
+0851: FF      		defb	0ffh		;means that the eprom programmer works
+0852: FF      		defb	0ffh		;means that the eprom programmer works
+0853: FF      		defb	0ffh		;means that the eprom programmer works
+0854: FF      		defb	0ffh		;means that the eprom programmer works
+0855: FF      		defb	0ffh		;means that the eprom programmer works
+0856: FF      		defb	0ffh		;means that the eprom programmer works
+0857: FF      		defb	0ffh		;means that the eprom programmer works
+0858: FF      		defb	0ffh		;means that the eprom programmer works
+0859: FF      		defb	0ffh		;means that the eprom programmer works
+085A: FF      		defb	0ffh		;means that the eprom programmer works
+085B: FF      		defb	0ffh		;means that the eprom programmer works
+085C: FF      		defb	0ffh		;means that the eprom programmer works
+085D: FF      		defb	0ffh		;means that the eprom programmer works
+085E: FF      		defb	0ffh		;means that the eprom programmer works
+085F: FF      		defb	0ffh		;means that the eprom programmer works
+0860: FF      		defb	0ffh		;means that the eprom programmer works
+0861: FF      		defb	0ffh		;means that the eprom programmer works
+0862: FF      		defb	0ffh		;means that the eprom programmer works
+0863: FF      		defb	0ffh		;means that the eprom programmer works
+0864: FF      		defb	0ffh		;means that the eprom programmer works
+0865: FF      		defb	0ffh		;means that the eprom programmer works
+0866: FF      		defb	0ffh		;means that the eprom programmer works
+0867: FF      		defb	0ffh		;means that the eprom programmer works
+0868: FF      		defb	0ffh		;means that the eprom programmer works
+0869: FF      		defb	0ffh		;means that the eprom programmer works
+086A: FF      		defb	0ffh		;means that the eprom programmer works
+086B: FF      		defb	0ffh		;means that the eprom programmer works
+086C: FF      		defb	0ffh		;means that the eprom programmer works
+086D: FF      		defb	0ffh		;means that the eprom programmer works
+086E: FF      		defb	0ffh		;means that the eprom programmer works
+086F: FF      		defb	0ffh		;means that the eprom programmer works
+0870: FF      		defb	0ffh		;means that the eprom programmer works
+0871: FF      		defb	0ffh		;means that the eprom programmer works
+0872: FF      		defb	0ffh		;means that the eprom programmer works
+0873: FF      		defb	0ffh		;means that the eprom programmer works
+0874: FF      		defb	0ffh		;means that the eprom programmer works
+0875: FF      		defb	0ffh		;means that the eprom programmer works
+0876: FF      		defb	0ffh		;means that the eprom programmer works
+0877: FF      		defb	0ffh		;means that the eprom programmer works
+0878: FF      		defb	0ffh		;means that the eprom programmer works
+0879: FF      		defb	0ffh		;means that the eprom programmer works
+087A: FF      		defb	0ffh		;means that the eprom programmer works
+087B: FF      		defb	0ffh		;means that the eprom programmer works
+087C: FF      		defb	0ffh		;means that the eprom programmer works
+087D: FF      		defb	0ffh		;means that the eprom programmer works
+087E: FF      		defb	0ffh		;means that the eprom programmer works
+087F: FF      		defb	0ffh		;means that the eprom programmer works
+0880: FF      		defb	0ffh		;means that the eprom programmer works
+0881: FF      		defb	0ffh		;means that the eprom programmer works
+0882: FF      		defb	0ffh		;means that the eprom programmer works
+0883: FF      		defb	0ffh		;means that the eprom programmer works
+0884: FF      		defb	0ffh		;means that the eprom programmer works
+0885: FF      		defb	0ffh		;means that the eprom programmer works
+0886: FF      		defb	0ffh		;means that the eprom programmer works
+0887: FF      		defb	0ffh		;means that the eprom programmer works
+0888: FF      		defb	0ffh		;means that the eprom programmer works
+0889: FF      		defb	0ffh		;means that the eprom programmer works
+088A: FF      		defb	0ffh		;means that the eprom programmer works
+088B: FF      		defb	0ffh		;means that the eprom programmer works
+088C: FF      		defb	0ffh		;means that the eprom programmer works
+088D: FF      		defb	0ffh		;means that the eprom programmer works
+088E: FF      		defb	0ffh		;means that the eprom programmer works
+088F: FF      		defb	0ffh		;means that the eprom programmer works
+0890: FF      		defb	0ffh		;means that the eprom programmer works
+0891: FF      		defb	0ffh		;means that the eprom programmer works
+0892: FF      		defb	0ffh		;means that the eprom programmer works
+0893: FF      		defb	0ffh		;means that the eprom programmer works
+0894: FF      		defb	0ffh		;means that the eprom programmer works
+0895: FF      		defb	0ffh		;means that the eprom programmer works
+0896: FF      		defb	0ffh		;means that the eprom programmer works
+0897: FF      		defb	0ffh		;means that the eprom programmer works
+0898: FF      		defb	0ffh		;means that the eprom programmer works
+0899: FF      		defb	0ffh		;means that the eprom programmer works
+089A: FF      		defb	0ffh		;means that the eprom programmer works
+089B: FF      		defb	0ffh		;means that the eprom programmer works
+089C: FF      		defb	0ffh		;means that the eprom programmer works
+089D: FF      		defb	0ffh		;means that the eprom programmer works
+089E: FF      		defb	0ffh		;means that the eprom programmer works
+089F: FF      		defb	0ffh		;means that the eprom programmer works
+08A0: FF      		defb	0ffh		;means that the eprom programmer works
+08A1: FF      		defb	0ffh		;means that the eprom programmer works
+08A2: FF      		defb	0ffh		;means that the eprom programmer works
+08A3: FF      		defb	0ffh		;means that the eprom programmer works
+08A4: FF      		defb	0ffh		;means that the eprom programmer works
+08A5: FF      		defb	0ffh		;means that the eprom programmer works
+08A6: FF      		defb	0ffh		;means that the eprom programmer works
+08A7: FF      		defb	0ffh		;means that the eprom programmer works
+08A8: FF      		defb	0ffh		;means that the eprom programmer works
+08A9: FF      		defb	0ffh		;means that the eprom programmer works
+08AA: FF      		defb	0ffh		;means that the eprom programmer works
+08AB: FF      		defb	0ffh		;means that the eprom programmer works
+08AC: FF      		defb	0ffh		;means that the eprom programmer works
+08AD: FF      		defb	0ffh		;means that the eprom programmer works
+08AE: FF      		defb	0ffh		;means that the eprom programmer works
+08AF: FF      		defb	0ffh		;means that the eprom programmer works
+08B0: FF      		defb	0ffh		;means that the eprom programmer works
+08B1: FF      		defb	0ffh		;means that the eprom programmer works
+08B2: FF      		defb	0ffh		;means that the eprom programmer works
+08B3: FF      		defb	0ffh		;means that the eprom programmer works
+08B4: FF      		defb	0ffh		;means that the eprom programmer works
+08B5: FF      		defb	0ffh		;means that the eprom programmer works
+08B6: FF      		defb	0ffh		;means that the eprom programmer works
+08B7: FF      		defb	0ffh		;means that the eprom programmer works
+08B8: FF      		defb	0ffh		;means that the eprom programmer works
+08B9: FF      		defb	0ffh		;means that the eprom programmer works
+08BA: FF      		defb	0ffh		;means that the eprom programmer works
+08BB: FF      		defb	0ffh		;means that the eprom programmer works
+08BC: FF      		defb	0ffh		;means that the eprom programmer works
+08BD: FF      		defb	0ffh		;means that the eprom programmer works
+08BE: FF      		defb	0ffh		;means that the eprom programmer works
+08BF: FF      		defb	0ffh		;means that the eprom programmer works
+08C0: FF      		defb	0ffh		;means that the eprom programmer works
+08C1: FF      		defb	0ffh		;means that the eprom programmer works
+08C2: FF      		defb	0ffh		;means that the eprom programmer works
+08C3: FF      		defb	0ffh		;means that the eprom programmer works
+08C4: FF      		defb	0ffh		;means that the eprom programmer works
+08C5: FF      		defb	0ffh		;means that the eprom programmer works
+08C6: FF      		defb	0ffh		;means that the eprom programmer works
+08C7: FF      		defb	0ffh		;means that the eprom programmer works
+08C8: FF      		defb	0ffh		;means that the eprom programmer works
+08C9: FF      		defb	0ffh		;means that the eprom programmer works
+08CA: FF      		defb	0ffh		;means that the eprom programmer works
+08CB: FF      		defb	0ffh		;means that the eprom programmer works
+08CC: FF      		defb	0ffh		;means that the eprom programmer works
+08CD: FF      		defb	0ffh		;means that the eprom programmer works
+08CE: FF      		defb	0ffh		;means that the eprom programmer works
+08CF: FF      		defb	0ffh		;means that the eprom programmer works
+08D0: FF      		defb	0ffh		;means that the eprom programmer works
+08D1: FF      		defb	0ffh		;means that the eprom programmer works
+08D2: FF      		defb	0ffh		;means that the eprom programmer works
+08D3: FF      		defb	0ffh		;means that the eprom programmer works
+08D4: FF      		defb	0ffh		;means that the eprom programmer works
+08D5: FF      		defb	0ffh		;means that the eprom programmer works
+08D6: FF      		defb	0ffh		;means that the eprom programmer works
+08D7: FF      		defb	0ffh		;means that the eprom programmer works
+08D8: FF      		defb	0ffh		;means that the eprom programmer works
+08D9: FF      		defb	0ffh		;means that the eprom programmer works
+08DA: FF      		defb	0ffh		;means that the eprom programmer works
+08DB: FF      		defb	0ffh		;means that the eprom programmer works
+08DC: FF      		defb	0ffh		;means that the eprom programmer works
+08DD: FF      		defb	0ffh		;means that the eprom programmer works
+08DE: FF      		defb	0ffh		;means that the eprom programmer works
+08DF: FF      		defb	0ffh		;means that the eprom programmer works
+08E0: FF      		defb	0ffh		;means that the eprom programmer works
+08E1: FF      		defb	0ffh		;means that the eprom programmer works
+08E2: FF      		defb	0ffh		;means that the eprom programmer works
+08E3: FF      		defb	0ffh		;means that the eprom programmer works
+08E4: FF      		defb	0ffh		;means that the eprom programmer works
+08E5: FF      		defb	0ffh		;means that the eprom programmer works
+08E6: FF      		defb	0ffh		;means that the eprom programmer works
+08E7: FF      		defb	0ffh		;means that the eprom programmer works
+08E8: FF      		defb	0ffh		;means that the eprom programmer works
+08E9: FF      		defb	0ffh		;means that the eprom programmer works
+08EA: FF      		defb	0ffh		;means that the eprom programmer works
+08EB: FF      		defb	0ffh		;means that the eprom programmer works
+08EC: FF      		defb	0ffh		;means that the eprom programmer works
+08ED: FF      		defb	0ffh		;means that the eprom programmer works
+08EE: FF      		defb	0ffh		;means that the eprom programmer works
+08EF: FF      		defb	0ffh		;means that the eprom programmer works
+08F0: FF      		defb	0ffh		;means that the eprom programmer works
+08F1: FF      		defb	0ffh		;means that the eprom programmer works
+08F2: FF      		defb	0ffh		;means that the eprom programmer works
+08F3: FF      		defb	0ffh		;means that the eprom programmer works
+08F4: FF      		defb	0ffh		;means that the eprom programmer works
+08F5: FF      		defb	0ffh		;means that the eprom programmer works
+08F6: FF      		defb	0ffh		;means that the eprom programmer works
+08F7: FF      		defb	0ffh		;means that the eprom programmer works
+08F8: FF      		defb	0ffh		;means that the eprom programmer works
+08F9: FF      		defb	0ffh		;means that the eprom programmer works
+08FA: FF      		defb	0ffh		;means that the eprom programmer works
+08FB: FF      		defb	0ffh		;means that the eprom programmer works
+08FC: FF      		defb	0ffh		;means that the eprom programmer works
+08FD: FF      		defb	0ffh		;means that the eprom programmer works
+08FE: FF      		defb	0ffh		;means that the eprom programmer works
+08FF: FF      		defb	0ffh		;means that the eprom programmer works
+              		.dephase
+              		end
+              	
+***ERROR*** No such file or directory: file = "/pub/Develop/Projects/zasm-4.0/Test/Z80/original/VZ RS232." (fd108)
+
+
+; +++ segments +++
+
+#CODE          = $0100 =   256,  size = $0800 =  2048
+
+; +++ global symbols +++
+
+_end       = $0900 =  2304          VZ RS232.asm:70 (unused)
+_reqcolon_ = $0001 =     1          :1 (unused)
+_size      = $0800 =  2048          VZ RS232.asm:70 (unused)
+addlf      = $4201 = 16897          VZ RS232.asm:198
+beep       = $3450 = 13392          VZ RS232.asm:30
+begadr     = $4000 = 16384          VZ RS232.asm:74
+bell       = $0007 =     7          VZ RS232.asm:46
+bs         = $0008 =     8          VZ RS232.asm:49
+bsp        = $43BF = 17343          VZ RS232.asm:478
+bsp1       = $43CF = 17359          VZ RS232.asm:487
+bsp2       = $43C6 = 17350          VZ RS232.asm:482
+bufend     = $9000 = 36864          VZ RS232.asm:67 (unused)
+bytes      = $026B =   619          VZ RS232.asm:780
+carret     = $44C5 = 17605          VZ RS232.asm:636
+char       = $80E2 = 32994          VZ RS232.asm:63
+chkstr     = $431D = 17181          VZ RS232.asm:370
+chrot      = $033A =   826          VZ RS232.asm:34 (unused)
+chrout     = $436E = 17262          VZ RS232.asm:431
+clrscr     = $4356 = 17238          VZ RS232.asm:420
+cmdtab     = $41CE = 16846          VZ RS232.asm:166
+colon      = $44C9 = 17609          VZ RS232.asm:639
+cond       = $44FA = 17658          VZ RS232.asm:670
+count1     = $4116 = 16662          VZ RS232.asm:107
+count2     = $417C = 16764          VZ RS232.asm:113
+count3     = $0066 =   102          VZ RS232.asm:114
+cr         = $000D =    13          VZ RS232.asm:44
+crt        = $4404 = 17412          VZ RS232.asm:519
+crtdge     = $4000 = 16384          VZ RS232.asm:27
+ctrl       = $44AB = 17579          VZ RS232.asm:620
+curpos     = $80E4 = 32996          VZ RS232.asm:65
+cursor     = $80E5 = 32997          VZ RS232.asm:66
+dbits      = $8031 = 32817          VZ RS232.asm:56
+del300     = $4323 = 17187          VZ RS232.asm:381
+del302     = $433A = 17210          VZ RS232.asm:398
+del3a      = $432E = 17198          VZ RS232.asm:389
+docrlf     = $43F3 = 17395          VZ RS232.asm:510
+dumsg      = $8000 = 32768          VZ RS232.asm:54
+dupflg     = $80E0 = 32992          VZ RS232.asm:61
+endadr     = $4595 = 17813          VZ RS232.asm:777
+esc        = $001B =    27          VZ RS232.asm:45 (unused)
+exitkey    = $0065 =   101          VZ RS232.asm:35
+ff         = $000C =    12          VZ RS232.asm:47
+flag       = $80E3 = 32995          VZ RS232.asm:64
+fold       = $445D = 17501          VZ RS232.asm:567
+found      = $44CB = 17611          VZ RS232.asm:641
+fsp        = $43A4 = 17316          VZ RS232.asm:464
+fullmsg    = $400D = 16397          VZ RS232.asm:87
+getkey     = $4466 = 17510          VZ RS232.asm:582
+grap       = $43A3 = 17315          VZ RS232.asm:463
+halfmsg    = $4011 = 16401          VZ RS232.asm:88
+home       = $001C =    28          VZ RS232.asm:43 (unused)
+hre        = $4503 = 17667          VZ RS232.asm:676
+ht         = $0009 =     9          VZ RS232.asm:50
+inadr      = $5000 = 20480          VZ RS232.asm:37
+inchr      = $428F = 17039          VZ RS232.asm:287
+inchr1     = $429F = 17055          VZ RS232.asm:294
+inchr2     = $42AB = 17067          VZ RS232.asm:302
+inchr3     = $42B7 = 17079          VZ RS232.asm:308
+inchr4     = $42B9 = 17081          VZ RS232.asm:309
+ivalend    = $4184 = 16772          VZ RS232.asm:125
+ivals      = $409D = 16541          VZ RS232.asm:97
+ivals2     = $417C = 16764          VZ RS232.asm:115 (unused)
+kdelay     = $4342 = 17218          VZ RS232.asm:403 (unused)
+keyexit    = $44B7 = 17591          VZ RS232.asm:626
+kget       = $41B3 = 16819          VZ RS232.asm:146
+lf         = $000A =    10          VZ RS232.asm:48
+lfd        = $43DC = 17372          VZ RS232.asm:496
+list       = $058D =  1421          VZ RS232.asm:32
+list1      = $4453 = 17491          VZ RS232.asm:561
+listst     = $05C4 =  1476          VZ RS232.asm:33
+loop0      = $4331 = 17201          VZ RS232.asm:391
+loop1      = $4333 = 17203          VZ RS232.asm:392
+minus      = $44C1 = 17601          VZ RS232.asm:633
+moveit     = $4235 = 16949          VZ RS232.asm:228 (unused)
+moveit1    = $4232 = 16946          VZ RS232.asm:227
+msgout     = $434D = 17229          VZ RS232.asm:411
+mult       = $44FE = 17662          VZ RS232.asm:673
+noctrl     = $44DB = 17627          VZ RS232.asm:649
+nolf       = $4419 = 17433          VZ RS232.asm:531
+nolin      = $01E0 =   480          VZ RS232.asm:39
+nopar0     = $430D = 17165          VZ RS232.asm:355
+noshift    = $44E1 = 17633          VZ RS232.asm:652
+oddpar     = $4303 = 17155          VZ RS232.asm:350
+offmsg     = $400A = 16394          VZ RS232.asm:86
+onmsg      = $4007 = 16391          VZ RS232.asm:85
+outadr     = $5800 = 22528          VZ RS232.asm:36
+outchr     = $42C6 = 17094          VZ RS232.asm:318
+p1flg      = $80E1 = 32993          VZ RS232.asm:62
+p1msg      = $8079 = 32889          VZ RS232.asm:59
+parmsg     = $8061 = 32865          VZ RS232.asm:58
+pcrlf      = $4449 = 17481          VZ RS232.asm:554
+pcrlf1     = $3AE2 = 15074          VZ RS232.asm:31
+pntflg     = $80DF = 32991          VZ RS232.asm:60
+pntit      = $437A = 17274          VZ RS232.asm:442
+pntmsg     = $8019 = 32793          VZ RS232.asm:55
+prnton     = $41F7 = 16887          VZ RS232.asm:191
+rot        = $4470 = 17520          VZ RS232.asm:587
+row1       = $68FE = 26878          VZ RS232.asm:579
+row2       = $68DF = 26847          VZ RS232.asm:580
+same       = $44BF = 17599          VZ RS232.asm:629
+sbdel1     = $4313 = 17171          VZ RS232.asm:358
+sbits      = $8049 = 32841          VZ RS232.asm:57
+scan1      = $446B = 17515          VZ RS232.asm:584
+scroll     = $442C = 17452          VZ RS232.asm:542
+sdb1       = $4243 = 16963          VZ RS232.asm:238
+sdbits     = $4238 = 16952          VZ RS232.asm:233
+setfh      = $41DC = 16860          VZ RS232.asm:176
+setfh1     = $41EB = 16875          VZ RS232.asm:183
+shift      = $44B2 = 17586          VZ RS232.asm:624
+signon     = $4015 = 16405          VZ RS232.asm:90
+snd1       = $42D8 = 17112          VZ RS232.asm:328
+snd2       = $42E0 = 17120          VZ RS232.asm:332
+sndpar     = $4307 = 17159          VZ RS232.asm:353
+spar       = $420B = 16907          VZ RS232.asm:205
+ssb2       = $4252 = 16978          VZ RS232.asm:248
+ssbits     = $4247 = 16967          VZ RS232.asm:243
+stack      = $9000 = 36864          VZ RS232.asm:28
+start      = $4184 = 16772          VZ RS232.asm:127
+start1     = $4193 = 16787          VZ RS232.asm:133
+stpar1     = $421C = 16924          VZ RS232.asm:213
+term       = $4256 = 16982          VZ RS232.asm:251
+term1      = $426C = 17004          VZ RS232.asm:260
+togg1      = $4228 = 16936          VZ RS232.asm:222
+toggle     = $4221 = 16929          VZ RS232.asm:217
+toplin     = $7000 = 28672          VZ RS232.asm:38
+tryser     = $4259 = 16985          VZ RS232.asm:252
+tstpar     = $42FB = 17147          VZ RS232.asm:345
+txtble     = $4505 = 17669          VZ RS232.asm:679
+vzdelay    = $0060 =    96          VZ RS232.asm:29
+write4     = $4422 = 17442          VZ RS232.asm:536
+
+
+total time: 0.0219 sec.
+1 error

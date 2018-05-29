@@ -1,0 +1,358 @@
+
+
+headerflag:     equ 0
+dataflag:       equ $ff
+
+tCLEAR  equ     $FD             ; token CLEAR
+tLOAD   equ     $EF             ; token LOAD
+tCODE   equ     $AF             ; token CODE
+tPRINT  equ     $F5             ; token PRINT
+tUSR    equ     $C0             ; token USR
+tLET	equ	$F1		; token LET
+tSAVE	equ	$F8		; token SAVE
+
+#target tap
+
+
+;------ PROGRAM HEADER -------------------------------------------------------
+;
+#code   0,17,headerflag
+
+		defb    0			; program
+		defm    "testloader"		; make sure these are 10 bytes!
+		defw    programsize		; length of basic program and variables
+		defw    10			; line number for auto start
+		defw    programsize		; length of basic program without variables
+
+
+;------ PROGRAM DATA ---------------------------------------------------------
+;
+#code	0,$100,dataflag         ; size is truncated as required
+
+	; 60 CLEAR $6000
+		defb    0,60                    ; line number
+		defb    end60-($+1)             ; line length
+		defb    0                       ; statement number
+		defb    tCLEAR                  ; token CLEAR
+		defm    '24576',$0e0000006000   ; number $6000, ascii & internal format
+end60:		defb    $0d                     ; line end marker
+
+	; 70 LOAD "" CODE $8000
+		defb    0,70                    ; line number
+		defb    end70-($+1)             ; line length
+		defb    0                       ; statement number
+		defb    tLOAD,'"','"',tCODE     ; token LOAD, 2 quotes, token CODE
+		defm    '32768',$0e0000008000   ; number $8000, ascii & internal format
+end70:		defb    $0d                     ; line end marker
+
+	; 80 PRINT USR 32768
+		defb    0,80                    ; line number
+		defb    end80-($+1)             ; line length
+		defb    0                       ; statement number
+		defb    tLET,'n','=',tUSR	; token LET, n, =, token USR
+		defm    '32768',$0e0000008000   ; number $8000, ascii & internal format
+end80:		defb    $0d                     ; line end marker
+
+	; 90 SAVE "results" CODE $c000,n
+		defb	0,90			; line number
+		defb	end90-($+1)		; line length
+		defb	0			; statement number
+		defb	tSAVE
+		defm	'"results"'
+		defb	tCODE
+		defm	'49152',$0e000000c000, ',n'
+end90		defb	$0d
+		
+		
+programsize     equ     $
+
+
+;------ CODE HEADER ----------------------------------------------------------
+;
+#code   0,17,headerflag
+
+		defb    3			; code
+		defm    "testcode  "		; make sure these are 10 bytes!
+		defw    codeend-32768		; length of data block
+		defw    32768			; original position
+		defw    0			; unused
+
+
+;------ CODE DATA ------------------------------------------------------------
+;
+#code   32768,32768,dataflag
+
+
+
+
+; ============================================================================
+;
+;				PAY LOAD STARTS HERE
+;
+; ============================================================================
+
+
+
+
+
+
+
+;	bc = Rückgabewert
+;	rst 16: print char in A
+
+OPKAN		equ	$1601		; Öffne Kanal in A
+
+PRTBUF		equ	$5b00		; $100 Bytes Druckerpuffer
+FRAMES		equ	$5C78		; FRAMES: 3 Byte Bildzaehler (Uhr)
+STATE_7FFD	equ	23388
+
+
+#data $c000-$300,$100
+
+sp_save		data	2
+cc2_per_irpt	data	2
+cc_per_im0_ackn	data	1
+cc_per_im1_ackn	data	1
+cc_per_im2_ackn	data	1
+cc_waitmap_start data	2
+cc_per_line	data	2
+
+
+scratch 	equ	$c000-$200
+stack		equ	$c000-$100
+stack_end	equ	$c000		; not in contended ram!
+
+
+; -------------	entry point ----------------------
+start:
+		exx
+		push	hl
+		push	de
+		push	bc
+		
+		ld	(sp_save),sp
+		ld	sp,stack_end
+
+		call	init_print
+
+		ld	a,bright+black+yellow_paper
+		ld	(print_attr),a
+		call	clear_screen
+		ld	bc,21<<8 +10
+		call	print_locate
+		ld	a,cyan+black_paper
+		ld	(print_attr),a
+		ld	hl,print_flags
+		set	pbit_log,(hl)
+
+		call	print_msg		
+		defm	"-- Z80 Test Programm (c) 2004/5 Kio --",$00
+
+		ld	a,black+white_paper
+		ld	(print_attr),a
+
+		ld	bc,24<<8 +0
+		call	print_locate
+
+	; calculate exact cpu cc/frame/2
+	; (cc/frame/2 because cc/frame > 65535)
+
+		call	init_timer
+		call	print_msg
+		defm	$0d,"cpu cycles per frame: 2 * ",$00
+		ld	hl,(cc2_per_irpt)
+		call	printdec	
+				
+	; validate internal timers
+
+		call	print_msg
+		defm	$0d,"validating test timers: ", $00
+		call	test_restzeit_x16		; aborts on failure
+		call	test_restzeit_x4		; aborts on failure
+		call	test_restzeit			; aborts on failure
+		im	1
+		call	print_msg
+		defm	"ok",$00
+		
+	; Find Start of Contention
+
+		call	print_msg
+		defm	$0d,"first wait cycle at: ",$00
+		call	find_first_wait
+		ld	(cc_waitmap_start),hl
+		call	printdec
+
+	; Get and display contention pattern
+	; 1: slow method (for emu test too)
+	
+		call	print_msg
+		defm	$0d,"wait pattern:",$0d,$00
+		ld	hl,(cc_waitmap_start)
+		ld	de,228*20*8
+		add	hl,de
+		ld	a,228
+		call	get_ula_out_waitmap
+		call	print_nl
+		
+		call	print_msg
+		defm	$0d,"shock 2 pattern:",$0d,$00
+		call	test_opa
+
+		
+
+
+exit:		ld	sp,(sp_save)
+		im	1			; security
+		ei				; ""
+
+		call	print_nl		; final nl
+		call	print_nl		; final nl
+
+		pop	bc
+		pop	de
+		pop	hl
+		exx
+
+		ld	hl,(print_logptr)	; Result = num.chars in log buffer
+		ld	de,-$c000
+		add	hl,de
+		ld	bc,hl			; bc = Rückgabewert
+
+		ret				; finish
+	
+	
+; -------------	abort on failure -----------------
+
+abort:		call	print_msg		; print alert
+		defm	$0d,"(abort) ",$00
+		jr	exit
+
+
+            
+#include	"math.ass"
+#include	"print.ass"
+#include	"timer.ass"
+#include	"contention.ass"
+#include	"charset.ass"
+
+
+
+
+
+
+; ----------------------------------------------
+;	Test 1:
+;	Ermittelt die Interruptfrequenz auf 1/1000s genau
+;	Annahme: FFB-Frequenz = 50 Hz
+;	Annahme: Aktuelle Bank is waitstate-frei.
+;
+test1		call	print_msg			
+		defm	$0d, "cpu clock: ", $00
+		call	calcspeed	; -> hl.de MHz			
+		push	de
+		call	printdec
+		ld	a,'.'
+		call	print_char
+		pop	hl
+		call	printdec3
+		call	print_msg
+		defm	" MHz",$00
+		ret
+
+
+
+	
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Vergleiche hl und de
+;	ret z:  wenn sie um max. +/1 1 abweichen 
+;	ret nz: wenn sie mehr abweichen
+cp_hl_de	and	a
+		sbc	hl,de
+		ret	z		; v1 - v2 == 0
+		ld	a,h
+		and	l
+		inc	a
+		ret	z		; v1 - v2 == -1 ist auch ok
+		ld	a,l
+		dec	a
+		or	h
+		ret			; v1 - v2 == +1 ist auch ok
+
+
+; ------------------------------------------------------------
+; allgemein verwendbare Interruptvektortabelle
+; das Busbyte im Irpt Ackn Cycle muss $ff sein
+; ------------------------------------------------------------
+
+		defs	$ff - ($ & $ff)
+irptvector	defw	$0000			; muss jeweils vorher gesetzt werden
+
+
+; ------------------------------------------------------------
+; calculate cpu speed
+; interrupts must be enabled
+; in:  --
+; out: cpu clock = hl*1,000,000 + de*1,000
+; mod: af,bc,de,hl
+; fails for cpu clock > 65.535 MHz
+; ------------------------------------------------------------
+
+; Minimal Interrupt:
+; die Interruptroutine muss bis ei mind. 32 Takte dauern incl. irpt ackn. B-)
+
+;		irpt	ackn			; 19 T
+inc_xhl_irpt	inc	(hl)			; 10 T		; cspeed_cell
+		ei				;  4 T
+		ret				; 10 T
+						; 43 * 5 +7 +7 = 229 
+
+cspeed_cell	data	1			; interrupt tickercell  -  FRAMES liegt im contended ram!
+
+calcspeed:	ld	hl,inc_xhl_irpt
+		ld	(irptvector),hl		; setup vector table
+			
+		ld	a,irptvector>>8
+		ld	i,a			; setup i for table
+		ld	hl,cspeed_cell			
+		im	2			; setup irpt mode to use table
+
+		ld	de,229/100		; pre-increment total loop count for setup and interrupt routine itself
+		halt
+		ld	a,(hl)			; 7 T
+		add	a,5			; 7 T	; => run for 5 interrupts
+
+cs1		ld	b,5			; 7
+cs2		dec	b			; 5*4
+		jp	nz,cs2			; 5*10
+		inc	de			; 6
+		cp	a,(hl)			; 7
+		jp	nz,cs1			; 10
+			
+		im	1			
+		ex	hl,de
+			
+; this took hl*100 ticks for 5/50 sec
+; == hl*1,000 ticks for 1 sec
+		ld	de,1000
+		call	divide
+; == hl*1,000,000 + de*1,000 ticks
+		ret
+
+
+
+   
+codeend:
+
+;****** END OF CODE BLOCK ***************************************************
+
+#end
+
+
+
+

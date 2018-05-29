@@ -1,0 +1,20 @@
+
+h3	#insert
+
+
+pre	#insert <filename>
+
+p	Inserts a binary file. The file name must be given as an absolute path or relatively to the current source file.
+p	The file's contents are just copied into the code segment verbatim.
+
+h5	Examples:
+
+pre	#insert "image.gif"       ; file in same directory
+	#insert "./image.gif"     ; file in same directory
+	#insert "pics/g1.gif"     ; file in subdirectory "pics/"
+
+p	As an alternate syntax the pseudo instruction "incbin" is also supported:
+
+pre		incbin "characters.bin"
+
+

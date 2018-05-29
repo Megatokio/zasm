@@ -1,0 +1,674 @@
+; tab-8
+
+
+
+	; interrupt routine setzt das cy flag
+	; und ist 44 cc lang
+
+scf_44_irpt:				; 19 irpt ack		
+		scf			; 4
+		jr	nc,$		; 7
+		ei			; 4
+		ret			; 10
+		
+
+; ------------------------------------------------------------
+;	Test 4:
+;	Prüfe, ob die sichtbaren Bänke 0 .. 3 contended sind
+;	Annahme: die Bank in der wir laufen ist nicht contended
+;	Es werden entsprechende Meldungen gedruckt
+;
+;	in:	--
+;	out:	a = bitmask of contended pages, idR.: %0000.0010
+;	mod:	af,bc,de,hl
+; ------------------------------------------------------------
+
+
+contended_banks		data	1
+
+test_4_banks_for_contention_msg:
+		
+		call	print_msg
+		defm	$0d,"map of contended memory banks 3..0: ",$00
+		call	test_4_contention
+		ld	(contended_banks),a
+		jp	printbin4
+		
+
+test_4_contention:
+
+		ld	hl,scf_44_irpt
+		ld	(irptvector),hl	; setup vector table
+
+		ei
+		im	2
+
+		ld	bc,0			; current test address
+		ld	hl,bc			; max loop count
+
+t4_1		halt
+		sub	a
+		ld	d,a			; current bank loop count
+		ld	e,a
+
+t4_a		ld	a,(bc)			; 4+3 + wait
+		inc	de			; 6
+		jr	nc,t4_a			; 12		== 25 T + waitstates
+
+		push	de		; loop count
+		call	max		; hl = max
+		
+		ld	a,b
+		add	$40
+		ld	b,a
+		jr	nz,t4_1
+
+	; hl = max loop count
+	; 4 x loop count on stack 
+			
+		dec	hl		; grant 1 loop less
+		ex	hl,de		; de = min. loop count for 'no waitstates'
+		sub	a		; a=0, cy=0
+		
+		ld	b,4		; loop index: current page
+t4_2		pop	hl
+		sbc	hl,de
+		rla			; store & clear cy
+		djnz	t4_2			
+
+		im	1
+		ret
+
+
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Test 8:
+;	Prüfe, ob die Ram-Pages 0 .. 7 contended sind
+;	Annahme: die Bank in der wir laufen ist nicht contended
+;	Es werden entsprechende Meldungen gedruckt
+;
+;	in:	--
+;	out:	a = bitmask of contended pages; erwartet: %11110000 oder %10101010
+;	mod:	af,bc,de,hl
+; ------------------------------------------------------------
+
+contended_rams	data	1
+
+test_8_rams_for_contention_msg:
+		
+		call	print_msg
+		defm	$0d,"map of contended ram pages 7..0: ",$00
+		call	test_8_contention
+		ld	(contended_rams),a
+		jp	printbin8
+		
+
+test_8_contention:
+		ld	hl,scf_44_irpt
+		ld	(irptvector),hl		; setup vector table
+
+		ei
+		im	2
+
+		ld	a,7			; loop index: current page
+		ld	hl,0			; best loop count collector
+
+t8_1		push	af
+		push	hl
+		ld	bc,$7ffd		; page in ram page at $c000
+		out	(c),a
+		pop	hl
+
+		halt
+		sub	a
+		ld	de,0			; current page loop count
+		ld	bc,$C000		; bc = page
+
+t8_a		ld	a,(bc)			; 4+3 + wait
+		inc	de			; 6
+		jr	nc,t8_a			; 12		== 25 T + waitstates
+						; note: irpt ret addr goes on stack which may be in upper page
+
+		push	hl
+		ld	bc,$7ffd
+		ld	a,(STATE_7FFD)
+		out	(c),a
+		pop	hl
+		pop	af
+
+		push	de			; current page's count
+		call	max			; hl := max
+
+		dec	a
+		jp	p,t8_1
+
+	; hl = max loop count
+	; 8 x loop count on stack
+
+		dec	hl			; grant 1 loop less
+		ex	hl,de			; de = min. loop count for 'no waitstates'
+		sub	a			; a=0, cy=0
+
+		ld	b,8			; loop index: current page
+t8_2		pop	hl
+		sbc	hl,de
+		rra				; store & clear cy
+		djnz	t8_2			
+				
+		im	1
+		ret				; a = bitmask of contended pages
+		
+		
+		
+
+
+
+; ------------------------------------------------------------
+;	Find first cc with wait states
+;
+;	mod:	af,bc,de,hl,im1,ei
+; ------------------------------------------------------------
+
+find_first_wait:
+
+		ld	hl,dummy_37cc_irpt
+		ld	(irptvector),hl
+		im	2
+		ei
+		
+		ld	hl,ffw_proc
+		ld	de,ffw_dest
+		ld	bc,10
+		ldir
+		
+		ld	hl,500				; start cc
+		ld	a,255				; loops in ffw_proc
+		
+ffw3		push	hl
+		push	af
+		
+		ld	de,ffw2
+		jp	at_hl_jp_de
+							; hl
+ffw2		im	2				; 8
+		ei					; 4
+		pop	af				; 10
+		push	af				; 11
+		call	ffw_dest			; 37 + a*36
+		call	restzeit_bis_irpt
+		ex	hl,de				; de = Restzeit(ist)
+
+		pop	af
+		pop	bc
+		push	bc
+		push	af
+
+		call	mult_a_36			; a*36
+		add	hl,bc				; startzeit + a*36
+		ld	bc,70
+		add	hl,bc				; startzeit + a*36 + 70
+		ld	bc,hl
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl				; cc/frame
+		and	a
+		sbc	hl,bc				; cc/frame -startzeit -a*36 -70  ==  Restzeit(soll)
+		
+		and	a
+		sbc	hl,de				; gleich, wenn keine wartezyklen 		
+		jr	nz,ffw4
+		
+	; keine Wartezyklen
+	
+		pop	af
+		call	mult_a_9
+		pop	de
+		add	hl,de				; neue startzeit etwas später
+		jr	ffw3
+		
+	; Wartezyklen
+	
+ffw4		pop	af
+		pop	hl
+		srl	a				; Fenster verkürzen
+		jr	nz,ffw3
+		
+		ld	bc,60
+		add	hl,bc
+		
+	; hl steht jetzt ganz dicht vor dem cc mit dem ersten wartezyklus	
+	; Obacht: ungenauer (löchriger) Wait-Test: Wir könnten auch schon drin stehen!
+
+		ld	a,201			; ret
+		ld	(ffw_dest),a
+
+ffw5		push	hl			; test cc -1
+		ld	de,ffw_dest
+		call	at_hl_jp_de		; 10	read bei hl+1  ((ret))
+		ei				; 4
+		call	restzeit_bis_irpt
+		ex	hl,de
+		
+		pop	hl
+		push	hl
+		ld	bc,14
+		add	hl,bc
+		ld	bc,hl
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl
+		and	a
+		sbc	hl,bc
+		and	a
+		sbc	hl,de
+		
+		pop	hl
+		inc	hl
+		
+		jr	z,ffw5
+		
+		im	1
+		ret				; hl = erster cc mit Wartezeit 
+						; note: Wait-Test im M1-Zyklus ist bei Offset +1
+
+
+mult_a_9	ld	l,a
+		ld	h,0
+		ld	de,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,de
+		ret
+
+mult_a_36	push	de
+		ld	l,a
+		ld	h,0
+		add	hl,hl
+		add	hl,hl
+		ld	de,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,de
+		pop	de
+		ret
+
+ffw_dest	equ	PRTBUF
+ffw_proc	ld	hl,ffw_dest	; 10
+		inc	(hl)		; a*11
+		dec	(hl)		; a*11
+		dec	a		; a*4		; Zugriffe bei cc0 + [2 ... 12+a*36]
+		jp	nz,ffw_dest+3	; a*10
+		ret			; 10
+
+;clear_b_xhl	ld	(hl),0
+;		inc	hl
+;		djnz	clear_b_xhl
+;		ret
+		
+
+#if 0
+
+; ------------------------------------------------------------
+;	test DE cycles at cpu cycle HL for wait states
+;	DE must be N*4
+; ------------------------------------------------------------
+
+test_waitstates:
+		push	hl		; start_cc
+		push	de		; cc_count
+		push	hl		; start_cc
+		push	de		; cc_count
+
+		ex	hl,de
+
+		ld	bc,-20		; sub min. latency: 1*16 für B=1 und 1*4 für RET
+		add	hl,bc
+		jp	nc,tws3		; less than 20 cc to test => only NOPs + RET
+
+		ld	bc,256*16+32	; Laufzeit der äußeren Schleife
+		xor	a
+tws1		sbc	hl,bc
+		inc	a
+		jr	nc,tws1
+		add	hl,bc		; hl = (cc_count-20) % (256*16+32)
+					; a  = (cc_count-20) / (256*16+32) + 1
+		
+		ld	(test_ws_sub+1),a	; Wert für C
+
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl		; l = (cc_rest-20)%16 * 16
+		add	hl,hl		; h = (cc_rest-20)/16
+		
+		ld	a,h
+		inc	a
+		ld	(test_ws_sub+2),a	; Wert für B
+		
+		ld	a,l
+		rlca
+		rlca
+		and	3		; Anzahl einzufügender NOPs
+
+		ld	hl,test_ws_sub
+		ld	de,opa_dest
+		ld	b,0
+		add	a,twss2-test_ws_sub
+		ld	c,a
+		ldir
+		ld	a,201		; RET
+		ld	(de),a
+
+; Testprozedur ist fertig		
+
+		pop	de			; cc_count
+		ld	hl,(cc2_per_irpt)
+		and	a
+		sbc	hl,de
+		ld	de, +1 -(23+10+11+16)
+		adc	hl,de
+		
+		ex	hl,(sp)		; hl = start_cc; stack = skip_cc
+		ld	de,opa_dest
+
+; um HL wird die Testprozedur aufgerufen und danach noch 3 mal jeweils 1 cc später
+; danach wird die Restzeit bis Interrupt geprüft, die cc_per_irpt-HL-DE-3 sein sollte
+
+		call	at_hl_jp_de
+		pop	hl
+		push	hl
+		call	wait_cc
+		ld	hl,(cc2_per_irpt)
+		call	wait_cc
+
+		call	opa_dest		; 23		17 (call) + 10-4 (ret) 
+		pop	hl			; 10
+		push	hl			; 11
+		call	wait_cc			; HL		cc2_per_irpt +1 -23-10-11-16
+		ld	hl,(cc2_per_irpt)	; 16
+		call	wait_cc			; cc2_per_irpt
+		
+		call	opa_dest
+		pop	hl
+		push	hl
+		call	wait_cc
+		ld	hl,(cc2_per_irpt)
+		call	wait_cc
+		
+		call	opa_dest
+		pop	hl
+		push	hl
+		call	wait_cc
+		ld	hl,(cc2_per_irpt)
+		call	wait_cc
+		
+		ei
+		call	restzeit_bis_irpt
+		im	1
+		pop	de			; drop
+		pop	de			; cc_count
+		pop	bc			; start_cc
+		add	hl,de
+		add	hl,bc			; hl = start_cc + cc_count + restzeit
+		dec	hl
+		dec	hl
+		dec	hl			
+		ex	hl,de			; de = start_cc + cc_count + restzeit -3
+
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl			; hl = cc_per_irpt
+		and	a
+		ex	hl,de
+		sbc	hl,de			; HL = wait states
+		ret				; z => no wait states  /  nz => HL wait states
+		
+		
+		
+		
+
+; Test-UP:
+; Laufzeit N*4
+; Max. Abstand zw. zwei Wait-Tests: 4 cc
+
+test_ws_sub:	ld	bc,1234		; 10
+twss1		dec	b		; C*256*4	 + B*4
+		jr	nz,twss1	; C*256*12 -C*5  + B*12 -5
+		dec	c		; C*4
+		push	bc		; C*11
+		pop	bc		; C*10
+		jr	nz,twss1	; C*12 -5
+twss2		nop			; (4)
+		nop			; (4)
+		nop			; (4)
+		nop			; (4)
+	;	ret			; 4		total: B*16 + C*(256*16+32) + N*4
+
+#endif
+
+		
+
+
+
+; ------------------------------------------------------------
+;	Bestimme Waitmap
+;
+;	Die Waitstates werden pro Zugriffszeitpunkt exakt ermittelt
+;	Das Ergebnis zeigt auch Fehler in der Waitmap-Implementierung 
+;	eines Emulators auf. (z.B. 65430000 statt 65432100)
+;
+;	in:	hl = Start cc; 
+;		a  = Anzahl
+;
+;	out:	Waitmap wird in 'scratch' deponiert
+;	mod:	af,bc,de,hl,im1,ei
+; ------------------------------------------------------------
+
+get_waitmap:
+
+		ld	de,scratch
+		
+		ld	b,a
+		ld	a,201		; RET
+		ld	(ffw_dest),a
+		ld	a,b
+		
+		dec	hl			; Wait-Test ist 1 Takt nach M1-Zyklus-Start
+		;dec	hl
+
+gw1		push	af
+		push	de
+		push	hl
+
+		ld	de,ffw_dest
+		call	at_hl_jp_de		; 10	read bei hl+2  ((ret))
+		ei				; 4
+		call	restzeit_bis_irpt
+		ex	hl,de			; de = Restzeit(ist)
+		
+		pop	hl
+		push	hl			; Startzeit
+		ld	bc,14
+		add	hl,bc			; +10 (RET) +4 (EI)
+		ld	bc,hl
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl			; cc/frame
+		and	a
+		sbc	hl,bc			; cc/frame - 14 - startzeit  ==  Restzeit(soll)
+		and	a
+		sbc	hl,de			; Restzeit(soll) - Restzeit(ist)  ==  Wait Cycles
+		ld	a,l
+		
+		pop	hl
+		inc	hl
+		pop	de
+		ld	(de),a
+		inc	de
+		pop	af
+		dec	a
+		
+		jr	nz,gw1
+		
+		inc	hl			; undo initial dec hl
+		;inc	hl			; ""
+		
+		im	1
+		ld	(ffw_dest),a		; clear byte
+		ret
+		
+
+; ------------------------------------------------------------
+;	test for wait cycles in ula io
+;	in:	hl = start cc
+;		a  = count
+;	out ($FE),a -> io in cycle +9
+; ------------------------------------------------------------
+
+get_ula_out_waitmap:
+
+		ld	bc,-9 -7		; "ld a,7" und output in "out(FE),a" ist bei offset +9
+		add	hl,bc
+
+guo0		push	af
+		push	hl
+		
+		ld	de,guo1
+		jp	at_hl_jp_de		
+guo1		ld	a,6			; 7
+		out	($fe),a			; 11; output @ +9
+		ei				; 4
+		call	restzeit_bis_irpt
+		im	1
+
+		pop	de
+		push	de
+		add	hl,de			; startzeit+restzeit
+		ld	de,7+11+4
+		add	hl,de			; startzeit+nominelle_laufzeit+restzeit
+		ex	hl,de			; de = ""
+		
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl			; cc/frame
+		and	a
+		sbc	hl,de			; hl = zeit_pro_frame - (startzeit+nominelle_laufzeit+restzeit) = wait_cycles
+
+		ld	a,l
+		add	'0'
+		call	print_char
+
+		pop	hl
+		pop	af
+		
+		inc	hl
+		dec	a		
+		jr	nz,guo0
+				
+		ret
+		
+		
+		
+; ------------------------------------------------------------
+;	Bestimme Waitmap
+;
+;	Schnellerer Algorhythmus, der nach N Wartezyklen 
+;	direkt mit cc+N weitermacht
+;
+;	Abgelegt wird in scratch in der Form '06262626..'
+;		(nowait,wait,..)
+;
+;	in:	hl = Start cc
+;		a  = Anzahl Ergebnis-Tupel in 'scratch'
+;
+;	out:	Waitmap wird in 'scratch' deponiert
+;		hl = next cc to test
+;	mod:	af,bc,de,hl,im1,ei
+; ------------------------------------------------------------
+		
+get_waitmap_fast:
+
+		ld	de,scratch
+
+		ld	b,a			; b = dest.tupel counter
+		ld	a,201		; RET
+		ld	(ffw_dest),a
+		
+		dec	hl			; Wait-Test ist 1 Takt nach M1-Zyklus-Start
+		;dec	hl
+
+	; count nowait
+
+gw2		ld	c,0			; nowait counter
+		push	de			; dest.ptr
+
+gw3		push	bc			; counter b and c
+		push	hl			; test_cc
+		
+		ld	de,ffw_dest
+		call	at_hl_jp_de		; 10	read bei hl+2  ((ret))
+		ei				; 4
+		call	restzeit_bis_irpt
+		ex	hl,de			; de = Restzeit(ist)
+		
+		pop	hl
+		push	hl			; Startzeit
+		ld	bc,14
+		add	hl,bc			; +10 (RET) +4 (EI)
+		ld	bc,hl
+		ld	hl,(cc2_per_irpt)
+		add	hl,hl			; cc/frame
+		and	a
+		sbc	hl,bc			; cc/frame - 14 - startzeit  ==  Restzeit(soll)
+		and	a
+		sbc	hl,de			; Restzeit(soll) - Restzeit(ist)  ==  Wait Cycles
+		ex	hl,de			; de = wait cycles
+
+		pop	hl
+		pop	bc
+
+		jr	nz,gw4
+		
+		inc	c
+		inc	hl
+		jr	gw3
+		
+gw4		add	hl,de			; hl += wait cycles
+		ld	a,e
+
+		pop	de			; dest.ptr
+		ex	hl,de
+		ld	(hl),c			; nowait count
+		ex	hl,de
+		inc	de
+		ld	(de),a			; wait count
+		inc	de
+
+		djnz	gw2
+
+		inc	hl			; undo initial dec hl
+		;inc	hl			; ""
+
+		im	1
+		sub	a
+		ld	(ffw_dest),a		; clear byte
+		ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

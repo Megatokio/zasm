@@ -1,0 +1,122 @@
+
+
+
+; ----------------------------------------------
+;	Test AY at $bffd:
+;	out fffd: select
+;	in  fffd: read
+;	out bffd: write
+;
+;	test_ay_bffd:		test for chip
+;	test_ay_bffd_msg:	also print message and store result in has_ay_bffd
+;
+;	in:	--
+;	out:	cy: 0 = no chip;  1 = ay chip found 
+;	mod:	af,bc,de
+; ----------------------------------------------
+
+
+has_ay_bffd	data	1
+
+
+test_ay_bffd_msg:	
+		call	print_msg
+		defm	$0d, "has ay at port $bffd:  ",$00
+		call	test_ay_bffd
+		call	print_yes_no
+		sbc	a,a
+		ld	(has_ay_bffd),a
+		ret
+
+test_ay_bffd:
+		di
+
+		ld	bc,$fffd		; select ay register 11 ((envelope fine period))
+		ld	a,11
+		out	(c),a			
+
+		in	a,(c)			; get state
+		ld	e,a			; save			
+
+		cpl				; toggle bits
+		ld	b,$bf
+		out	(c),a
+
+		ld	b,$ff
+		in	a,(c)
+		cpl
+		sub	e
+		jr	nz,tbffd_1		; failed
+			
+		ld	a,e			; restore register
+		ld	b,$bf
+		out	(c),a
+			
+		ld	b,$ff
+		in	a,(c)
+		sub	e
+
+tbffd_1		ei				; a!=0  &&  nz  -> failed
+		sub	1			; cy -> has AY chip
+		ret
+
+
+
+
+
+; ----------------------------------------------
+;	Test 7ffd:
+;
+
+
+has_mmu_7ffd	data	1
+
+
+test_mmu_7ffd_msg:
+		call	print_msg
+		defm	$0d, "has mmu at port $7ffd: ",$00
+		call	test_7ffd
+		call	print_yes_no
+		sbc	a,a
+		ld	(has_mmu_7ffd),a
+		ret					; ret cy/nc -> has/has no port 7ffd
+
+test_7ffd:
+		di
+		ld	bc,$7ffd			; port address && test byte in screen page $4000++
+		ld	hl,$7ffd | $c000		; test byte location in upper page $C000++
+
+		ld	a,5				; ram page 5  ==  fixed ram page at $4000
+		out	(bc),a
+
+		ld	a,(bc)
+		cp	a,(hl)
+		jr	nz,t7ffd1
+
+		cpl
+		ld	(bc),a
+		cp	a,(hl)
+		cpl
+		ld	(bc),a
+		jr	nz,t7ffd1
+
+		ld	a,(STATE_7FFD)			; restore state if machine has port 7ffd
+		out	(bc),a
+
+		scf					; cy -> has port 7ffd
+		ei			
+		ret
+
+t7ffd1		sub	a				; nc -> port 7ffd not found
+		ei
+		ret
+
+
+
+
+
+
+
+
+
+

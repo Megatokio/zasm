@@ -1,0 +1,33 @@
+\ProvidesPackage{alpaca}
+
+%
+% Note:  Much of this stuff was snagged directly from Bob Krzaczek
+%
+
+\usepackage{noweb}
+\usepackage[pdftex]{graphicx}
+\usepackage{xspace}
+
+\usepackage[pdftex]{color}
+\definecolor{myblue}{cmyk}{0.5, 0.5, 0, 0.33}
+\usepackage[pdftex,bookmarks=true,colorlinks=true,linkcolor=myblue,filecolor=myblue,pagecolor=myblue,urlcolor=myblue]{hyperref}
+
+%\usepackage[draft,pdftex]{prelim2e}
+\usepackage[pdftex]{}
+
+\newcommand{\Href}[1]{\href{#1}{\url{#1}}}
+\newcommand{\furl}[1]{\footnote{\Href{#1}}}
+
+\pagestyle{noweb}
+\noweboptions{smallcode,longxref}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1.0ex plus0.5ex minus0.5ex}
+
+\newtheorem{Issue}{Issue}
+\newenvironment{issue}{\begin{Issue}%
+}{\marginpar{\raisebox{1ex}{\fbox{\Huge \textbf{??}}}}\end{Issue}}
+
+\newcommand{\OS}{\textsc{Alpaca}\xspace}
+
+\endinput

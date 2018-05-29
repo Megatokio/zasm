@@ -1,0 +1,269 @@
+\chapter{Auxiliary Data Files}
+\label{chp:auxdata}
+
+This chapter defines all of the extra files needed to convert the
+generated ASM as well as the auxiliary PCX image files into the ROM
+files that we need to generate.
+
+The two types of files, [[.ROMS]] and [[.INI]] are needed for the
+external [[genroms]] and [[turacoCL]] programs, which are used to
+generate the ROM images.
+
+%%%%%%%%%%%%%%%%%%%%
+\section{genroms .ROMS files}
+
+These files are the data files used by ``genroms'' to produce ROM
+image files from the generated Intel Hex File (.IHX) by the makefile.
+
+The basic fields are:
+\begin{itemize}
+	\item start address
+	\item rom size
+	\item rom filename
+	\item rom reference name
+\end{itemize}
+
+
+\subsection{Ms. Pac-Man}
+
+%%%%%%%%%%
+<<mspacman.roms>>=
+# program space
+begin program
+0x0000  0x1000  boot1   program_1
+0x1000  0x1000  boot2   program_2
+0x2000  0x1000  boot3   program_3
+0x3000  0x1000  boot4   program_4
+0x8000  0x1000  boot5   program_5
+0x9000  0x1000  boot6   program_6
+end
+
+# graphics bank 1
+begin graphics
+0x0000  0x1000  5e      graphics_1
+
+# graphics bank 2
+0x0000  0x1000  5f      graphics_2
+end
+
+# color proms
+begin color
+0x0000  0x0020  82s123.7f       palette
+0x0020  0x0100  82s126.4a       colorlookup
+end
+
+# sound proms
+begin sound
+0x0000  0x0100  82s126.1m       sound_a
+0x0100  0x0100  82s126.3m       sound_timing
+end
+@
+
+%%%%%%%%%%
+\subsection{Pac-Man}
+<<pacman.roms>>=
+# program space
+begin program
+0x0000  0x1000  pacman.6e       program_1
+0x1000  0x1000  pacman.6f       program_2
+0x2000  0x1000  pacman.6h       program_3
+0x3000  0x1000  pacman.6j       program_4
+end
+
+# graphics bank 1
+begin graphics
+0x0000  0x1000  pacman.5e       graphics_1
+
+# graphics bank 2
+0x0000  0x1000  pacman.5f       graphics_2
+end
+
+# color proms
+begin color
+0x0000  0x0020  82s123.7f       palette
+0x0020  0x0100  82s126.4a       colorlookup
+end
+
+# sound proms
+begin sound
+0x0000  0x0100  82s126.1m       sound_a
+0x0100  0x0100  82s126.3m       sound_timing
+end
+@
+
+%%%%%%%%%%
+\subsection{Pengo 2u}
+<<pengo2u.roms>>=
+begin program
+0x0000  0x1000  pengo.u8             program_1
+0x1000  0x1000  pengo.u7             program_2
+0x2000  0x1000  pengo.u15            program_3
+0x3000  0x1000  pengo.u14            program_4
+0x4000  0x1000  pengo.u21            program_5
+0x5000  0x1000  pengo.u20            program_6
+0x6000  0x1000  pengo.u32            program_7
+0x7000  0x1000  pengo.u31            program_8
+end
+
+# graphics bank 1
+begin graphics
+0x0000  0x2000  ic92            graphics_1
+
+# graphics bank 2
+0x0000  0x2000  ic105           graphics_2
+end
+
+# color and palette proms proms
+begin color
+0x0000  0x0020  pr1633.078      palette
+0x0020  0x0400  pr1634.088      colorlookup
+end
+
+# sound proms
+begin sound
+0x0000  0x0100  pr1635.051      sound_a
+0x0100  0x0100  pr1636.070      sound_timing
+end
+@
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{turaco .INI file}
+
+These files are used to convert the .pcx files into graphics ROM
+image files by ``turacoCL''.  The exact format of this file will
+not be described here since it is outside of the scope of this
+document.
+
+For more detail about what is going on here, please refer to the
+documentation and sample .ini driver contained in the ``turacoCL''
+package.
+
+%%%%%%%%%%
+\subsection{(Ms.) Pac-Man}
+
+<<pacman.ini>>=
+[Turaco]
+FileVersion = 1.0
+DumpVersion = 2
+Author = Jerry / MAME 0.65.1 Dump
+URL = http://www.cis.rit.edu/~jerry/Software/turacoCL
+
+[General]
+Name = pacman
+Grouping = pacman
+Year = 1980
+Manufacturer = [Namco] (Midway license)
+CloneOf = puckman
+Description = Pac-Man (Midway)
+
+[Layout]
+GfxDecodes = 2
+
+[GraphicsRoms]
+Rom1 =      0    4096  pacman.5e
+Rom2 =   4096    4096  pacman.5f
+
+[Decode1]
+start = 0
+width = 8
+height = 8
+total = 256
+orientation = 0
+planes = 2
+planeoffsets = 0 4
+xoffsets = 56 48 40 32 24 16 8 0
+yoffsets = 64 65 66 67 0 1 2 3
+charincrement = 128
+
+[Decode2]
+start = 4096
+width = 16
+height = 16
+total = 64
+planes = 2
+planeoffsets = 0 4
+xoffsets = 312 304 296 288 280 272 264 256 56 48 40 32 24 16 8 0
+yoffsets = 64 65 66 67 128 129 130 131 192 193 194 195 0 1 2 3
+charincrement = 512
+
+[Palette]
+Palette1  = 4    0  0  0   220 220 220     0   0  90   220   0   0
+Palette2  = 4    0  0  0     0 220   0     0   0  90   220 150  20
+Palette3  = 4    0  0  0     0   0 220   255   0   0   255 255   0
+Palette4  = 4    0  0  0   220   0   0    90  90   0   220 220 220
+Palette5  = 4    0  0  0   220   0   0     0 220   0   220 220 220
+Palette6  = 4    0  0  0   150 150   0     0 220   0    90  90   0
+Palette7  = 4    0  0  0   220 220   0    90  90 220   220 220 220
+Palette8  = 4    0  0  0   220   0   0    90  90   0   220 220 220
+Palette9  = 4    0  0  0     0 150 220     0 220   0   220 220 220
+Palette10 = 4    0  0  0     0   0   0    90  90 220   220 220 220
+Palette11 = 4  255  0  0   255 255 255     0 255   0     0   0 220
+Palette12 = 4    0  0  0   255 255 255     0   0   0     0   0 220
+@
+
+
+%%%%%%%%%%
+\subsection{Pengo}
+
+<<pengo2u.ini>>=
+[General]
+Description = Pengo (set 2 not encrypted)
+
+[Layout]
+GfxDecodes = 4
+Orientation = 5
+
+[GraphicsRoms]
+Rom1 = 0 8192 ic92
+Rom2 = 8192 8192 ic105
+
+[Decode1]
+start = 0
+width = 8
+height = 8
+total = 256
+planes = 2
+planeoffsets = 0 4
+xoffsets = 64 65 66 67 0 1 2 3
+yoffsets = 0 8 16 24 32 40 48 56
+charincrement = 128
+
+[Decode2]
+start = 4096
+width = 16
+height = 16
+total = 64
+planes = 2
+planeoffsets = 0 4
+xoffsets = 64 65 66 67 128 129 130 131 192 193 194 195 0 1 2 3
+yoffsets = 0 8 16 24 32 40 48 56 256 264 272 280 288 296 304 312
+charincrement = 512
+
+[Decode3]
+start = 8192
+width = 8
+height = 8
+total = 256
+planes = 2
+planeoffsets = 0 4
+xoffsets = 64 65 66 67 0 1 2 3
+yoffsets = 0 8 16 24 32 40 48 56
+charincrement = 128
+
+[Decode4]
+start = 12288
+width = 16
+height = 16
+total = 64
+planes = 2
+planeoffsets = 0 4
+xoffsets = 64 65 66 67 128 129 130 131 192 193 194 195 0 1 2 3
+yoffsets = 0 8 16 24 32 40 48 56 256 264 272 280 288 296 304 312
+charincrement = 512
+
+[Palette]
+Palette1  = 4    0  0  0   220 220 220     0   0  90   220   0   0
+Palette2  = 4    0  0  0     0 220   0     0   0  90   220 150  20
+Palette3  = 4    0  0  0     0   0 220   255   0   0   255 255   0
+@

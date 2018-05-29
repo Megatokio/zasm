@@ -1,0 +1,73 @@
+
+h3	#target ACE
+	ace
+	
+pre	#target ACE	
+	#code VRAM_COPY,   $2000, $400
+	#code VRAM, 	   $2400, $400
+	#code CRAM_COPY,   $2800, $400
+	#code CRAM,		   $2C00, $400
+	#code RAM_COPIES,  $3000, $C00
+	#code SYSVARS,	   $3C00, $40
+	#code RAM, 		   $3C40, ramsize - $840
+
+p	This target creates a snapshot file for use with a Jupiter Ace emulator.
+
+p	<i class=magenta>This format may be reworked to remove the necessity to include the empty mirror pages</i>	
+
+p	The ram of the Jupiter Ace starts with several copies of the video ram and the character ram, before the usable area at address $3C00 is reached.
+
+p	The Z80 registers and some settings are stored in the first page at $2000. Since all system variable locations are included in this file, there is probably no need to define a #data segment, except if you include c sources.
+
+p	Allowed ram sizes are 3k, 3+16=19k and 3+32=35k. This results in a total of $2000, $6000 or $A000 bytes in all code segments, including mirrors.
+
+p	See the Jupiter Ace .ace template file: <a target="image" href="../Examples/template_ace.asm">template_ace.asm</a> 
+
+p.b	Basic layout of the ace file:
+
+pre	#target ACE	
+	#code VRAM_COPY,   $2000, $400
+	;
+	; this is a "copy" of the video ram at $2400. 
+	; it should be empty except for the Z80 registers which are stuffed in here.
+	; see the template file for the layout of this data.
+	;
+	#code VRAM, 	   $2400, $400
+	;
+	; this is the actually loaded data for the video ram.
+	; you may put here a greeting message (in ascii) which is instantaneous visible.
+	;
+	#code CRAM_COPY,   $2800, $400
+	;
+	; a copy of the character ram which follows. must be empty.
+	;
+	#code CRAM,		   $2C00, $400
+	;
+	; the character ram. 
+	; simply #insert the file "Examples/jupiter_ace_character_ram.bin" here.
+	;
+	#code RAM_COPIES,  $3000, $C00
+	;
+	; 3 copies of the ram at $3C00. must be empty
+	;
+	#code SYSVARS,	   $3C00, $40
+	;
+	; the Forth system variables. must be set up properly.
+	; see the template file for the layout. For the values ask someone else... :-|
+	; If you can give some advice or a sample setup please send email to <a href="mailto:kio@little-bat.de">Kio</a>. Thanks!
+	; if you don't use the Forth rom then you may use the whole rom as you like.
+	;
+	#code RAM, 		   $3C40, ramsize - $840
+	;
+	; the free ram after the system variables.
+
+
+
+
+
+
+
+
+
+
+

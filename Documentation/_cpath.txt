@@ -1,0 +1,15 @@
+
+h3	#cpath
+
+pre	#cpath "/path/to/c-compiler"
+p	Example:
+pre	#cpath "/usr/bin/sdcc"
+	#cpath "sdcc"
+
+p	Set the path to the c-compiler from the assembler source file. Normally you set the path from the command line with option <tt>-c</tt>. The path given on the command line overrides the #cpath declaration in the file. If more than one #cpath directive is given, then only the first is evaluated and all others are silently ignored.
+
+p	The #cpath directive can also be used to declare the compiler to use (without directory path), either <tt>sdcc</tt> or <tt>vcc</tt>. Then the executable will be searched in your search path.
+
+p	In CGI-Mode this directive is not allowed.
+
+	

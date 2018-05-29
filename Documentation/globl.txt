@@ -1,0 +1,67 @@
+
+
+h3	.globl
+
+pre		.globl <label>
+
+p	For the sake of sdcc:
+	Declare the named label to be global. 
+
+p	The label is either defined in the current local scope after this declaration or it is referenced there.
+p	Undefined global labels can be picked up later by the '#include library' assembler directive.
+
+h5	Define a global label
+
+pre	#local
+			.globl foo
+			...
+	foo:	nop
+			...
+	#endlocal
+
+p	The same effect can be achieved by putting two colons after the label definition:
+
+pre	#local
+			...
+	foo::	nop
+			...
+	#endlocal
+
+
+h5	Refer to a global label
+
+pre	#local
+			.globl foo
+			...
+			jp	foo
+			...
+	#endlocal
+
+p	Unless you have a nested local context, this is identically to:
+
+pre	#local
+			...
+			jp	foo
+			...
+	#endlocal
+
+p	In almost all cases the .globl declaration is superfluous. zasm automatically adds the label to the list of undefined local labels and pushes it at each #endlocal to the outer context until it finds a context where it is defined – finally the global context where it can be picked up by the '#include library' assembler directive if it is still undefined then.
+
+p	Actually all references to symbols in system libraries as included by the c compiler are handled this way, without the need to define them all ahead.
+
+p	.globl is useful in nested local contexts where the same name might be defined in an outer but not the global context. 
+
+p	.globl may also be useful if you want to redefine a redefinable label. Inside a local context it is impossible to redefine a label, because this would define a new local label instead, except if you define it .globl.
+
+pre	foo		defl	0
+			...
+	#local
+			...
+			.globl	foo
+	foo		defl	1
+			...
+	#endlocal
+	
+
+
+

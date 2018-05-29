@@ -1,0 +1,1218 @@
+; tab-8
+
+; setup tables
+
+charset_ptr		data	96*2	; char(33) .. char(128) + stopper
+
+print_hl		data	2
+print_c			data	1
+print_attr		data	1
+print_flags		data	1
+print_scrollcount	data	1
+print_logptr		data	2
+
+; print_flags:
+pbit_narrow		equ	0		; bit in print_flags: narrow spacing: omit first spacing column
+pbit_inverse		equ	1		; bit in print_flags: print inverse:  set pixels for 0-bits in glyph
+pbit_log		equ	2		; bit in print_flags: log all printing (print_logptr)++
+
+print_sp_save		data	2
+
+
+black	equ	0
+blue	equ	1
+red	equ	2
+magenta	equ	3
+green	equ	4
+cyan	equ	5
+yellow	equ	6
+white	equ	7
+
+black_paper	equ	0*8
+blue_paper	equ	1*8
+red_paper	equ	2*8
+magenta_paper	equ	3*8
+green_paper	equ	4*8
+cyan_paper	equ	5*8
+yellow_paper	equ	6*8
+white_paper	equ	7*8
+
+paper	equ	8
+pen	equ	1
+bright	equ	$40
+
+
+#if 0
+
+;	in:	a = size
+;	out:	sp -= a
+;		push old sp
+;		push dealloc proc ret addr
+;		ix -> top of free space
+
+alloc_on_stack:
+	pop	ix			; IX = own ret addr
+
+	ld	(aos1+1),sp
+aos1	ld	de,0			; DE = SP(alt)
+	
+	neg	a
+	ld	l,a
+	ld	h,-1	
+	add	hl,de
+	ld	sp,hl			; HL = base of room
+	
+	push	de			; push SP(alt)
+	ld	hl,dealloc_on_stack	
+	push	hl			; push ret addr -> dealloc
+	ex	ix,de			; IX -> top of room
+
+	ex	hl,de			; HL = own ret addr
+	jp	hl			; return
+
+
+dealloc_via_hl:
+	pop	hl
+	ld	sp,hl
+	ret
+
+dealloc_via_ix:
+	pop	ix
+	ld	sp,ix
+	ret
+
+dealloc:
+	ld	hl,(d1+1)
+	pop	hl
+	ld	sp,hl
+d1	ld	hl,0
+	ret
+
+
+#endif
+
+
+
+; ------------------------------------------------------------
+;	Initialize Print Module
+;		Sets up variables
+;		Calculates glyph pointers
+; ------------------------------------------------------------
+
+init_print:
+
+	ld	hl,$4000		; print_hl	= screen byte addr
+	ld	(print_hl),hl
+	ld	a,7*8
+	ld	(print_c),a		; print_c	= bit no. * 8
+	ld	a,7*8 + 1*1
+	ld	(print_attr),a		; print_attr	= color attribute
+	sub	a
+	ld	(print_flags),a		; print_flags	= !narrow, !inverse
+	ld	(print_scrollcount),a	; 1 => ask next time
+	ld	hl,$c000
+	ld	(print_logptr),hl	
+	
+	ld	de,charset -1
+	ld	hl,charset_ptr
+
+pc_1	and	a			; cy=0
+pc_2	inc	de
+	ld	a,(de)
+	rr	a	
+	jr	nc,pc_2
+	ret	z
+	ld	(hl),e
+	inc	hl
+	ld	(hl),d
+	inc	hl
+	jr	pc_1
+
+
+print_push_state:
+	pop	hl
+	ld	de,(print_hl)
+	push	de
+	ld	de,(print_hl+2)
+	push	de
+	ld	de,(print_hl+4)
+	push	de
+	jp	(hl)
+
+print_pop_state:
+	pop	hl
+	pop	de
+	ld	(print_hl+4),de
+	pop	de
+	ld	(print_hl+2),de
+	pop	de
+	ld	(print_hl),de
+	jp	(hl)
+	
+print_attr_from_pixel_hl:
+	ld	a,h
+	rrca
+	rrca
+	rrca
+	and	3
+	add	$58
+	ld	h,a
+	ret
+
+wait_nokey:	
+	ld	bc,$00fe
+	in	a,(c)
+	inc	a
+	and	$1f
+	jr	nz,wait_nokey
+	ret
+
+wait_anykey:	
+	ld	bc,$00fe
+	in	a,(c)
+	inc	a
+	and	$1f
+	jr	z,wait_anykey
+	ret
+
+	
+	
+	
+
+; ------------------------------------------------------------
+;	print single char
+;
+;	in:	a = char
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+print_char:
+
+	push	hl
+	push	de
+	push	bc
+	push	af
+	
+	ld	b,a
+	ld	hl,(print_hl)
+	ld	a,(print_c)
+	ld	c,a
+	ld	a,b
+	call	print_char_a_at_hl_bit_c
+	ld	a,c
+	ld	(print_c),a
+	ld	(print_hl),hl
+
+	pop	af
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+
+
+; ------------------------------------------------------------
+;	print text 
+;
+;	in:	text folgt inline; abgeschlossen mit $00
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+print_msg:
+	
+	ex	hl,(sp)
+	push	de
+	push	bc
+	push	af
+	
+	ex	hl,de
+	ld	hl,(print_hl)
+	ld	a,(print_c)
+	ld	c,a
+		
+pm_1	ld	a,(de)
+	inc	de
+	and	a
+	jr	z,pm_x
+	push	de
+	call	print_char_a_at_hl_bit_c
+	pop	de
+	jr	pm_1
+
+pm_x	ld	a,c
+	ld	(print_c),a
+	ld	(print_hl),hl
+	ex	hl,de
+	
+	pop	af
+	pop	bc
+	pop	de
+	ex	hl,(sp)
+	ret
+
+
+
+
+
+
+; ------------------------------------------------------------
+;	Locate Textcursor at Row B, Column C
+;		Setup print_hl and print_c
+;
+;		if row B >= 24, then the screen is scrolled 
+;		until row fits in screen
+;
+;	in:	B = row [0..23]
+;		C = col [0..255]
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+print_locate:
+	
+	push	af
+	push	bc
+
+pc_l2	ld	a,b
+	cp	24
+	jr	nc,pc_l1		; scroll up
+
+	ld	a,c			; col
+	cpl
+	and	7
+	rlca
+	rlca
+	rlca		
+	ld	(print_c),a		; bitnr * 8
+
+	ld	a,b			; row
+	and	$F8
+	or	$40
+	ld	(print_hl+1),a		; h = high byte screen address = [$41..$58]
+
+	ld	a,c			; col
+	rr	b
+	rra
+	rr	b
+	rra
+	rr	b
+	rra
+	ld	(print_hl),a		; l = low byte screen address
+
+	pop	bc
+	pop	af
+	ret
+
+pc_l1	call	scroll_screen
+	dec	b
+	jr	pc_l2
+
+
+; ------------------------------------------------------------
+;	display "scroll?" and wait for key
+; ------------------------------------------------------------
+
+show_scroll_and_wait_for_key:
+	
+	push	hl
+	push	de
+	push	bc
+	push	af
+	
+	call	print_push_state
+
+	ld	hl,-6*9			; make room
+	add	hl,sp
+	ld	sp,hl		
+
+	ex	hl,de			; DE -> buffer	
+	ld	hl,$5000+8*32 -6	; HL -> screen
+	ld	c,6			; count
+
+	call	print_save_cells
+	call	print_clear_cells
+
+	ld	(print_hl),hl
+	ld	a,3*8
+	ld	(print_c),a
+	ld	a,white + red_paper
+	ld	(print_attr),a
+	sub	a
+	ld	(print_flags),a
+
+	call	print_msg
+	defm	"scroll?",$00
+
+	call	wait_nokey
+	call	wait_anykey
+	halt				; entprellen
+	halt
+	call	wait_nokey
+
+	ld	c,6
+	call	print_restore_cells
+	
+	ld	hl,6*9			; close room
+	add	hl,sp
+	ld	sp,hl		
+
+	call	print_pop_state
+	
+	pop	af
+	pop	bc
+	pop	de
+	pop	hl
+	
+	ret
+	
+
+; ------------------------------------------------------------
+;	save / restore c character fields (hl)++  <->  buffer (de)++
+;	save / restore 8x pixel + 1x attr je Feld
+;
+;	in:	c = count
+;		de -> buffer
+;		hl -> 1. screen byte
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+print_save_cells:
+	push	hl
+	push	de
+	push	bc
+
+	ld	a,h
+	and	$F8
+	ld	h,a		; force legal
+
+	ld	b,8
+s881	push	bc
+	push	hl
+	ld	b,0
+	ldir
+	pop	hl
+	pop	bc
+	inc	h
+	djnz	s881
+
+	dec	h
+	call	print_attr_from_pixel_hl
+	ldir
+	
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+print_restore_cells:
+	push	hl
+	push	de
+	push	bc
+	
+	ld	a,h
+	and	$F8
+	ld	h,a		; force legal
+	ex	hl,de
+
+	ld	b,8
+r881	push	bc
+	push	de
+	ld	b,0
+	ldir
+	pop	de
+	pop	bc
+	inc	d
+	djnz	r881
+
+	ex	hl,de
+	dec	h
+	call	print_attr_from_pixel_hl
+	ex	hl,de	
+	ldir
+
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+print_clear_cells:
+	push	hl
+	push	de
+	push	bc
+	
+	ld	a,h
+	and	$F8
+	ld	h,a			; force legal
+
+	ld	d,8			; 8 pixel rows
+	sub	a			; A = 0
+	ld	e,l			; L retten
+
+c881	ld	b,c			; character count
+c882	ld	(hl),a			; CLEAR
+	inc	l
+	djnz	c882
+
+	ld	l,e			; L erneuern
+	
+	inc	h			; next pixel row
+	dec	d
+	jr	nz,c881
+	
+	dec	h
+	call	print_attr_from_pixel_hl
+
+	ld	b,c			; count
+	ld	a,(print_attr)		; fill byte
+
+c883	ld	(hl),a			; CLEAR
+	inc	l
+	djnz	c883
+
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+
+
+
+; ------------------------------------------------------------
+;	scroll screen up 
+;		scrolls up by 1 character row
+;		scrolls 23 rows and clears bottom row with print_attr
+;		scrolls pixels and attributes 
+;		scrolls pixels and attributes in crt display order
+;		duration: ~ 2 frames -3470 cc + irpts (on ZX48k)
+;			(if started after halt, and thus 14000 waitfree cycles ahead)
+;			(on ZX128 cc/frame is ~1000 longer, giving another ~2000 cc more time)
+;			wenn man interrupts sperrt und bei cc_screen_start das scrollen anfängt,
+;			kann man trotzdem nicht fertig sein, bevor einen der crt-Strahl überholt.
+;			=> zum absolut bruchfreies Scrollen ist push/pop nötig.
+;		printing position etc. are not updated
+;
+;	in:	--
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+scroll_screen:
+	push	af
+	ld	a,(print_scrollcount)
+	dec	a
+	jp	p,ss1
+	
+;	call	show_scroll_and_wait_for_key
+	ld	a,24 -1
+	
+ss1	ld	(print_scrollcount),a
+	pop	af
+
+scroll_screen_up:
+	
+	push	hl
+	push	de
+	push	bc
+	push	af
+
+	ld	hl,$4020		; hl = pixels, row 8
+	ld	de,$4000		; de = pixels, row 0
+
+	exx
+	push	hl
+	push	de
+	push	bc
+
+	ld	hl,$5820		; hl' = attr, row 1
+	ld	de,$5800		; de' = attr, row 0
+	exx
+
+pr_ss7	exx
+	ld	bc,32
+pr_ss8	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	jp	pe,pr_ss8
+	exx
+
+	ld	bc,8*256 + 31*8		; B=8 und C groß genug, bei --BC in LDI keinen underflow nach B zu erzeugen
+	
+pr_ss0	ldi				; copy pixels: 1 row
+	ldi				; Auswalzen spart: (32*5+10-5)*23*8 = 30360 cc (+ wait cycles)
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ldi
+	ld	a,(hl)			; LD A,(HL) + LD (DE),a  statt letztem LDI 
+	ld	(de),a			; => 2cc kürzer und vor allem kein Overflow aus E->D bzw. L->H
+
+	inc	h			; HL(neu) := HL(alt) + $100 
+	ld	l,e			;	H += 1
+	inc	l			;	L -= 31
+	
+	ld	a,e			; DE(neu) := DE(alt) + $100 
+	sub	$1f			;	D += 1
+	ld	e,a			;	E -= 31
+	inc	d
+	
+	djnz	pr_ss0			; wir benutzen das durch LDI 'gefährdete' B-Register als Zähler
+
+; Ende einer Buchstabenzeile
+; => korrigiere HL und DE
+	
+	ld	bc,-$0800 +$20
+	add	hl,bc
+	ld	a,l
+	and	a
+	jr	nz,pr_ss2
+	
+	ld	bc,-$100 +$0800
+	add	hl,bc
+	ld	a,h
+	cp	$58
+	jr	z,pr_ss3		; end of screen copy -> clear bottom row
+
+	ld	bc,-$0800 +$20
+pr_ss2	ex	hl,de
+	add	hl,bc
+	ex	hl,de
+
+	ld	a,e
+	and	a
+	jp	nz,pr_ss7
+	
+	ld	bc,-$100 +$0800
+	ex	hl,de
+	add	hl,bc
+	ex	hl,de
+	jp	pr_ss7
+	
+; end of screen - clear bottom row	
+
+pr_ss3	ld	a,(print_attr)
+	ld	c,a			; c := attr
+	ld	hl,$5800+23*32		; -> Attr bottom row
+	ld	b,8			; pixel lines to clear
+	sub	a			; a := 0
+
+	ld	d,$50			; $5000 = 3rd block
+pr_ss6	ld	e,32*7			; $50e0 = top pixel row of bottom text row
+
+pr_ss4	ld	(hl),c			; 1 attr byte
+	inc	hl			; every 8 pixel bytes
+	ld	(de),a				
+	inc	e				
+	ld	(de),a	
+	inc	e
+	ld	(de),a
+	inc	e
+	ld	(de),a
+	inc	e
+	ld	(de),a
+	inc	e
+	ld	(de),a
+	inc	e
+	ld	(de),a
+	inc	e
+	ld	(de),a
+	inc	e
+	jp	nz,pr_ss4
+
+	inc	d		; nächste Rasterzeile
+	djnz	pr_ss6
+	
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	pop	af
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+	
+	
+; ------------------------------------------------------------
+;	clear screen
+;	Löscht Pixel mit 0x00 und Attribute mit 'print_attr'.
+;		benutzt SP und PUSH, schaltet Interrupts aber nicht aus.
+;		Das ist trotzdem Interrupt-safe, da der letzte Block normal
+;		gelöscht wird, und so während der SP in den Bildspeicher 
+;		zeigt, immer mind. 24 Bytes Free On Stack garantiert sind.
+;
+;	in:	--
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+clear_screen:
+
+	push	hl
+	push	de
+	push	bc
+	push	af
+	
+	ld	(print_sp_save),sp
+	ld	sp,$5800 + 24*32	; note: irpts no problem (if 24 bytes stack are enough)
+
+; clear attributes
+	ld	a,(print_attr)
+	ld	d,a
+	ld	e,a
+	ld	b,24*32/2/4
+pr_cs2	push	de
+	push	de
+	push	de
+	push	de
+	djnz	pr_cs2
+
+; clear pixels
+	ld	d,b			; de = 0
+	ld	e,b
+	ld	bc,255*256 + 24		; B = 255;  C = 24 (=> BC=24 after loop for clearing last 24 bytes)
+
+pr_cs1	push	de			; clear 255 * 24 bytes == total screen - 24 bytes
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	push	de
+	djnz	pr_cs1
+
+	ld	sp,(print_sp_save)
+
+; clear first 24 bytes w/o using sp
+	ld	hl,$4100		; hl = $4100
+	ld	d,$40			; de = $4000
+	ldir				; bc = 24 (B=0 after djnz  &&  C was set before main clearing loop)
+	
+	pop	af
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+	
+
+
+
+
+
+; ------------------------------------------------------------
+; ------------------------------------------------------------
+;	Internal Routines
+; ------------------------------------------------------------
+; ------------------------------------------------------------
+
+
+	
+
+
+; ------------------------------------------------------------
+; render byte b at address hl bit c/8
+; mod:	af,h		(only bits 0..2 of h are modified)
+
+print_byte_b_at_hl_bit_c:	
+
+	ld	a,b
+	and	a
+	ret	z
+
+pc_c	ld	a,h
+	or	7
+	ld	h,a
+	inc	h
+
+	ld	a,c
+	or	$c6			; SET 0,(hl)
+	ld	(pc_bb+1),a
+
+	ld	a,b
+
+pc_a	dec	h
+	rla				; <- req. cy=0 !
+	jp	nc,pc_a			; bit=0 -> next bit
+pc_bb	set	0,(hl)
+	and	a
+	jp	nz,pc_a
+	ret
+
+
+
+
+
+; print char a at address hl using bit c/8
+	
+print_char_a_at_hl_bit_c:
+
+	ex	hl,de			; log printing ?
+	ld	hl,print_flags
+	bit	pbit_log,(hl)
+	jr	z,pc_aa
+	ld	hl,(print_logptr)
+	ld	(hl),a
+	inc	hl
+	ld	(print_logptr),hl
+pc_aa	ex	hl,de
+
+	add	a,a
+	sub	33*2
+	jr	c,pc_d			; space or control
+
+	push	hl
+	ld	hl,charset_ptr		; hl -> glyph pointer table
+	add	a,l
+	ld	l,a
+	jr	nc,$+3
+	inc	h
+	
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)			; de -> glyph
+	pop	hl
+	
+; print char de at address hl using bit c/8
+; increments hl and c 
+
+print_char_de_at_hl_bit_c:
+
+	ld	a,(print_flags)
+	bit	pbit_narrow,a
+	call	z,print_add_spacing
+
+	ld	a,(de)		; 1st glyph col w/o own start-marker
+	and	$FE
+
+pc_ba	call	print_set_attr
+pc_b	ld	b,a
+	rrc	a	
+	jr	c,print_add_spacing		; bit 0 set => next char
+	
+	call	nz,pc_c		; paint col
+
+	ld	a,c
+	sub	8
+	ld	c,a
+
+	inc	de		; next glyph col
+	ld	a,(de)
+
+	jr	nc,pc_b
+; next screen byte	
+	ld	c,7*8
+	inc	l
+	jr	nz,pc_ba
+; next line && next block	
+	call	pc_e
+	ld	a,(de)
+	jr	pc_ba
+
+
+print_add_spacing:		; add character spacing to hl/c
+	ld	a,c
+	sub	8
+	ld	c,a
+	ret	nc
+
+print_advance_hl:
+	ld	c,7*8
+	inc	l
+	ret	nz
+; next line && next block
+pc_e	ld	a,h
+	add	8
+	ld	h,a
+	cp	$58
+	ret	c
+; end of screen
+	ld	hl,$50E0
+	jp	scroll_screen
+
+; space or control code
+
+pc_d	rra			; undo *2 (note: cy must be set, cy is moved to bit 7)
+	inc	a
+	jr	nz,pc_f		; control code
+; space
+	ld	a,c
+	sub	4*8		; 4 pixel spacing
+	ld	c,a
+	ret	nc		; still in same byte
+	add	8*8
+	ld	c,a
+	inc	l
+	ret	nz		; still in same block
+	jr	pc_e		; next line && next block
+
+; control code
+
+pc_f	add	a,32
+	cp	$0d
+	jr	nz,pc_g
+
+print_newline_at_hl_bit_c:	; $0d: newline	
+	ld	c,$7*8
+	ld	a,l
+	or	$1f
+	inc	a
+	ld	l,a
+	ret	nz
+	jr	pc_e		; next line && next block
+	
+
+; unknown ctrl code
+
+pc_g	di			; debug
+	halt
+	ret
+
+
+	
+; set attribute for hl	
+print_set_attr:
+	ld	b,a
+	push	hl
+	
+	ld	a,h
+	rrca
+	rrca
+	rrca
+	and	3
+	or	$58
+	ld	h,a
+	ld	a,(print_attr)
+	ld	(hl),a
+	
+	pop	hl
+	ld	a,b
+	ret
+
+
+
+
+
+; ------------------------------------------------------------
+;	Initialize
+;
+; ------------------------------------------------------------
+
+#if 0
+
+OPKAN		equ	$1601		; Öffne Kanal in A
+
+init_print:
+		ld	a,2		; Stream: Hauptbildschirm
+		jp	OPKAN		; Kanal öffnen
+#endif		
+
+
+
+
+; ------------------------------------------------------------
+;	print single char
+;
+;	in:	a = char
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+#if 0
+print_char	equ	16
+#endif
+
+
+; ------------------------------------------------------------
+;	print_yes_no:	print cflag ? "yes" : "no"
+;	print_yes:	"yes"  & ret c
+;	print_no:	"no"   & ret nc
+;
+;	in:	carry flag
+;	out:	carry flag 
+;	mod:	--
+; ------------------------------------------------------------
+
+print_yes_no:	jr	c,print_yes
+print_no:	call	print_msg
+		defm	"no",$00
+		and	a		; enforce nc
+		ret
+print_yes:	call	print_msg
+		defm	"yes",$00
+		scf			; enforce cy
+		ret
+
+
+; ------------------------------------------------------------
+;	print text 
+;
+;	in:	text folgt inline; abgeschlossen mit $00
+;	out:	--
+;	mod:	--
+; ------------------------------------------------------------
+
+#if 0
+print_msg:	ex	hl,(sp)
+		push	de
+		push	bc
+		push	af
+		
+printmsg_1	ld	a,(hl)
+		inc	hl
+		and	a
+		jr	z,printmsg_x
+		call	print_char
+		jr	printmsg_1
+
+printmsg_x	pop	af
+		pop	bc
+		pop	de
+		ex	hl,(sp)
+		ret
+#endif
+
+
+; ------------------------------------------------------------
+; print unsigned decimal number 
+;
+;	printdec:	auto-sized field width
+;	printdec[1..5]:	fixed field width 1..5 digits
+;
+;	in:	hl = number
+;	out:	--
+;	mod:	hl,de,af
+;	dep:	uses print_char for printing 
+; ------------------------------------------------------------
+
+printdec_a	ld	l,a
+		ld	h,0
+
+printdec:	ld	de,10000          ; print auto-sized 1-5 characters
+		and	a
+		sbc	hl,de
+		add	hl,de
+		jr	nc,printdec5
+		ld	de,1000
+		and	a
+		sbc	hl,de
+		add	hl,de
+		jr	nc,printdec4
+		ld	de,100
+		and	a
+		sbc	hl,de
+		add	hl,de
+		jr	nc,printdec3
+		ld	de,10
+		and	a
+		sbc	hl,de
+		add	hl,de
+		jr	nc,printdec2
+		jr	printdec1
+
+printdec5	ld	de,10000          ; print 5 characters wide
+		call	pdx
+printdec4	ld	de,1000           ; print 4 characters wide
+		call	pdx
+printdec3	ld	de,100            ; print 3 characters wide
+		call	pdx
+printdec2	ld	de,10             ; print 2 characters wide
+		call	pdx
+printdec1	ld	de,1              ; print 1 character wide
+
+pdx		ld	a,'0'
+		and	a
+pdx1		inc	a
+		sbc	hl,de
+		jr	nc,pdx1
+		add	hl,de
+		dec	a
+		jp	print_char
+
+		
+; ------------------------------------------------------------
+;	print word as 4 hex chars + 1 space
+;
+;	in:	hl = word to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printhex4s	call	printhex4
+;		jp	print_space
+
+
+; ------------------------------------------------------------
+;	print single space
+; ------------------------------------------------------------
+
+print_space	push	af
+		ld	a,' '
+		call	print_char
+		pop	af
+		ret
+
+
+; ------------------------------------------------------------
+;	print newline
+; ------------------------------------------------------------
+
+print_nl	push	af
+		ld	a,13
+;		call	print_char
+;		ld	a,10
+		call	print_char
+		pop	af
+		ret
+
+
+; ------------------------------------------------------------
+;	print word as 4 hex chars
+;
+;	in:	hl = word to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printhex4	push	hl
+		ld	a,h
+		call	printhex2
+		pop	hl
+		ld	a,l
+;		jr	printhex2   
+
+
+; ------------------------------------------------------------
+;	print byte as 2 hex chars
+;
+;	in:	a = word to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printhex2	push	af
+		rra
+		rra
+		rra
+		rra
+		call	printhex1
+		pop	af          
+;		jr	printhex1
+
+
+; ------------------------------------------------------------
+;	print hex char
+;
+;	in:	a = nibble to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printhex1	and	$0f
+		cp	10
+		jr	c,ph1
+		add	7
+ph1:		add	'0'
+		jp	print_char
+
+
+; ------------------------------------------------------------
+;	print word as 16 binary chars
+;
+;	in:	hl = word to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printbin16	push	hl
+		ld	a,h
+		call	printbin8
+		pop	hl
+		ld	a,l
+;		jr	printbin8   
+
+
+; ------------------------------------------------------------
+;	print byte as 8 binary chars
+;
+;	in:	a = word to print
+;	out:	--
+;	mod:	af
+; ------------------------------------------------------------
+
+printbin8	push	hl
+		ld	l,a
+		ld	h,8
+pb1		ld	a,'0'/2
+		rl	l
+		adc	a,a
+		call	print_char
+		dec	h
+		jr	nz,pb1
+		pop	hl
+		ret
+
+printbin4	push	hl
+		rla
+		rla
+		rla
+		rla
+		ld	l,a
+		ld	h,4
+		jr	pb1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

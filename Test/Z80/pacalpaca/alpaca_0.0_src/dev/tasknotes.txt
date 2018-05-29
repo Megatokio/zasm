@@ -1,0 +1,64 @@
+Alpaca OS Task system ram/rom usage cheat sheet
+$Id: tasknotes.txt,v 1.2 2003/08/14 20:10:16 jerry Exp $
+Jerry Lawrence
+
+================================================================================
+RAM: Task Slot management
+
+byte	taskFlag	one per OS
+			bit0	slot0use    Task slot 0 in use if set
+			bit1	slot1use    Task slot 1 in use if set
+			bit2	slot2use    Task slot 2 in use if set
+			bit3	slot3use    Task slot 3 in use if set
+			bit4	TBD
+			bit5	TBD
+			bit6	TBD
+			bit7	taskActive  Task switching is active
+
+byte	slotCtrl[4]	one per slot
+			bit7	C_InUse - task is running 
+			bit6	TBD
+			bit5	TBD
+
+			bit4	C_EXT0	extended command 0:
+				bit3	TBD
+				bit2	sleepSlot  relinquish time
+				bit1	execSlot   start task in IDX
+				bit0	killSlot   stop the slot
+
+byte	slotIdx[4]	one per slot
+			contains the task number for that task
+
+word	slotSP[4]	one per slot
+			contains the SP for that task
+			
+byte	taskSlot	one per OS
+			the currently active slot
+
+word	ramBase		one per OS
+			the base of RAM for the currently running task
+
+byte	slotTime	one per OS
+			the number of ticks the active slot has
+
+================================================================================
+ROM: Constants
+
+word	tasklist	array of words, pointers to headers
+			+0  = task 0
+			+2  = task 1
+			...
+	tasklist[0]+6 = pascal string of task 0 name
+	tasklist[0]+8 = entry point for task 0
+
+
+word	stacklist	array of stack boundaries
+	.word	stack0		; +0
+	.word	stack1		; +2
+	.word	stack2		; +4
+	.word	stack3		; +6
+	.word	stackbottom	; +8
+
+	ramBase for a task is the stacklist entry after the current item
+
+byte	ticksper	number of starting ticks per slot

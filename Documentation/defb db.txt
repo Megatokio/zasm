@@ -1,0 +1,33 @@
+
+h3	defb, db, .db and .byte
+	defb, db, byte
+
+pre	defb  <value> [,<value>...]
+	db    <value> [,<value>...]
+	.db   <value> [,<value>...]
+	.byte <value> [,<value>...]
+
+p	Store a series of bytes into the code.
+
+p	The 'defb' pseudo instruction evaluates the argument expressions and puts them one byte after the other into the code segment. 
+
+p	Note: Due to the various methods for using 'defb' and 'defm' found in the wild zasm handles these two instructions in exactly the same way. This paragraph describes the 'byte oriented' usage cases. For the 'string oriented' usage cases see 'defm'.
+
+pre		defb $123, _foo+10, (_N*2)+1, 'a', 'b'+1
+
+p	Numeric literals can be written in various formats and the value can be a numeric expression. 
+p	The values are checked to be either a valid int8 or uint8 value, which means it must be in range -128 to +255.
+	If some bytes unexpectedly are reported to be out of range, then your source may assume no operator hierarchy. Then use command line option --flatops.
+p	Character literals like 'a' are translated into the target system's character set if a #charset conversion has been defined.
+p	There are some useful functions known by the expression evaluator:
+ul
+li	hi(N) and lo(N) to calculate the high and low byte of a 2-byte word
+li	min(N,N) and max(N,N) to calculate the smaller or the larger value of two values
+li	opcode(ld a,b) or similar to calculate the major opcode byte of a Z80 instruction
+li	defined(NAME) to determine whether a label is defined at this point in the source
+li	__line__ inserts the current line number
+
+
+
+
+	

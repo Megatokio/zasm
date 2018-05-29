@@ -1,0 +1,90 @@
+
+//-----------------------------------------------------------------
+h3	#include
+
+p	Include a single source file or resolve missing labels from a library.
+
+
+h4	#include <filename>
+
+pre	#include "utils.ass"       ; file in same directory
+	#include "./utils.s" 	   ; file in same directory
+	#include "utils/u1.s"	   ; file in subdirectory "utils/"
+	#include "main13.c"		   ; include a c source file 
+
+p	Include a single source file. The file name must be an absolute path or relative to the current source file. The included source is assembled as if it was in the main source file itself. Source file inclusion may be nested.
+
+p	The included file may be a c source file, which is detected by the filename extension ".c". Then zasm executes sdcc (or any other c compiler) to compile the source.
+
+p	Topics related to c files:
+
+ul
+li	Command line option -c may be used to point zasm to a certain compiler.
+	If not used, zasm will search in your $PATH for an executable named 'sdcc'.
+
+li	Command line option -I may be used to supply the path to the system headers library.
+	If not used, sdcc will use it's built-in default paths.
+
+li	Command line option -L may be used to supply the path to the system library sources.
+	This is used by zasm if you use <tt>#include standard library</tt>. (see below)
+	
+li	Directive #CFLAGS may be used in your assembler source to tweak the cflags for the c compiler. 
+
+li	zasm surrounds included c files with the #local and #endlocal directives to avoid problems with identically named static variables.
+
+
+h4	#include library
+	#include standard library
+	
+p	Resolve missing labels from a library.
+
+pre	#include library <"directory">
+	#include library <"directory"> resolve *
+	#include standard library
+	#include standard library resolve _foo, __bar, __mulu16
+
+p	<tt>#include library</tt> or <tt>#include standard library</tt> may be used to automatically resolve undefined labels. <tt>#include standard library</tt> requires that you have passed the system library directory with command line option -L.
+
+p	You can either try to resolve all missing labels, in which case you don't append the <tt>resolve</tt> keyword or <tt>resolve *</tt>, or you may limit automatic label resolving to a list of certain labels. This may be required if you have to spread the additional code over multiple code segments or if certain labels must go into certain code segments and the included sources do not care for this by themselves.
+
+p	This is most conveniant to automatically resolve references arising from c source, but may be used with pure assembler source as well.
+
+
+h5	Naming convention for files in a library directory
+
+p	Files in the library directory must follow certain naming conventions: they must be named according to the label they define. If a file defines label _foo, then the file must be named _foo.s or _foo.c, or more accurately any _foo.* will be included. If it ends with '.c' then it will be compiled and then included. If a file defines more than one label then you can make symbolic links for the other names which point to this file.
+
+p	zasm adds directive #assert after the included file to verify, that the promissed label was actually defined:
+
+p.b	Source:
+pre	#include standard library
+
+p.b	Generated:
+pre	5E30:                   #include standard library
+	5E30:                   #include "/Projects/sdcc/lib/__mulint.s"
+	5E30:                   ; contents from file
+	...						...
+	7503:                   #assert defined(__mulint::)
+	7503:                   #include standard library
+	7503:                   #include "/Projects/sdcc/lib/_check_struct_tm.c"
+	7503:                   #local
+	7503:                   ; contents from compiled file
+	...						...
+	8D96:                   #endlocal
+	8D96:                   #assert defined(_check_struct_tm::)
+	8D96:                   #include standard library
+	...						...
+
+p	You can see how the single <tt>#include standard library</tt> is expanded into a series of <tt>include filename</tt> and an <tt>#assert defined(labelname::)</tt> is appended to the included source. C sources are also wrapped with <tt>#local</tt> ... <tt>#endlocal</tt>.
+p	<tt>#include standard library</tt> is generated again and again until no more labels could be resolved. (This is the way how it works internally.)
+
+
+p	As an alternate syntax the pseudo instructions "include" and "*include" are recognized.
+
+pre		include "foo.s"
+		*include "bar.s"
+		
+
+
+
+

@@ -1,0 +1,115 @@
+              	; --------------------------------------
+              	; zasm: assemble "5bsort018.asm"
+              	; opts: --reqcolon
+              	; date: 2018-05-18 20:49:25
+              	; --------------------------------------
+
+
+              	#!/usr/local/bin/zasm --reqcolon -o original/
+4000:         	org 16384
+              	
+              	; only sort on 1st 2 of 5 bytes
+              	
+4000: F3      	di
+              	
+4001: 214340  	sort:       ld hl,kprs_xx     ; 1st stroke of 5 byte
+4004: 114840  	            ld de,kprs_xx+5   ; 2nd stroke of 5 byte
+              	
+4007:         	srtem:
+4007: 010500  	            ld bc,5           ; amount to raise later
+400A: C5      	         push bc              ; store bc
+400B: 23      	            inc hl            ; first test MSB
+400C: 13      	            inc de            ; raise both adresses
+400D: 1A      	            ld a,(de)         ; high adres MSB value  minus
+400E: BE      	            cp (hl)           ; low adres MSB value /  regA minus (hl)
+              	; carry set by borrow of bit 7 ,only if (hl) is bigger
+400F: 2B      	            dec hl            ; back to LSB before jump
+4010: 1B      	            dec de            ; flags not touched
+4011: 3804    	            jr c,swop         ; carry=1= wrong order
+              	
+4013: 1A      	            ld a,(de)         ; high adres LSB value  minus
+4014: BE      	            cp (hl)           ; low adres LSB value   
+4015: 3012    	            jr nc,good        ; carry=0= good sorted already
+              	                              ; if high value = high adres do nothing
+              	
+4017:         	swop:                         ; exchange 5 byte, carry=1
+4017: E5      	           push hl
+4018: 214240  	            ld hl,again       ; after swop check again
+401B: CBC6    	            set 0,(hl)        ; carry=1, again = true
+401D: E1      	           pop hl
+              	
+401E: 41      	            ld b,c            ; 5 byte to exchange
+401F:         	them:
+401F: 1A      	            ld a,(de)         ;a=high
+4020: 4F      	            ld c,a            ; c=high
+4021: 7E      	            ld a,(hl)         ;a=low
+4022: 12      	            ld (de),a         ;high=a=low
+4023: 71      	            ld (hl),c         ;low=c=high
+4024: 23      	            inc hl
+4025: 13      	            inc de
+4026: 10F7    	            djnz them      
+4028: 48      	            ld c,b           ; b=0 c=0 hl & de already increased 5x
+4029:         	good:
+4029: 09      	            add hl,bc        ; raise lower adres +5 or +0
+402A: EB      	            ex de,hl
+402B: 09      	            add hl,bc        ; raise higher adres +5 or +0
+              	
+              	
+              	;check end of buffer
+402C: C1      	         pop bc   ;= 5
+402D: E5      	           push hl  ;
+402E: 3EFF    	            ld a,0xff
+4030: EDB1    	            cpir             ;check for mark off 0xff ff ff ff ff
+4032: E1      	           pop hl
+4033: EB      	            ex de,hl
+4034: 20D1    	            jr nz,srtem      ; if 1 then still buffer to check
+              	
+              	; buffer fully checked 1 time
+4036:         	back:
+4036: 214240  	            ld hl,again      ; need for a swop check?
+4039: 7E      	            ld a,(hl)
+403A: A7      	            and a            ; z or nz flag
+403B: 3E00    	            ld a,0           ; b=0, no flags
+403D: 77      	            ld (hl),a        ; again=0, no flags
+403E: 20C1    	            jr nz,sort       ; a=ff, always ????
+              	
+              	
+              	; under this line is for testing only
+              	; make fake databuffer
+              	
+4040:         	quit: 
+4040: FB      	ei
+4041: C9      	ret
+              	
+4042: 00      	again:       defb 0
+4043: FFFFFFFF	kprs_xx:     defs 45
+4047: FF...   	
+4070: FFFFFFFF	            defs 5  ,0xff
+4074: FF      	
+              	
+              	end
+***ERROR*** No such file or directory: file = "/pub/Develop/Projects/zasm-4.0/Test/Z80/original/5bsort018." (fd108)
+
+
+; +++ segments +++
+
+#CODE          = $4000 = 16384,  size = $0075 =   117
+
+; +++ global symbols +++
+
+_end       = $4075 = 16501          5bsort018.asm:1 (unused)
+_reqcolon_ = $0001 =     1          :1 (unused)
+_size      = $0075 =   117          5bsort018.asm:1 (unused)
+again      = $4042 = 16450          5bsort018.asm:77
+back       = $4036 = 16438          5bsort018.asm:61 (unused)
+good       = $4029 = 16425          5bsort018.asm:45
+kprs_xx    = $4043 = 16451          5bsort018.asm:78
+quit       = $4040 = 16448          5bsort018.asm:73 (unused)
+sort       = $4001 = 16385          5bsort018.asm:8
+srtem      = $4007 = 16391          5bsort018.asm:11
+swop       = $4017 = 16407          5bsort018.asm:28
+them       = $401F = 16415          5bsort018.asm:35
+
+
+total time: 0.0047 sec.
+1 error

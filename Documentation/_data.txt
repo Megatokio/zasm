@@ -1,0 +1,69 @@
+
+//-----------------------------------------------------------------
+h3	#data
+
+pre	#data <name>,<start>,<size>
+
+p	This directive declares an area of ram to be used for variables etc. #data behaves much like #code, except that the contents of this segment is not stored into the output file. The segment is used merely to define labels, presumably in ram.
+
+p	For a simple rom written entirely in assembler you probably need only one data segment, or even no data segment at all, if you just define the variables' addresses with the pseudo instruction equ.
+
+p	The name can be chosen freely, but must be a valid label name. zasm generates a label for the start address, the end address and the size of each segment (since 4.0.24). Names for segments are case sensitive like all labels, except if command line option --casefold was used. 
+
+pre	#data DATA, 100, 1000
+p	will define these labels:
+pre	DATA      = $0064 =    100
+	DATA_end  = $044C =   1100
+	DATA_size = $03E8 =   1000
+
+p	Typically the assembler instruction 'defs' alias 'ds' is used to allocate space in a data segment. You cannot use instructions which actually try to store bytes into this segment – only gaps.
+p	In addition the assembler instruction 'data' is allowed in a data segment, which just does the same.
+p	Also allowed are <tt>org</tt> and <tt>align</tt>, because they also just insert space, they're just different in how they calculate the gap size.
+
+p	The following example might be used if you include c source:
+
+p	It defines two data segments named _DATA and _INITIALIZED, which is where the c compiler stores uninitialized and initialized variables. In this example these segments are fittet into the 'printer buffer' of the ZX Spectrum, a mostly unused area (except for printing) of 256 bytes. 
+
+p	The segment _INITIALIZED is defined with address '*' which means that it's start address will be directly appended to the previous segment's end, and the equation for the size makes sure that the combined size of both segments is exactly 256 bytes and allocating more variables will be detected by the assembler and raise an error.
+
+pre	#data 	_DATA, printer_buffer						; uninitialized data
+	#data 	_INITIALIZED, *, 256 - (_INITIALIZED-_DATA)	; data initialized from _INITIALIZER
+	 
+	#data 	_HEAP, code_end		; heap:
+	__sdcc_heap_start:	 		; --> sdcc _malloc.c
+			ds	ram_end-$-1		; add all unused memory to the heap
+	__sdcc_heap_end: 			; --> sdcc _malloc.c
+			ds 	1
+
+
+
+p	A data segment can be re-entered by using the #data directive with the name only or by using the .area pseudo opcode:
+
+pre	#data _DATA			; following code will be stored in data segment _DATA
+pre		  .area _DATA	; following code will be stored in segment _DATA   (sdcc syntax)
+
+p	You can switch between segments whenever you need to allocate storage space for variables in your source. 
+
+pre	...
+	#data	_DATA		; switch context to data segment _DATA
+	foo		defs	4
+	bar		defs	2
+	fuzzy	defs	$20
+	;
+	#code	_CODE		; switch context back to code segment _CODE
+	...
+
+p	The c compiler uses the code segment _INITIALIZER to store the initial data of initialized variables. These are copied during system initialization to the location of _INITIALIZED. (Actually the c compiler doesn't do this. It is your job to add some code in the _GSINIT segment to copy the initializer data!) So you can switch between these segments to allocate the variable in ram and add init data in rom:
+
+pre	...
+	#data	_INITIALIZED		
+	foo		defs	2		; allocate space in ram
+	#code	_INITIALIZER
+			defw	4711	; store init data in rom. SIZE AND POSITION MUST MATCH!
+	#code	_CODE
+	...
+	
+
+
+
+

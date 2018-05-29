@@ -1,0 +1,60 @@
+
+
+
+H3	Overview
+
+p	The target for this source is set by the #target assembler directive. Available targets are:
+p.b	bin rom sna z80 tap ace o 80 p 81 p81
+
+p	The target also defines the default file name extension for the output file. Targets bin and rom can also be written in Intel Hex or Motorola S-Record format, if the command line options '-x' or '-s' are given.
+
+p	If a target is defined, then at least one #code segment must be defined as well. Depending on the target more may be required and certain additional requirements may apply.
+
+p	Instead of using the #target/#code metapher, simple projects may omit them and just define an origin before the first actual code.
+p.b	Example:
+
+pre	#target rom
+	#code _EPROM,0,0x2000
+	reset:	di
+			jp	_init
+			...
+
+h5	General rules
+
+p	The target file format must be set with the #target assembler directive.
+
+pre	#target <extension>
+
+p	This does not define whether the generated data should be written as a plain binary file or in one of the hex file formats. This must be selected by the '-x' or '-s' command line option. The assembler defaults to a binary file.
+
+pre	#code <name>, <start>, <size> [,<flag>]
+
+p	This directive defines an object code segment and set's the physical and the initial logical code address to <start> and defines a maximum segment size <size>. 
+
+p	<start> does not define the position of the code in the output file. It should define the address where this segment is visible to the cpu. 
+
+p	Multiple code segments are possible and are simply concatenated. Code segments are either padded at the end to the declared maximum size or they are truncated after the last byte stored, if the size is omitted.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,41 @@
+
+h3	.area
+
+pre		.area <name>
+
+p	Switch to the code or data segment <name>. The following code will be stored in the segment <name>. You can switch between segments any time you like, appending some code here and appending some code there.
+
+p	Equivalent to
+
+pre	#code <name>
+	#data <name>
+	
+p	except that it does not check the segment type. (data/code)
+
+p.b	Example:
+
+pre	; define some uninitialized variables:
+		.area _DATA
+	_bu1::
+		.ds 10
+	_bu2::
+		.ds 10
+	 
+	; define some initialized variables:	
+		.area _INITIALIZED
+	_str3::
+		.ds 10
+	_a_counter::
+		.ds 2
+	 
+	; define some executable code:	
+		.area _CODE
+	_Intr:
+		exx
+		ex af,af'
+		ld	hl,#_a_counter
+		inc	(hl)
+		jr	NZ,00103$
+		inc	hl
+		inc	(hl)
+		...

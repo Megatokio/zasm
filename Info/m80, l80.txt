@@ -1,0 +1,2675 @@
+
+		Microsoft M80 DOC
+
+
+				    CONTENTS
+
+    CHAPTER 1	Introduction
+
+
+    CHAPTER 2	MACRO-80 Assembler
+
+	    2.1   Running MACRO-80
+	    2.2   Command Format
+	    2.2.1   Devices
+	    2.2.2   Switches
+	    2.3   Format of MACRO-80 Source Files
+	    2.3.1   Statements
+	    2.3.2   Symbols
+	    2.3.3   Numeric Constants
+	    2.3.4   Strings
+	    2.4   Expression Evaluation
+	    2.4.1   Arithmetic and Logical Operators
+	    2.4.2   Modes
+	    2.4.3   Externals
+	    2.5   Opcodes as Operands
+	    2.6   Pseudo Operations
+	    2.6.1   ASEG
+	    2.6.2   COMMON
+	    2.6.3   CSEG
+	    2.6.4   DB - Define Byte
+	    2.6.5   DC - Define Character
+	    2.6.6   DS - Define Space
+	    2.6.7   DSEG
+	    2.6.8   DW - Define Word
+	    2.6.9   END
+	    2.6.10  ENTRY/PUBLIC
+	    2.6.11  EQU
+	    2.6.12  EXT/EXTRN
+	    2.6.13  INCLUDE
+	    2.6.14  NAME
+	    2.6.15  ORG - Define Origin
+	    2.6.16  PAGE
+	    2.6.17  SET
+	    2.6.18  SUBTTL
+	    2.6.19  TITLE
+	    2.6.20  .COMMENT
+	    2.6.21  .PRINTX
+	    2.6.22  .RADIX
+	    2.6.23  .Z80
+	    2.6.24  .8080
+	    2.6.25  .REQUEST
+	    2.6.26  Conditional Pseudo Operations
+	    2.6.26.1   ELSE
+	    2.6.26.2   ENDIF
+	    2.6.27  Listing Control Pseudo Operations
+	    2.6.28  Relocation Pseudo Operations
+	    2.6.28.1   ORG Pseudo-op
+	    2.6.29.2   LINK-80
+	    2.6.29  Relocation Before Loading
+	    2.7   Macros and Block Pseudo Operations
+	    2.7.1   Terms
+	    2.7.2   REPT-ENDM
+	    2.7.3   IRP-ENDM
+	    2.7.4   IRPC-ENDM
+	    2.7.5   MACRO
+	    2.7.6   ENDM
+	    2.7.7   EXITM
+	    2.7.8   LOCAL
+	    2.7.9   Special Macro Operators and Forms
+	    2.8   Using z80 Pseudo-ops
+	    2.9   Sample Assembly
+	    2.10  MACRO-80 Errors
+	    2.11  Compatability with Other Assemblers
+	    2.12  Format of Listings
+	    2.12.1  Symbol Table Listing
+
+
+    CHAPTER 3	CREF-80 Cross Reference Facility
+
+    CHAPTER 4	LINK-80 Linking Loader
+
+	    4.1   Running LINK-80
+	    4.2   Command Format
+	    4.2.1   LINK-80 Switches
+	    4.2.2   Sample Link
+	    4.3   Format of LINK Compatible Object Files
+	    4.4   LINK-80 Error Messages
+	    4.5   Program Break Information
+
+
+    CHAPTER 5	LIB-80 Library Manager
+
+	    5.1   LIB-80 Commands
+	    5.1.1   Modules
+	    5.2   LIB-80 Switches
+	    5.3   LIB-80 Listings
+	    5.4   Sample LIB Session
+	    5.5   Summary of Switches and Syntax
+
+
+    APPENDIX A	TEXDOS Operating System
+
+	    A.1   TEXDOS Command Files
+	    A.2   MACRO-80
+	    A.3   CREF-80
+	    A.4   LINK-80
+
+
+
+				   CHAPTER 1
+
+				  INTRODUCTION
+
+
+
+
+
+    MACRO-80  is  a  relocatable  macro  assembler   for   8080   and	z80
+    microcomputer systems. It assembles 8080 or z80 code on any 8080 or z80
+    development  system  running  the  CP/M,  ISIS-II,	TRSDOS	or   TEKDOS
+    operating system. The MACRO-80 package includes the MACRO-80 assembler,
+    the LINK-890 linking loader, and the CREF-80 cross reference  facility.
+    CP/M versions also include the LIB-80 Library Manager. MACRO-80 resides
+    in approximately 14K of memory and has an assembly rate  of  over  1000
+    lines per minute.
+
+    MACRO-80 incorporates almost  all  "big  computer"  assembler  features
+    without sacrificing speed or memory space.	The  assembler	supports  a
+    complete Intel standard macro facility, including  IRP,  IRPC,  REPEAT,
+    local variables and EXITM. Nesting of macros is limited only by memory.
+    Code is assembled in relocatable modules that are manipulated with	the
+    flexible linking loader. Conditional assembly capability  is  enchanced
+    by an expanded  set  of  conditional  pseudo  operations  that  include
+    testing of assembly pass, symbol definition, and parameters to  macros.
+    Conditionals may be nested up to 255 levels.
+
+    MACRO-80's  linking  loader  provides  a  versatile  array  of   loader
+    capabilities, which are executed by means of  easy	command  lines	and
+    switches. Any number of  programs  may  be	loaded	with  one  command,
+    relocatable modules may be	loaded	in  user-specified  locations,	and
+    external references between modules are resolved automatically  by	the
+    loader.  The  loader  also	performs  library   searches   for   system
+    subroutines and generates a load map of memory showing the locations of
+    the main program and subroutines. The cross reference facility that  is
+    included in this package supplies a convenient alphabetic list  of	all
+    program variable names, along with the  line  numbers  where  they	are
+    referenced and defined.
+
+    This manual is designed to serve as a reference guide to  the  MACRO-80
+    package. It defines, explains and gives examples of all the features in
+    MACRO-80 in terms that should be understandable to anyone familiar with
+    assembly language programming. It is not intended, however, to serve as
+    instructional material and presumes the user has substantial  knowledge
+    of	assembly  language  programming.   The	 user	should	 refer	 to
+    instructional   material  available  from  a  variety  of  sources	for
+    additional tutorial information.
+
+
+				   CHAPTER 2
+
+			    MACRO-80 ASSEMBLER
+
+
+
+    2.1  RUNNING MACRO-80
+
+    The command to run MACRO-80 is
+
+	  M80
+
+    MACRO-80 returns the prompt "*",  indicating  it  is  ready  to  accept
+    commands.
+
+
+				      NOTE
+
+			  If you are  using  the  TEKDOS
+			  operating system, see Appendix
+			  A for proper command formats.
+
+
+
+
+    2.2 COMMAND FORMAT
+
+    A command to MACRO-80 consists of a string of filenames  with  optional
+    switches.  All  filenames  should	follow	 the   operating   system's
+    conventions  for  filenames  and  extensions.  The	default  extensions
+    supplied by Microsoft software are as follows:
+
+       File			CP/M		     ISIS-II
+
+       Relocatable object file	REL		     REL
+       Listing file		PRN		     LST
+       MACRO-80 source file	MAC		     MAC
+       FORTRAN source file	FOR		     FOR
+       COBOL source file	COB		     COB
+       Absolute file		COM
+
+
+    2.2.1  Devices
+
+    Any field in the MACRO-80 command string  can  also  specify  a  device
+    name. The default device name with the CP/M  operating  system  is	the
+    currently logged  disk.  The  default  device  name  with  the  ISIS-II
+    operating system is disk drive 0. The command format is:
+
+       dev:objfile,dev:lstfile=dev:source file
+
+    The device names are as follows:
+
+       Device		  CP/M		       ISIS-II
+
+       Disk drives	  A:, B:, C:,...       :F0:, :F1:, :F2:, ...
+       Line printer	  LST:		       LST:
+       Teletype or CRT	  TTY:		       TTY:
+       High speed reader  HSR
+
+    Examples:
+
+    *,TTY:=TEST 	    Assemble the source file TEST.MAC
+			    and list the program on the
+			    console. No object code is
+			    generated. Useful for error check.
+
+    *SMALL,TTY:=B:TEST	    Assemble TEST.MAC (found
+			    on disk drive B), place
+			    the object file in SMALL.REL
+			    and list the program on the console.
+
+
+
+    2.2.2  Switches
+
+    A switch is a letter that is appended to the command  string,  preceded
+    by a slash. It specifies  an  optional  task  to  be  performed  during
+    assembly. More than one switch can be used, but each must  be  preceded
+    by a slash. (With the TEKDOS operating system, switches are preceded by
+    commas or spaces. See Appendix  A.)  All  switches	are  optional.	The
+    available switches are:
+
+    Switch	Action
+
+      O 	Octal lising
+
+      H 	Hexadecimal listing (default)
+
+      R 	Force generation of an object file
+
+      L 	Force generation of a lising file
+
+      C 	Force generation of a cross reference file
+
+      Z 	Assemble Z80 opcodes (default for Z80 operating systems)
+
+      I 	Assemble 8080 opcodes (default for 8080 operating systems)
+
+      P 	Each /P allocates an extra 256 bytes of stack space for use
+		during assembly. Use /P if  stack  overflow  occurs  during
+		assembly. Otherwise, not needed.
+
+      M 	Initialize Block Data Areas. If the  programmer  wants	the
+		area that is defined by the  DS  (Define  Space)  pseudo-op
+		initialized to zeros, then the programmer should use the /M
+		switch in the command line. Otherwise,	the  space  is	not
+		guaranteed  to	contain  zeros.  That  is,  DS	 does	not
+		automattically initialize the space to zeros.
+
+      X 	Usually used to suppress the listing of false conditionals.
+		The  following	paragraph  describes  the  /X  switch  more
+		completely but in very technical terms.
+
+		The presence or absence of /X in the command line sets	the
+		initial current mode and the initial value of  the  default
+		for listing  or  suppressing  lines  in  false	conditional
+		blocks. /X sets the  current  mode  and  initial  value  of
+		default to not-to-list. No /X sets current mode and initial
+		value of default to list. Current mode	determines  whether
+		false  conditionals  will  be  listed  or  suppressed.	The
+		initial value of the  default  is  used  with  the  .TFCOND
+		pseudo-op so that .TFCOND is  independent  of  .SFCOND	and
+		.LFCOND. If the program contains .SFCOND or .LFCOND, /X has
+		no effect after .SFCOND or .LFCOND is encountered  until  a
+		.TFCOND is encountered in the file. So	/X  has  an  effect
+		only when used with a file  that  contains  no	conditional
+		listing psuedo-ops or when used with .TFCOND.
+
+
+    Examples:
+
+    *=TEST/L	    Assemble  TEST.MAC, places the object file in  TEST.REL
+		    and  a  listing file  in TEST.PRN.	(With ISIS-II,	the
+		    listing file is TEST.LST.)
+
+    *=TEST/L/O	     Same as  above, but  listing file addresses will be in
+		     octal.
+
+    *LAST=TEST/C     Assemble TEST.MAC, place the object file  in  LAST.REL
+		     and cross reference file in TEST.CRF. (See Chapter 3.)
+
+
+
+    2.3  FORMAT OF MACRO-80 SOURCE FILES
+
+    Input source lines of up to 132 characters in length are acceptable.
+
+    MACRO-80 preserves lower case letters in quoted strings  and  comments.
+    All symbols, opcodes and pseudo-opcodes typed in  lower  case  will  be
+    converted to upper case.
+
+    If the source file includes line numbers from an editor, each  byte  of
+    th	eline  number  must  have  the	high  bit  on.	Line  numbers  from
+    Microsoft's EDIT-80 are acceptable.
+
+
+    2.3.1  Statements
+
+    Source files input to MACRO-80 consist of statements of the form:
+
+    [label:[:]]   [operator]   [arguments]     [;comment]
+
+    With the exception of the ISIS assembler $ controls (see Section 2.11),
+    it is nog necessary that statements begin in column 1. Multiple  blanks
+    or tabs may be used to improve readability.
+
+    If a label is present, it is the first item in  the  statement  and  is
+    immediately followed by a colon. If it is followed by two colons, it is
+    declared as PUBLIC (seen ENTRY/PUBLIC, Section 2.6.10). For example:
+
+	 FOO::	RET
+
+    is equivalent to
+
+	 PUBLIC FOO
+	 FOO:	RET
+
+    The next item after the label, or the first item  on  the  line  if  no
+    label is present, is an operator. An operator may be an 8080  mnemonic,
+    pseudo-op, macro call or expression. The evaluation is as follows:
+
+	 1.  Macro call
+
+	 2.  Mnemonic/Pseudo operation
+
+	 3.  Expression
+
+    Instead of flagging an expression as an error, the assembler treats  it
+    as if it were a DB statement (see Section 2.6.4).
+
+    The arguments following the operator will,	of  course,  vary  in  form
+    according to the operator.
+
+    A comment always begins with a  semicolon  and  ends  with	a  carriage
+    return. A comment may be a line by itself or it may be  appended  to  a
+    line that contains a statement. Extended comments can be entered  using
+    the .COMMENT pseudo operation (see Section 2.6.20).
+
+
+    2.3.2  Symbols
+
+    MACRO-80 symbols may be of any length,  however,  only  the  first	six
+    characters are significant. The following characters  are  legal  in  a
+    symbol:
+
+	 A-Z	 0-9	 $     .     ?	   @
+
+    With Microsoft's 8080/Z80/8086 assemblers, the underline  character  is
+    also legal in a symbol. A symbol may not start with  a  digit.  When  a
+    symbol is read, lower case is translated into upper case. If  a  symbol
+    reference is followed by ## it  is	declared  external  (see  also	the
+    EXT/EXTRN pseudo-op, Section 2.6.12).
+
+
+    2.3.3  Numeric Constants
+
+    The default base for numeric constants is decimal. This may be  changed
+    by the .RADIX pseudo-op (see Section 2.6.22). Any base from 2  (binary)
+    to 16 (hexadecimal) may be selected. When the base is greater than	10,
+    A-F are the digits following 9. If the first digit of a number  is	not
+    numeric the number must be preceeded by a zero.
+
+    Numbers are 16-bit unsigned quantities. A number is always evaluated in
+    the current radix unless one of  the  following  special  notations  is
+    used:
+
+	 nnnnB	Binary
+	 nnnnD	Decimal
+	 nnnnO	Octal
+	 nnnnQ	Octal
+	 nnnnH	Hexadecimal
+       X'nnnn'  Hexadecimal
+
+    Overflow of a number beyond two bytes is ignored and the result is	the
+    low order 16-bits.
+
+    A character constant is a string comprised of zero, one  or  two  ASCII
+    characters, delimited by quotation marks,  and  used  in  a  non-simple
+    expression. For example, in the statement
+
+		DB	'A' + 1
+
+    'A' is a character constant. But the statement
+
+		DB	'A'
+
+    uses 'A' as a string because it is in a simple  expression.  The  rules
+    for character constant delimiters are the same as for strings.
+
+    A character constant comprised of one character has as  its  value	the
+    ASCII value of that character. That is, the  high  order  byte  of	the
+    value is zero, and the low	order  byte  is  the  ASCII  value  of	the
+    character. For example, the value of the constant 'A' is 41H.
+
+    A character constant comprised of two characters has as its  value	the
+    ASCII value of the first character in the high order byte and the ASCII
+    value of the second character in the low order byte. For  example,	the
+    value of the character constant 'AB' is 41H*256+42H
+
+
+    2.3.4  Strings
+
+    A string is comprised of zero or more characters delimited by quotation
+    marks. Either single or double quotes may be used as string delimiters.
+    The delimiter quotes may be used as characters if they appear twice for
+    every character occurrence desired. For example, the statement
+
+	     DB     "I am ""great"" today"
+
+    stores the string
+		    I am "great" today
+
+    If there are zero characters between the delimiters, the  string  is  a
+    null string.
+
+
+
+    2.4  EXPRESSION EVALUATION
+
+    2.4.1  Arithmetic And Logical Operators
+
+    The following operators are allowed in expressions. The  operators	are
+    listed in order of precedence.
+
+	NUL
+
+	LOW, HIGH
+
+	*, /, MOD, SHR, SHL
+
+	Unary Minus
+
+	+, -
+
+	EQ, NE, LT, LE, GT, GE
+
+	NOT
+
+	AND
+
+	OR, XOR
+
+    Parantheses  are  used  to	change	the  order  of	precedence.  During
+    evaluation of an expression, as soon as a new operator  is	encountered
+    that  has	precedence  less   than  or  equal  to	the  last  operator
+    encountered, all operations up to the new operator are performed.  That
+    is,  subexpressions  involving  operators  of  higher  precedence	are
+    computed first.
+
+    All operators except +, -, *, / must be separated from  their  operands
+    by at least one space.
+
+    The byte isolation operators (HIGH, LOW) isolate the high or low  order
+    8 bits of an Absolute 16-bit value. If a relocatable value is  supplied
+    as an operand, HIGH and LOW will treat it as if  it  were  relative  to
+    location zero.
+
+
+    2.4.2  Modes
+
+    All symbols used as operands in expressions are in one of the following
+    modes: Absolute, Data Relative, Program (Code) Relative or COMMON. (See
+    Section 2.6 for the ASEG, CSEG, DSEG and  COMMON  pseudo-ops.)  Symbols
+    assembled under the ASEG, CSEG (default), or  DSEG	pseudo-ops  are  in
+    Absolute, Code Relative or Data Relative mode respectively.
+
+    The number of COMMON modes in a program is determined by the number  of
+    COMMON blocks that have been  named  with  the  COMMON  pseudo-op.	Two
+    COMMON symbols are not in the same mode unless they  are  in  the  same
+    COMMON block. In any operation other than addition or subtraction,	the
+    mode of both operands must be Absolute.
+
+    If the operation is addition, the following rules apply:
+
+	 1   At least one of the operands must be Absolute.
+
+	 2   Absolute + <mode> = <mode>
+
+    If the operation is subtraction, the following rules apply:
+
+	 1   <mode> - Absolute = <mode>
+
+	 1   <mode> - <mode> = Absolute
+	     where the two <mode>s are the same.
+
+    Each intermediate step in the evaluation of an expression must  conform
+    to the above rules for modes,  or  an  error  will	be  generated.	For
+    example, if FOO, BAZ and ZAZ are three Program  Relative  symbols,	the
+    expression
+
+	   FOO + (BAZ -ZAZ)
+
+    if legal because the first step (BAZ - ZAZ) generates an Absolute value
+    that is then added to the Program Relative value, FOO.
+
+
+    2.4.3  Externals
+
+    Aside from its classification by mode, a symbol is either  External  or
+    not External. (See EXT/EXTRN, Section 2.6.12.) An External	value  must
+    be assembled into a  two-byte  field.  (Singe-byte	Externals  are	not
+    supported.) The following rules  apply  to	the  use  of  Externals  in
+    expressions:
+
+	 1.  Externals are legal only in addition and subtraction.
+
+	 2.  If an External symbol is used in an expression, the result  of
+	     the expression is always External.
+
+	 3.  When the operation is addition, either operand (but not  both)
+	     may be External.
+
+	 4.  When the operation is subtraction, only the first operand	may
+	     be External.
+
+
+
+    2.5  OPCODES AS OPERANDS
+
+    8080 opcodes are valid one-byte operands. Note that only the first byte
+    is a valid operand. For example:
+
+		    MVI    A,(JMP)
+		    ADI    (CPI)
+		    MVI    B,(RNZ)
+		    CPI    (INX H)
+		    ACI    (LXI B)
+		    MVI    C,MOV A,B
+
+    Errors will be generated if more than  one	byte  is  included  in	the
+    operand -- such as (CPI 5), LXI B,LABEL1 or (JMP LABEL2).
+
+    Opcodes used as one-byte operands need not be enclosed in parentheses.
+
+
+				      NOTE
+
+		      Opcodes are not valid operands
+		      in Z80 mode.
+
+
+    2.6  PSEUDO OPERATIONS
+
+    2.6.1  ASEG
+
+		    ASEG
+
+    ASEG sets the location counter to an absolute segment  of  memory.	The
+    location of the absolute counter will be that of the last ASEG (default
+    is 0), unless an ORG is done after the ASEG to change the location. The
+    effect of ASEG is also achieved by using the code segment (CSEG) pseudo
+    operation and the /P switch in LINK-80. See also section 2.6.28
+
+
+    2.6.2  COMMON
+
+		    COMMON /<block name>/
+
+    COMMON sets the location  counter  to  the	selected  common  block  in
+    memory. The location is always  the  beginning  of	the  area  so  that
+    compatibility with the  FORTRAN  COMMON  statement	is  maintained.  If
+    <block name> is omitted or consists of spaces, it is considered  to  be
+    blank common. See also Section 2.6.28.
+
+
+    2.6.3  CSEG
+
+		    CSEG
+
+    CSEG sets the location counter to the code relative segment of  memory.
+    The location will be that of the last CSEG (default is  0),  unless  an
+    ORG is done after the CSEG to change the location. CSEG is the  default
+    condition of the assembler (the INTEL assembler defaults to ASEG).	See
+    also Section 2.6.28.
+
+
+    2.6.4  DB - Define Byte
+
+		    DB	   <exp>[,<exp>...]
+
+		    DB	   <string>[<string>...]
+
+    The arguments to DB are either expressions or strings.  DB	stores	the
+    values  of	the  expressions  or  the  characters  of  the	strings  in
+    successive	memory	locations  beginning  with  the  current   location
+    counter.
+
+    Expressions must evaluate to one byte. (if the high byte of the  result
+    is 0 or 255, no error is given; otherwise, an A error results.)
+
+    Strings of three or more characters may  not  be  used  in	expressions
+    (i.e., they must be immediately followed by a comma or the end  of	the
+    line).  The  characters  in  a  string  are  stored  in  the  order  of
+    appearance, each as a one-byte value with the high	order  bit  set  to
+    zero.
+
+    Example:
+
+      0000'   41 42          DB        'AB'
+      0002'   42             DB        'AB' AND 0FFH
+      0003'   41 42 43       DB        'ABC'
+
+
+    2.6.5  DC - Define Character
+
+		    DC	   <string>
+
+    DC	stores the  characters in  <string> in	successive memory locations
+    beginning with the current location counter. As with DB, characters are
+    stored in  order of  appearance, each as a one-byte value with the high
+    order  bit set  to zero.  However, DC  stores the last character of the
+    string with  the high order bit set to one. An error will result if the
+    argument to DC is a null string.
+
+
+    2.6.6  DS - Define Space
+
+		    DS	   <exp>
+
+    DS	reserves an  area of memory. The value of <exp> gives the number of
+    bytes  to  be allocated.  All names  used in  <exp> must  be previously
+    defined (i.e., all names known at that point on pass 1). Otherwise, a V
+    error is  generated during pass 1 and a U error may be generated during
+    pass 2. If a U error is nog generated during pass 2, a phase error will
+    probably be generated because the DS generated no code on pass 1.
+
+
+    2.6.7  DSEG
+
+		    DSEG
+
+    DSEG  sets the location counter to the Data Relative segment of memory.
+    The location  of the data relative counter wil be that of the last DSEG
+    (default  is 0),  unless an  ORG is  done after  the DSEG to change the
+    location. See also Section 2.6.28.
+
+
+    2.6.8  DW - Define Word
+
+		    DW	   <exp>[,<exp>...]
+
+    DW stores  the values of the expressions in successive memory locations
+    beginning  with the current location counter. Expressions are evaluated
+    as 2-byte (word) values.
+
+
+    2.6.9  END
+
+		    END    [<exp>]
+
+    The  END  statement  specifies  the  end  of the  program. If  <exp> is
+    present,  it  is the  start address  of the  program. If  <exp> is	not
+    present, then no start address is passed to LINK-80 for that program.
+
+
+				NOTE
+
+		    If an assembly language program
+		    is	the  main program,  a start
+		    address    (label)	 must	 be
+		    specified. If not, LINK-80 will
+		    issue  a   "no  start  address"
+		    error.  If	the  program  is  a
+		    subroutine to a FORTRAN program
+		    (for    example),	the   start
+		    address is nog required because
+		    FORTRAN has supplied one.
+
+
+
+    2.6.10  ENTRY/PUBLIC
+
+		    ENTRY   <name>[,<name>...]
+		     or
+		    PUBLIC  <name>[,<name>...]
+
+    ENTRY  or  PUBLIC  declares  each  name  in  the  list as  internal and
+    therefore available  for use  by this  program and other programs to be
+    loaded  concurrently. All  of the  names in the list must be defined in
+    the current  program or  a U  error results. An M error is generated if
+    the name is an external name or common-blockname.
+
+
+    2.6.11  EQU
+
+		    <name> EQU <exp>
+
+    EQU  assigns the  value of	<exp> to  <name>. If  <exp> is external, an
+    error is  generated. If <name> already has a value other than <exp>, an
+    M error is generated.
+
+
+    2.6.12  EXT/EXTRN
+
+		    EXT    <name>[,<name>...]
+		     or
+		    EXTRN   <name>[,<name>...]
+
+    EXT  or EXTRN declares that the name(s) in the list are external (i.e.,
+    defined in	a different  program). If any item in the list references a
+    name  that is defined in  the current  program, an	M error results.  A
+    reference to a name where the name is followed immediately by two pound
+    signs (e.g., NAME##) also declares the name as external.
+
+
+    2.6.13  INCLUDE
+
+		    INCLUDE <filename>
+
+    The INCLUDE  pseudo-op applies  only to  CP/M versions of MACRO-80. The
+    pseudo-ops INCLUDE, $INCLUDE and MACLIB are synonymous.
+
+    The  INCLUDE pseudo-op  assembles source  statements from  an alternate
+    source file into the current source file. Use of INCLUDE eliminates the
+    need to  repeat an	often-used sequence  of statements  in the  current
+    source file.
+
+    <filename>	is any	valid specification, as determined by the operating
+    system. Defaults  for filename extensions and device names are the same
+    as those in a MACRO-80 command line.
+
+    The  INCLUDE file  is opened and assembled into the current source file
+    immediately  following  the  INCLUDE  statement.  When  end-of-file  is
+    reached, assembly resumes with the statement following INCLUDE.
+
+    On a  MACRO-80 listing,  a plus  sign is  printed between the assembled
+    code  and the source line on each line assembled from an INCLUDE  file.
+    (See Section 2.12.)
+
+    Nested INCLUDEs are not allowed. If encountered, they will result in an
+    objectionable syntax error 'O'.
+
+    The file  specified in the operand field must exist. If the file is not
+    found,  the  error	'V'  (value  error) is  given, and  the INCLUDE  is
+    ignored.
+
+
+    2.6.14  NAME
+
+		    NAME   ('modname')
+
+    NAME  defines a  name for the module. Only the first six characters are
+    significant in  a module  name. A  module name may also be defined with
+    the  TITLE	pseudo-op.  In	the  absence  of  both the  NAME and  TITLE
+    pseudo-ops, the module name is created from the source file name.
+
+
+    2.6.15  ORG - Define Origin
+
+		    ORG    <exp>
+
+    The  location counter  is set  to the  value of <exp> and the assembler
+    assigns code  starting with that value. All names used in <exp> must be
+    known  on pass  1, and the value must either be absolute or in the same
+    area as the location counter.
+
+
+    2.6.16  PAGE
+
+		    PAGE   [<exp>]
+
+    PAGE causes  the assembler	to start  a new  output page.  The value of
+    <exp>,  if included,  becomes the  new page size (measured in lines per
+    page) and  must be	in the range 10 to 255. The default page size is 50
+    lines per page. The assembler puts a form feed character in the listing
+    file at the end of a page.
+
+
+    2.6.17  SET
+
+		    <name> SET	<exp>
+
+    SET  is the  same as  EQU, except  no error  is generated  if <name> is
+    already defined.
+
+
+    2.6.18  SUBTTL
+
+		    SUBTTL  <text>
+
+    SUBTTL specifies  a subtitle  to be  listed on the line after the title
+    (see  TITLE, Section  2.6.19) on each page heading. <text> is truncated
+    after 60 characters. Any number of SUBTTLs may be given in a program.
+
+
+    2.6.19  TITLE
+
+		    TITLE   <text>
+
+    TITLE specifies a title to be listed on the first line of each page. If
+    more  than	one  TITLE  is	given,	a Q  error results.  The first	six
+    characters of the title are  used  as  the	module name  unless a  NAME
+    pseudo operation is used. If neither a NAME or TITLE pseudo-op is used,
+    the module name is created from the source filename.
+
+
+    2.6.20  .COMMENT
+
+		    .COMMENT <delim><text><delim>
+
+    The  first	non-blank character  encountered  after  .COMMENT  is	the
+    delimiter.	The  following	<text>	comprises  a  comment  block  which
+    continues  until the  next occurence of <delimiter> is encountered. For
+    example, using  an asterisk as the delimiter, the format of the comment
+    block would be:
+
+		    .COMMENT  *
+		    any amount of text entered
+		    here as the comment block
+		    .
+		    .
+		    .	 *
+		    ;return to normal mode
+
+
+    2.6.21  .PRINTX
+
+		    .PRINTX <delim><text><delim>
+
+    The   first  non-blank  character  encountered  after  .PRINTX  is	the
+    delimiter. The following text is listed on the terminal during assembly
+    until another occurence of the delimiter  is  encountered.	.PRINTX  is
+    useful   for  displaying  progress	through  a  long  assembly  or	for
+    displaying the value of conditional assembly switches. For example:
+
+		    IF	   CPM
+		    .PRINTX /CPM version/
+		    ENDIF
+
+
+				NOTE
+
+		    .PRINTX will output on  both
+		    passes. If only one printout
+		    is desired,  use the  IF1 or
+		    IF2 pseudo-op. For example:
+
+		    IF2
+		    IF CPM
+		    .PRINTX /CPM version/
+		    ENDIF
+		    ENDIF
+
+		    will  only print  if CPM  is
+		    true and M80 is in pass 2.
+
+
+    2.6.22  .RADIX
+
+		    .RADIX <exp>
+
+    The  default base  (or radix)  for all constants is decimal. The .RADIX
+    statement  allows the  default radix  to be  changed to any base in the
+    range of 2 to 16. For example:
+
+		    MOVI    BX,0FFH
+		    .RADIX  16
+		    MOVI    BC,0FF
+
+    The two  MOVIs in  the example  are indentical.  The <exp>	in a .RADIX
+    statement is always in decimal radix, regardless of the current radix.
+
+
+    2.6.23  .Z80
+
+    .Z80  enables the  assembler to accept Z80 opcodes. This is the default
+    condition when  the assembler is running on a Z80 operating system. Z80
+    mode  may also be set by appending the Z switch to the MACRO-80 command
+    string -- see Section 2.2.2.
+
+
+    2.6.24  .8080
+
+    .8080 enables the assembler to accept 8080 opcodes. This is the default
+    condition when  the assembler  is running  on an 8080 operating system.
+    8080  mode may  also be  set by  appending the I switch to the MACRO-80
+    command string -- see Section 2.2.2.
+
+
+    2.6.25  REQUEST
+
+		    .REQUEST <filename>[,<filename>...]
+
+    .REQUEST sends  a request to the LINK-80 loader to search the filenames
+    in	the list for undefined globals. The filenames in the list should be
+    in	the  form of  legal  symbols.	They  should  not include  filename
+    extensions or disk specifications. LINK-80 supplies a default extension
+    and assumes the default disk drive.
+
+
+    2.6.26  Conditional Pseudo Operations
+
+    The conditional pseudo operations are:
+
+    IF/IFT <exp>		  True if <exp> is no 0.
+
+    IFE/IFF <exp>		  True if <exp> is 0.
+
+    IF1 			  True if pass 1.
+
+    IF2 			  True if pass 2.
+
+    IFDEF <symbol>		  True if <symbol> is defined or has been
+				  declared External.
+
+    IFNDEF <symbol>		  True if <symbol> is undefined or not
+				  declared External.
+
+    IFB <arg>			  True if <arg> is blank. The angle
+				  brackets around <arg> are required.
+
+    IFNB <arg>			  True if <arg> is not blank. Used for
+				  testing when dummy parameters are
+				  supplied. The angle brackets around <arg>
+				  are required.
+
+    IFIDN <arg1>,<arg2> 	  True if the string <arg1> is IDeNtical to
+				  the string <arg2>.
+				  The angle brackets around <arg1> and
+				  <arg2> are required.
+
+    IFDIF <arg1>,<arg2> 	  True if the string <arg1> is DIFferent
+				  from the string <arg2>.
+				  The angle brackets around <arg1> and
+				  <arg2> are required.
+
+    All conditionals use the following format:
+
+		    IFxx    [argument]
+		      .
+		      .
+		      .
+		    [ELSE
+		      .
+		      .
+		      .     ]
+		    ENDIF
+
+    Conditionals may  be nested to any level. Any argument to a conditional
+    must be known on pass 1 to avoid V errors and incorrect evaluation. For
+    IF,  IFT, IFF,  and IFE  the expression  must involve values which were
+    previously defined	and the expression must be absolute. If the name is
+    defined  after an  IFDEF or  IFNDEF, pass  1 considers  the name  to be
+    undefined, but it will be defined on pass 2.
+
+
+    2.6.26.1  ELSE  - Each  conditional pseudo	operation may optionally be
+    used  with the  ELSE pseudo operation which allows alternate code to be
+    generated  when  the  opposite  condition  exists.	Only  one  ELSE  if
+    permitted for  a given  IF, and  an ELSE  is always  bound to  the most
+    recent,  open IF.  A conditional  with more  than one  ELSE or  an ELSE
+    without a conditional will cause a C error.
+
+
+    2.6.26.2  ENDIF  - Each  IF must have a matching ENDIF to terminate the
+    conditional.   Otherwise,  an  'Unterminated  conditional'  message  is
+    generated at  the end  of each  pass. An  ENDIF without  a matching  IF
+    causes a C error.
+
+
+    2.6.27  Listing Control Pseudo Operations
+
+    Output to the listing file can be controlled by two pseudo-ops:
+
+	 .LIST	    and     .XLIST
+
+    If a listing is nog being made, these pseudo-ops have no effect.  .LIST
+    is the default condition. When a  .XLIST  is  encountered,	source	and
+    object code fill not be listed until a  .LIST is encountered.
+
+    The  output  of  false  conditional  blocks  is  controlled  by   three
+    pseudo-ops: .SFCOND, .LFCOND, and .TFCOND.
+
+    These pseudo-ops give the programmer control over four cases.
+
+	 1.  Normally list false conditionals.
+	     For this case, the programmer simply allows the  default  mode
+	     to control  the  listing.	The  default  mode  is	list  false
+	     conditionals. If the  programmer  decides	to  suppress  false
+	     conditionals, the /X switch can be issued in the command  line
+	     instead of editing the source file.
+
+	 2.  Normally surpress false conditionals.
+	     For this case, the programmer issues the .TFCOND pseudo-op  in
+	     the program file.	.TFCOND  reverses  (toggles)  the  default,
+	     causing false conditionals to be suppressed. If the programmer
+	     decides to list false  conditionals,  the	/X  switch  can  be
+	     issued in the command line instead of editing the source file.
+
+	 3.  Always suppress/list false conditionals.
+	     For this case, the  programmer  has  decided  for	most  false
+	     conditionals whether to list or suppress, but for	some  false
+	     conditionals the programmer has not yet decided. For the false
+	     conditionals decided about, use .SFCOND or .LFCOND. For  those
+	     not yet decided, use .TFCOND. .TFCOND  sets  the  current	and
+	     default settings to the opposite of  the  default.  Initially,
+	     the default is set by giving /X or no /X in the command  line.
+	     Two subcases exist:
+
+	     1.  The programmer wants some false conditionals not  to  list
+		 unless /X is given. The programmer uses  the  .SFCOND	and
+		 .LFCOND pseudo-ops to control which areas always  suppress
+		 or list false conditionals. To selectively  suppress  some
+		 false conditionals, the programmer issues .TFCOND  at	the
+		 beginning of the conditional block and again at the end of
+		 the conditional block. (NOTE: The second .TFCOND should be
+		 issued so that the default setting will be the same as the
+		 initial setting. Leaving the default equal to the  initial
+		 setting makes it easier to keep track of the default  mode
+		 if there are many such areas.) If  the  conditional  block
+		 evaluates as false, the lines will be suppressed. In  this
+		 subcase, issuing the /X switch in the command line  causes
+		 the conditional block affected by .TFCOND to list even  if
+		 it evaluates as false.
+
+	     2.  The programmer want some false conditionals to list unless
+		 /X  is  given.  Two  consecutive   .TFCONDs   places	the
+		 conditional listing setting  in  initial  state  which  is
+		 determined by the presence or absence of the /X switch  in
+		 the command line (the first .TFCOND sets  the	default  to
+		 not  initial;	the  second  to  initial).   The   selected
+		 conditional block then responds to the /X switch: if a  /X
+		 switch is issued in  the  command  line,  the	conditional
+		 block is suppressed if false; if no /X switch is issued in
+		 the command line, the conditional block is listed even  if
+		 false.
+
+    The three conditional listing pseudo-ops are summarized below.
+
+    PSEUDO-OP	    DEFINITION
+
+    .SFCOND	    Suppresses	the  listing  of  conditional  blocks  that
+		    evaluate as false.
+
+    .LFCOND	    Restores  the  listing  of	conditional  blocks    that
+		    evaluate as false.
+
+    .TFCOND	    Toggles the current setting which controls the  listing
+		    false  conditionals.  .TFCOND  sets  the  current	and
+		    default setting to not default. If a /X switch is given
+		    in the MACRO-80 run  command  line	for  a	file  which
+		    contains .TFCOND, /X reverses the effect of .TFCOND.
+
+    The following chart illustrates the effects  of  the  three  pseudo-ops
+    when encountered under /X and under no /X.
+
+		    PSEUDO-OP	       NO /X	 /X
+
+		    (none)		ON	 OFF
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .SFCOND		OFF	 OFF
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .LFCOND		ON	 ON
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .TFCOND		OFF	 ON
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .TFCOND		ON	 OFF
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .SFCOND		OFF	 OFF
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .TFCOND		OFF	 ON
+		    .TFCOND		ON	 OFF
+		      . 		 .	  .
+		      . 		 .	  .
+		      . 		 .	  .
+		    .TFCOND		OFF	 ON
+
+
+    The output of cross reference information is controlled  by  .CREF	and
+    .XCREF. If the cross reference facility (see Chapter 3)  has  not  been
+    invoked, .CREF and .XCREF have no  effect.	The  default  condition  is
+    .CREF. When a .XCREF is encountered, no cross reference information  is
+    output until .CREF is encountered.
+
+    The output of MACRO/REPT/IRP/IRPC expansions  is  controlled  by  three
+    pseudo-ops: .LALL, .SALL and .XALL. .LALL lists the complete macro text
+    for all expansions. .SALL suppresses listing of  all  text	and  object
+    code produced by macros. .XALL is the default condition; a source  line
+    is listed only if it generates object code.
+
+
+    2.6.28  Relocation Pseudo Operations
+
+    The ability to create relocatable modules is one of the major  features
+    of Microsoft assemblers. Relocatable modules offer	the  advantages  of
+    easier coding and faster testing, debugging and modifying. In addition,
+    it is possible to specify segments of assembled code that will later be
+    loaded into RAM (the Data Relative	segment)  and  ROM/PROM  (the  Code
+    Relative segment). The pseudo operations that select relocatable  areas
+    are  CSEG  and  DSEG.  The	ASEG  pseudo-op   is   used   to   generate
+    non-relocatable (absolute) code. The COMMON pseudo-op creates a  common
+    data area for every COMMON block that is named in the program.
+
+    The default mode for the assembler is Code Relative. That is,  assembly
+    begins with a CSEG automatically executed and the location	counter  in
+    the Code Relative mode, pointing to location 0  in	the  Code  Relative
+    segment of memory. All subsequent instructions will be  assembled  into
+    the Code Relative segment of memory until a  ASEG  or  DSEG  or  COMMON
+    pseudo-op is executed. For example, the first DSEG encountered sets the
+    location counter to location zero  in  the	Data  Relative	segment  of
+    memory. The following code is assembled in the Data Relative segment of
+    memory. If a subsequent CSEG is encountered, the location counter  will
+    return to the next free location in the Code Relative  segment  and  so
+    on.
+
+    The ASEG, DSEG, CSEG pseudo-ops never have operands.  If  you  wish  to
+    alter the current value of the location counter, use the ORG pseudo-op.
+
+
+    2.6.28.1  ORG Pseudo-op - At  any  time,  the  value  of  the  location
+    counter may be changed by use of the ORG pseudo-op. The form of the ORG
+    statement is:
+
+			    ORG        <exp>
+
+    where the value of <exp> will be the new value of the location  counter
+    in the current mode. All names used in <exp> must be known	on  pass  1
+    and the value of <exp> must be either Absolute or in the  current  mode
+    of the location counter. For example, the statements
+
+			    DSEG
+			    ORG        50
+
+    set the Data Relative counter to 50, relative to the start of the  Data
+    Relative segment of memory.
+
+
+    2.6.28.2  LINK-80 - The LINK-80 linking loader (see Chapter 4  of  this
+    manual) combines the segments and creates each  relocatable  module  in
+    memory when the program is	loaded.  The  origins  of  the	relocatable
+    segments are not fixed until the program is loaded and the origins	are
+    assigned by LINK-80. The command to LINK-80 may contain  user-specified
+    origins through the use of the /P (for Code Relative) and /D (for  Data
+    and COMMON segments) switches.
+
+    For example, a program that begins with the statements
+
+			    ASEG
+			    ORG        800H
+
+    and is assembled entirely in Absolute mode will always  load  beginning
+    at 800 unless the ORG statement is changed in the source file. However,
+    the  same  program,  assembled  in	Code  Relative	mode  with  no	ORG
+    statement, may be loaded at any  specified	address  by  appending	the
+    /P:<address> switch to the LINK-80 command string.
+
+
+    2.6.29  Relocation Before Loading
+
+    Two pseudo-ops, .PHASE and .DEPHASE, allow code to be  located  in	one
+    area, but executed only at a different, specified area.
+
+    For example:
+
+      0000'                            .PHASE    100H
+      0100    E8 0003	    FOO:       CALL	 BAZ
+      0103    E9 FF01		       JMP	 ZOO
+      0106    C3	    BAZ:       RET
+				       .DEPHASE
+      0007'   E9 FFFB       ZOO:       JMP       5
+
+    All labels within a .PHASE block are defined as the absolute value from
+    the origin of the phase area. The  code,  however,	is  loaded  in	the
+    current area (i.e., from 0' in this example). The code within the block
+    can later be moved to 100H and executed.
+
+
+
+
+     2.7  MACROS AND BLOCK PSEUDO OPERATIONS
+
+    The macro facilites provided by MACRO-80 include  three  repeat  pseudo
+    operations: reapeat (REPT), indefinite  repeat  (IRP),  and  indefinite
+    repeat character (IRPC). A macro definition operation (MACRO)  is  also
+    provided. Each of these four macro operations is terminated by the ENDM
+    pseudo operation.
+
+
+    2.7.1  Terms
+
+    For the purposes of discussion of  macros  and  block  operations,	the
+    following terms will be used:
+
+	 1.   <dummy> is used to represent a  dummy  parameter.  All  dummy
+	      paramters are legal symbols that appear  in  the	body  of  a
+	      macro expansion.
+
+	 2.   <dummylist> is a list of <dummy>s separated by commas.
+
+	 3.   <arglist>  is  a	list  of  arguments  separated	by  commas.
+	      <arglist> must be delimited  by  angle  brackets.  Two  angle
+	      brackets with no intervening characters (<>)  or	two  commas
+	      with no intervening characters enter a null argument  in	the
+	      list. Otherwise an argument  is  a  character  or  series  of
+	      characters terminated by a comma or >.  With  angle  brackets
+	      that are nested inside an <arglist>, one level of brackets is
+	      removed each time  the  bracketed  argument  is  used  in  an
+	      <arglist>. (See example, Section 2.7.5.) A quoted  string  is
+	      an acceptable argument and is passed as such. Unless enclosed
+	      in brackets or a quoted string, leading and  trailing  spaces
+	      are deleted from arguments.
+
+	 4.   <paramlist> is used to represent a list of actual  parameters
+	      separated by commas. No delimiters are required (the list  is
+	      terminated by the end of line or a comment),  but  the  rules
+	      for entering null parameters and	nesting  brackets  are	the
+	      same  as	described  for	<arglist>.  (See  example,  Section
+	      2.7.5.)
+
+
+    2.7.2  REPT-ENDM
+
+		REPT <exp>
+		 .
+		 .
+		 .
+		ENDM
+
+    The block of statements between REPT and ENDM is repeated <exp>  times.
+    <exp> is evaluated as a 16-bit unsigned number. If <exp>  contains	any
+    external or undefined terms, an error is generated. Example:
+
+		SET 0
+		REPT 10      ;generates DB 1 - DB 10
+		SET X+1
+		DB X
+		ENDM
+
+
+    2.7.3  IRP-ENDM
+
+		IRP <dummy>,<arglist>
+		 .
+		 .
+		 .
+		ENDM
+
+    The <arglist> must	be  enclosed  in  angle  brackets.  The  number  of
+    arguments in the <arglist> determines the number of times the block  of
+    statements is repeated. Each repetition substitutes the  next  item  in
+    the <arglist> for every occurrence of <dummy>  in  the  block.  If	the
+    <arglist> is null (i.e., <>), the block is	processed  once  with  each
+    occurence of <dummy> removed. For example:
+
+		IRP X,<1,2,3,4,5,6,7,8,9,10>
+		DB X
+		ENDM
+
+    gernerates the same bytes as the REPT example.
+
+
+    2.7.4  IRPC-ENDM
+
+		IRPC <dummy>,string (or <string>)
+		 .
+		 .
+		 .
+		ENDM
+
+    IRPC is similar to IRP but the arglist is replaced by a string of  text
+    and the angle brackets around the string are optional.  The  statements
+    in the block are repeated once for each character in the  string.  Each
+    repetition substitutes the next  character	in  the  string  for  every
+    occurrence of <dummy> in the block. For example:
+
+		IRPC X,0123456789
+		DB X+1
+		ENDM
+
+    generates the same code as the two previous examples.
+
+
+    2.7.5  MACRO
+
+    Often it is convenient to be able  to  generate  a	given  sequence  of
+    statements from various places in  a  program,  even  though  different
+    parameters may be  required  each  time  the  sequence  is	used.  This
+    capability is provided by the MACRO statement.
+    The form is
+
+		<name> MACRO <dummylist>
+		  .
+		  .
+		  .
+		ENDM
+
+    where <name> conforms to the rules for forming symbols. <name>  is	the
+    name that will be used to invoke the macro. The <dummy>s in <dummylist>
+    are the parameters that will be changed (replaced) each time the  MACRO
+    is invoked. The statements before the ENDM comprise  the  body  of	the
+    macro. During assembly, the macro is expanded every time it is  invoked
+    but, unlike REPT/IRP/IRPC,	the  macro  is	not  expanded  when  it  is
+    encountered.
+
+    The form of a macro call is
+
+		<name> <paramlist>
+
+    where <name> is the name supplied in  the  MACRO  definition,  and	the
+    parameters in <paramlist>  will  replace  the  <dummy>s  in  the  MACRO
+    <dummylist> on a one-to-one basis. The number of items  in	<dummylist>
+    and <paramlist> is limited only by the length of a line. The number  of
+    parameters used when the macro is called need not be the  same  as	the
+    number of <dummy>s in <dummylist>. If there are  more  parameters  than
+    <dummy>s, the extras  are  ignored.  If  there  are  fewer,  the  extra
+    <dummy>s will be made null. The assembled code will contain  the  macro
+    expansion code after each macro call.
+
+				   NOTE
+
+		    A dummy parameter in a  MACRO/REPT/IRP/IRPC
+		    is always recognized exclusively as a dummy
+		    parameter. Register names such as A  and  B
+		    will be changed in the  expansion  if  they
+		    were used as dummy parameters.
+
+    Here is an example of a MACRO definition that defines  a  macro  called
+    FOO:
+
+		FOO    MACRO   X
+		Y      SET     0
+		       REPT    X
+		Y      SET     Y+1
+		       DB      Y
+		       ENDM
+		       ENDM
+
+    This macro generates the same code as the previous three examples  when
+    the call
+
+		       FOO     10
+
+    is executed.
+
+    Another example, which generates the same code, illustrates the removal
+    of one level of brackets when an argument is used as an arglist:
+
+		FOO    MACRO   X
+		       IRP     Y,<X>
+		       DB      Y
+		       ENDM
+		       ENDM
+
+    When the call
+
+		       FOO     <1,2,3,4,5,6,7,8,9,10>
+
+    is made, the macro expansion looks like this:
+
+		       IRP     Y,<1,2,3,4,5,6,7,8,9,10>
+		       DB      Y
+		       ENDM
+
+
+    2.7.6  ENDM
+
+    Every REPT, IRP, IRPC and MACRO pseudo-op must be terminated  with	the
+    ENDM  pseudo-op.  Otherwise  the   'Unterminated   REPT/IRP/IRPC/MACRO'
+    message is generated at the end of each pass. An unmatched ENDM  causes
+    an O error.
+
+
+    2.7.7  EXITM
+
+    The EXITM pseudo-op is used to terminate a REPT/IRP/IRPC or MACRO call.
+    When an EXITM is executed, the expansion is exited immediately and	any
+    remaining expansion or  repetition	is  not  generated.  If  the  block
+    containing the EXITM is nested within another block,  the  outer  level
+    continues to be expanded.
+
+
+    2.7.8  LOCAL
+
+	    LOCAL  <dummylist>
+
+    The LOCAL pseudo-op is allowed only inside	a  MACRO  definition.  When
+    LOCAL is executed, the assembler  creates  a  unique  symbol  for  each
+    <dummy> in <dummylist> and substitutes that symbol for  each  occurence
+    of the <dummy> in the expansion. These unique symbols are usually  used
+    to define a label within a	macro,	thus  eliminating  multiply-defined
+    labels on successive expansions of the macro. The  symbols	created  by
+    the assembler range from ..0001 to ..FFFF. Users will therefore want to
+    avoid the term ..nnnn for their own symbols. If  LOCAL  statements	are
+    used, they must be the first statements in the macro definition.
+
+
+    2.7.9  Special Macro Operators And Forms
+
+    &	    The ampersand is used in a macro expansion to concatenate  text
+	    or symbols. A dummy parameter that is in a quoted  string  will
+	    not be substituted in the expansion unless	it  is	immediately
+	    preceded by &. To form a symbol from text and a  dummy,  put  &
+	    between them. For example:
+
+		       ERRGEN  MACRO   X
+		       ERROR&X:PUSH    BX
+			       MOVI    BX,'&X'
+			       JMP     ERROR
+			       ENDM
+
+	    In this example, the call ERRGEN A will generate:
+
+		       ERRORA: PUSH    BX
+			       MOVI    BX,'A'
+			       JMP     ERROR
+
+    ;;		   In  a  block  operation,  a	comment  preceded  by	two
+		   semicolons is not saved as part of the expansion  (i.e.,
+		   it will not appear on the listing even under  .LALL).  A
+		   comment preceded by	one  semicolon,  however,  will  be
+		   preserved and appear in the expansion.
+
+    !		   When an exclamation point is used in  an  argument,	the
+		   next character is entered literally (i.e.,  !;  and	<;>
+		   are equivalent).
+
+     NUL	   NULL is an operator that returns true if its argument (a
+		   parameter) is null. The remainder of a line after NUL is
+		   considered to be the argument to NUL. The conditional
+
+			     IF NUL argument
+
+		   is false if, during the expansion, the  first  character
+		   of the argument is anything other than  a  semicolon  or
+		   carriage return. It is recommended that testing for null
+		   parameters be done using the IFB and IFNB conditionals.
+
+     %		   The percent sign is used only in  a	macro  argument.  %
+		   converts the  expression  that  follows  it	(usually  a
+		   symbol) to a number in the current radix.  During  macro
+		   expansion,  the  number  derived  from  converting	the
+		   expression is substituted for the  dummy.  Using  the  %
+		   special operator allows a macro call by value. (Usually,
+		   a macro call is a call by reference with the text of the
+		   macro argument substituting exactly for the dummy.)
+
+		   The expression following the % must conform to the  same
+		   rules as  the  DS  (Define  Space)  pseudo-op.  A  valid
+		   expression  returning  a  non-relocatable  constant	 is
+		   required.
+
+		   EXAMPLE: Normally, LB, the argument to MAKLAB, would  be
+		   substituted for Y, the argument to MACRO, as  a  string.
+		   The % causes LB to be  converted  to  a  non-relocatable
+		   constant which is then substituted for Y. Without the  %
+		   special operator, the result of assembly would be 'Error
+		   LB' rather than 'Error 1', etc.
+
+			 MAKLAB    MACRO    Y
+			 ERR&Y:    DB	    'Error &Y',0
+				   ENDM
+			 MAKERR    MACRO    X
+			 LB	   SET	    0
+				   REPT     X
+			 LB	   SET	    LB+1
+				   MAKLAB   %LB
+				   ENDM
+				   ENDM
+
+		   When called by MAKERR 3, the assembler will generate:
+
+			 ERR1:	   DB  'Error 1',0
+			 ERR2:	   DB  'Error 2',0
+			 ERR3:	   DB  'Error 3',0
+
+      TYPE	   The TYPE operator returns  a  byte  that  describes	two
+		   characteristics of its argument: 1)	the  mode,  and  2)
+		   whether it is External or not. The argument to TYPE	may
+		   be any expression (string,  numeric,  logical).  If	the
+		   expression is invalid, TYPE returns zero.
+
+		   The byte that is returned is configured as follows:
+
+		   The lower two bits are the mode. If the lower  two  bits
+		   are:
+
+		   0	 the mode is Absolute
+		   1	 the mode is Program Relative
+		   2	 the mode is Data Relative
+		   3	 the mode is Common Relative
+
+		   The high bit (80H) is the External bit. If the high	bit
+		   is on, the expression contains an External. If the  high
+		   bit is off, the expression is local (not External).
+
+		   The Defined bit is 20H. This bit is on if the expression
+		   is locally defined, and it is off if the  expression  is
+		   undefined  or  external.  If  neither  bit  is  on,	the
+		   expression is invalid.
+
+		   TYPE is usually used inside macros,	where  an  argument
+		   type may need to be tested to make a decision  regarding
+		   program flow. For example:
+
+		   FOO	 MACRO	   X
+			 LOCAL	   Z
+		   Z	 SET	   TYPE X
+		   IF	 Z...
+
+
+
+    2.8  USING Z80 PSEUDO-OPS
+
+    When using the MACRO-80 assembler, the  following  Z80  pseudo-ops	are
+    valid. The function of each pseudo-op is  equivalent  to  that  of	its
+    counterpart.
+
+		   Z80 pseudo-op       Equivalent pseudo-op
+
+		       COND		    IFT
+		       ENDC		    ENDIF
+		       *EJECT		    PAGE
+		       DEFB		    DB
+		       DEFS		    DS
+		       DEFW		    DW
+		       DEFM		    DB
+		       DEFL		    SET
+		       GLOBAL		    PUBLIC
+		       EXTERNAL 	    EXTRN
+
+    The formats, where different, conform to the previous format. That	is,
+    DEFB and DEFW are permitted a list of arguments (as are DB and DW), and
+    DEFM is permitted a string or numeric argument (as is DB).
+
+
+
+
+
+    2.9  SAMPLE ASSEMBLY
+
+
+    A>M80
+
+    *EXMPL1,TTY:=EXMPL1
+
+	    MAC80 3.2	   PAGE    1
+
+
+		       00100   ;CSL3(P1,P2)
+		       00200   ;SHIFT P1 LEFT CIRCULARY 3 BITS
+		       00300   ;RETURN RESULT IN P2
+		       00400	       ENTRY   CSL3
+		       00450   ;GET VALUE OF FIRST PARAMETER
+		       00500   CSL3:
+    0000'   7E         00600           MOV     A,M
+    0001'   23         00700           INX     H
+    0002'   66         00800           MOV     H,M
+    0003'   6F         00900           MOV     L,A
+		       01000   ;SHIFT COUNT
+    0004'   06 03      01100           MVI     B,3
+    0006'   AF         01200   LOOP:   XRA     A
+		       01300   ;SHIFT LEFT
+    0007'   29         01400           DAD     H
+		       01500   ;ROTATE IN CY BIT
+    0008'   17         01600           RAL
+    0009'   85         01700           ADD     L
+    000A'   6F         01800           MOV     L,A
+		       01900   ;DECREMENT COUNT
+    000B'   05         02000           DCR     B
+		       02100   ;ONE MORE TIME
+    000C'   C2 0006'   02200           JNZ     LOOP
+    000F'   EB         02300           XCHG
+		       02400   ;SAVE RESULT IN SECOND PARAMETER
+    0010'   71         02500           MOV     M,E
+    0011'   23         02600           INX     H
+    0012'   72         02700           MOV     M,D
+    0013'   C9         02800           RET
+		       02900	       END
+
+
+	    MAC80 3.2	   PAGE    S
+
+
+   CSL3     0000I'  LOOP   0006'
+
+
+    No	Fatal error(s)
+
+
+
+    2.10  MACRO-80 ERRORS
+
+    MACRO-80 errors are indicated by a one-character flag in column one  of
+    the listing file. If a  listing  file  is  not  being  printed  on	the
+    terminal, each erroneous line is  also  printed  or  displayed  on	the
+    terminal. Below is a list of the MACRO-80 Error Codes:
+
+	 A    Argument error
+	      Argument to pseudo-op is not in correct format or is  out  of
+	      range (.PAGE 1; .RADIX 1; PUBLIC 1; JMPS TOOFAR).
+
+	 C    Conditional nesting error
+	      ELSE without IF, ENDIF without IF, two ELSEs on one IF.
+
+	 D    Double Defined symbol
+	      Reference to a symbol which is multiply defined.
+
+	 E    External error
+	      Use of an external illigal in context (e.g., FOO SET  NAME##;
+	      MOVI AX,2-NAME##).
+
+	 M    Multiply Defined symbol
+	      Definition of a symbol which is multiply defined.
+
+	 N    Number error
+	      Error in a number, usually a bad digit (e.g., 8Q).
+
+	 O    Bad opcode or objectionable syntax
+	      ENDM, LOCAL outside a block; SET,  EQU  or  MACRO  without  a
+	      name; bad syntax in an opcode; or bad syntax in an expression
+	      (mismatched  parenthesis,  quotes,   consecutive	 operators,
+	      etc.).
+
+	 P    Phase error
+	      Value of a Label or EQU name is different on pass 2.
+
+	 Q    Questionable
+	      Usually means a line is not terminated properly.	This  is  a
+	      warning error (e.g. MOV AX,BX,).
+
+	 R    Relocation
+	      Illigal use of relocation in  expression,  such  as  abs-rel.
+	      Data, code and COMMON areas are relocatable.
+
+	 U    Undefined symbol
+	      A symbol referenced in an expression  is	not  defined.  (For
+	      certain pseudo-ops, a V error is printed on pass 1 and a U on
+	      pass 2.)
+
+	 V    Value error
+	      On pass 1 a pseudo-op which must have its value known on pass
+	      1 (e.g., .RADIX, .PAGE, DS, IF, IFE, etc.), has a value which
+	      is undefined. If the symbol is defined later in the  program,
+	      a U error will not appear on the pass 2 listing.
+
+
+    Error Messages:
+
+	 'No END statement encountered on input file'
+	      No END statement; either it is missing or it  is	not  parsed
+	      due  to  being   in   a	false	conditional,   unterminated
+	      IRP/IRPC/REPT block or terminated macro.
+
+	 'Unterminated conditional'
+	      At least one conditional is unterminated at the  end  of	the
+	      file.
+
+	 'Unterminated REPT/IRP/IRPC/MACRO'
+	      At least one block is unterminated.
+
+	 [xx] [No] Fatal error(s) [,xx warnings]
+	      The number of fatal  errors  and	warnings.  The	message  is
+	      listed on the CRT and in the list file.
+
+
+
+    2.11  COMPATIBILITY WITH OTHER ASSEMBLERS
+
+    The $EJECT and $TITLE controls  are  provided  for	compatability  with
+    INTEL's ISIS assembler. The dollar sign must appear in column 1 only if
+    spaces or tabs separate the dollar sign  from  the	control  word.	The
+    control
+
+	 $EJECT
+
+    is the same as the MACRO-80 PAGE pseudo-op.
+    The control
+
+	 $TITLE('text')
+
+    is the same as the MACRO-80 SUBTTL <text> pseudo-op.
+
+    The INTEL operands PAGE and INPAGE generate Q errors when used with the
+    MACRO-80 CSEG or  DSEG  pseudo-ops.  These	errors	are  warnings:	the
+    assembler ignores the operands.
+
+    When MACRO-80 is entered, the default for the origin is  Code  Relative
+    0.
+
+    With the INTEL ISIS assembler, the default is Absolute 0.
+
+    With MACRO-80, the dollar sign ($) is a defined constant that indicates
+    the value of the location counter at the start of the statement.  Other
+    assemblers may use a decimal point or an asterisk. Other constants	are
+    defined by MACRO-80 to have the following values:
+
+	 A-7	   B-0	     C-1       D-2	 E-3
+	 H-4	   L-5	     M-6       SP-6	 PSW-6
+
+
+
+    2.12  FORMAT OF LISTINGS
+
+    On each page of a MACRO-80 listing, the first two lines have the form:
+
+    [TITLE text]   M80 3.3	  PAGE x[-y]
+    [SUBTTL text]
+
+    where:
+
+	 1.   TITLE text is the text supplied with the TITLE pseudo-op,  if
+	      one was given in the source program.
+
+	 2.   x is the major page number, which is incremented only when  a
+	      form feed is encountered in  the	source	file.  (When  using
+	      Microsoft's EDIT-80 text editor,  a  form  feed  is  inserted
+	      whenever a page mark is done.) When the symbol table is being
+	      printed, x = S.
+
+	 3.   y is the minor page number, which is incremented whenever the
+	      .PAGE  pseudo-op	is  encountered  in  the  source  file,  or
+	      whenever the current page size has been filled.
+
+	 4.   SUBTTL text is the text supplied with the  SUBTTL  pseudo-op,
+	      if one was given in the source program.
+
+    Next, a blank line is printed, followed by the first line of output.
+
+    A line of output on a MACRO-80 listing has the following form:
+
+    [crf#]	[error] loc#m  |xx | xxxx|...	 source
+
+    If cross reference information is being output, the first item  on	the
+    line is the cross reference number, followed by a tab.
+
+    A one-letter error code followed by a space appears next on  the  line,
+    if the line contains an error.  If	there  is  no  error,  a  space  is
+    printed. If there is no cross reference number, the error  code  column
+    is the first column on the listing.
+
+    The value of the location counter appears next on the  line.  It  is  a
+    4-digit hexadecimal number or 6-digit octal numer, depending on whether
+    the /O or /H switch was given in the MACRO-80 command string.
+
+    The character at the end of the location  counter  value  is  the  mode
+    indicator. It will be one of the following symbols:
+
+	 '         Code Relative
+	 "         Data Relative
+	 !	   COMMON Relative
+      <space>	   Absolute
+	 *	   External
+
+    Next, three spaces are printed followed by the assembled code. One-byte
+    values are followed by a space. Two-byte values are followed by a  mode
+    indicator. Two-byte values are printed in the opposite  order  the	are
+    stored in, i.e., the high order byte is printed  first.  Externals	are
+    either the offset or the value of the pointer to the next  External  in
+    the chain.
+
+    If a line of output on a MACRO-80 listing is from an INCLUDE file,	the
+    character 'C' is printed after the assembled code on that  line.  If  a
+    line of output is part of a text expansion (MACRO, REPT, IRP,  IRPC)  a
+    plus sign '+' is printed after the assembled code on that line.
+
+    The remainder of the line contains the line of source code, as  it	was
+    input.
+
+    Example:
+
+    0C49 3A A912' C+ LDA LCOUNT
+
+    'C+' indicates this line is from an INCLUDE file and part  of  a  macro
+    expansion.
+
+
+    2.12.1  Symbol Table Listing
+
+    In the symbol table listing, all the macro names  in  the  program	are
+    listed alphabetically, followed by all  the  symbols  in  the  program,
+    listed alphabetically. After each symbol, a tab is printed, followed by
+    the value of the symbol. If the symbol  is	Public,  an  I	is  printed
+    immediately after the value. The next character printed will be one  of
+    the following:
+
+	 U	   Undefined symbol.
+
+	 C	   COMMON block name. (The "value" of the COMMON  block  is
+		   its length (number of bytes) in hexadecimal or octal.)
+
+	 *	   External symbol.
+
+	 'space'   Absolute value.
+
+	 '         Program Relative value.
+
+	 "         Data Relative value.
+
+	 !	   COMMON Relative value.
+
+
+
+
+
+				   CHAPTER 3
+
+			CREF-80 CROSS REFERENCE FACILITY
+
+
+
+
+					   NOTE
+
+			     If you  are  using  the  TEKDOS
+			     operating system, see  Appendix
+			     A for proper command formats.
+
+
+    In order to generate a cross  reference  listing,  the  assembler  must
+    output a special listing file with	embedded  control  characters.	The
+    MACRO-80 command string tells the  assembler  to  output  this  special
+    listing file. /C is the cross reference switch. When the /C  switch  is
+    encountered in a MACRO-80 command string, the assembler  opens  a  .CRF
+    file instead of a .LST file. (See Section  2.6.27  for  the  .CREF	and
+    .XCREF pseudo-ops.)
+
+    Examples:
+
+    *=TEST/C		     Assembles file TEST.MAC  and
+			     creates object file TEST.REL
+			     and  cross  reference   file
+			     TEST.CRF.
+
+    *T,U=TEST/C 	     Assemble file  TEST.MAC  and
+			     create object file T.REL and
+			     cross reference file U.CRF
+
+    When the assembler is finished, run the  cross  reference  facility  by
+    typing CREF80.  CREF80  prompts  the  user	with  an  asterisk.  CREF80
+    generates a cross reference listing from the .CRF file that was created
+    during assembly. The CREF80 command format is:
+
+	 *listing file=source file
+
+    The default extenstion for the  source  file  is  .CRF.  There  are  no
+    switches in CREF80 commands.
+
+    Examples of CREF-80 command strings:
+
+	 *=TEST 	     Examine file TEST.CRF  and
+			     generate a cross reference
+			     listing file TEST.LST.
+
+	 *T=TEST	     Examine file TEST.CRF  and
+			     generate a cross reference
+			     file T.LST.
+
+    Cross reference listing files differ from  ordinary  listing  files  in
+    that:
+
+	 1.   Each source statement is	numbered  with	a  cross  reference
+	      number.
+
+	 2.   At  the  end  of	the  listing,  variable  names	appear	 in
+	      alphabetic order along with the numbers of the lines on which
+	      they are referenced or defined. Line  numbers  on  which	the
+	      symbol is defined are flagged with '#'.
+
+
+                                   CHAPTER 4
+
+			     LINK-80 LINKING LOADER
+
+
+
+					 NOTE
+
+			     If you are using the TEKDOS
+			     operating	  system,    see
+			     Appendix	A   for   proper
+			     command formats.
+
+
+
+    4.1  RUNNING LINK-80
+
+    The command to run LINK-80 is
+
+	 L80
+
+    LINK-80 returns the prompt	"*",  indicating  it  is  ready  to  accept
+    commands.
+
+
+
+    4.2  COMMAND FORMAT
+
+    Each command to LINK-80  consists  of  a  string  of  object  filenames
+    separated by commas. These are the files to be loaded by  LINK-80.	The
+    command format is:
+
+	 objfile1,objfile2,...objfilen
+
+    The default extension for all filenames  is  .REL.	Command  lines	are
+    supported, that is, the invocation and command may be typed on the same
+    line.
+
+    Example:
+
+	 L80 MYPROG,YRPROG
+
+    Any filename in the LINK-80 command string can also  specify  a  device
+    name. The default device name with the CP/M  operating  system  is	the
+    currently logged disk. The default device with  the  ISIS-II  operating
+    system is disk drive 0.
+    The format is:
+
+	 dev1:objfile1,dev2:objfile2,...devn:objfilen
+
+    The device names are as listed in Section 2.2.1.
+
+    Example:
+
+	 L80 MYPROG,A:YRPROG
+
+    After each line is typed, LINK-80 will load the specified files.  After
+    LINK finishes this process, it will  list  all  symbols  that  remained
+    undefined followed by an asterisk.
+
+    Example:
+
+    *MAIN
+
+	 DATA	   0100      0200
+
+	 SUBR1*      (SUBR1 is undefined)
+
+    *SUBR1
+	 DATA	   0100      0300
+
+
+    Typically, to execute a MACRO-80  program  and  subroutines,  the  user
+    types the list of  filenames  followed  by	/G  (begin  execution).  To
+    resolve any external, undefined symbols,  you  can	first  search  your
+    library routines (See Chapter 5, LIB-80) by  appending  the  filenames,
+    followed by /S, to the loader command string.
+
+    *MYLIB/S		     Searches MYLIB.REL for unresolved
+			     global symbols
+
+    */G 		     Start execution
+
+
+    4.2.1  LINK-80 Switches
+
+    A number of switches may be given in  the  LINK-80	command  string  to
+    specify actions affecting the loading or execution of  the	program(s).
+    Each switch must  be  preceeded  by  a  slash  (/).  (With	the  TEKDOS
+    operating system, switches are preceeded by hyphens. See Appendix A.)
+
+    Switches may be placed wherever applicable in the command string:
+
+	 1.   At command level. It is possible	for  a	switch	to  be	the
+	      entire LINK-80 command, or to appear  first  in  the  command
+	      string. For example:
+
+	      */G	     Tells LINK-80 to begin execution
+			     of program(s) already loaded.
+
+	      */M	     List all global references
+			     from program(s) already loaded
+
+	      */P:200,FOO    Load FOO, with program area
+			     beginning at address 200
+
+	 2.   Immediately after a filename. An S or N switch may  refer  to
+	      only one filename in the command string. Therefore, when	the
+	      S or N switch is required, it  is  placed  immediately  after
+	      that filename, regardless of where the  filename	appears  in
+	      the command string. For example:
+
+	      *MYLIB/S,MYPROG
+			     Search MYLIB.REL and load necessary
+			     library modules, then load MYPROG.REL.
+
+	      *MYPROG/N,MYPROG/E
+			     Load MYPROG.REL, save MYPROG.COM
+			     on disk and exit LINK-80.
+
+	 3.   At the end of the command string. Any required switchins that
+	      affect the entire load process may be appended at the end  of
+	      the command string. For example:
+
+	      *MYPROG/N,MYPROG/M/E
+			     Open a CP/M COM file called
+			     MYPROG.COM, load MYPROG.REL
+			     and list all global refer-
+			     ences. Exit LINK-80 and save
+			     the COM file.
+
+	      *MYLIB/S,MYSUB,MYPROG/N,MYPROG/M/G
+			     Search MYLIB.REL, load and link
+			     MYSUB.REL and MYPROG.REL,
+			     open a CP/M COM file
+			     called MYPROG.COM, list
+			     all global references, save the
+			     COM file, and execute MYPROG.
+
+
+    The available switches are:
+
+    Switch	   Action
+
+    R		   Reset. Put loader back in its initial state. User /R  if
+		   you loaded  the  wrong  file  by  mistake  and  want  to
+		   restart. /R takes effect as soon as it is encountered in
+		   a command string.
+
+    E or E:Name    Exit LINK-80 and return to  the  operating  system.	The
+		   system library will be searched on the current  disk  to
+		   satisfy any existing undefined globals. Before  exiting,
+		   LINK-80 prints three numbers:  the  start  address,	the
+		   address of the next available byte, and  the  number  of
+		   256-byte pages used. The  optional  form  E:Name  (where
+		   Name is a global symbol previously defined in one of the
+		   modules) uses Name for the start address of the program.
+		   Use /E to load a program and exit back to the monitor.
+
+    G or G:Name    Start execution of the program as soon  as  the  current
+		   command line has been interpreted.  The  system  library
+		   will be searched on the  current  disk  to  satisfy	any
+		   existing  undefined	globals  if  they   exist.   Before
+		   execution actually begins, LINK-80 prints three  numbers
+		   and a BEGIN EXECUTION message. The three numbers are the
+		   start address, the address of the next  byte  available,
+		   and the number of 256-byte pages used. The optional form
+		   G:Name (where Name is a global symbol previously defined
+		   in one of the modules) uses Name for the  start  address
+		   of the program.
+
+    N		   If a <filename>/N is  specified,  the  program  will  be
+		   saved on disk under the selected name  (with  a  default
+		   extension of .COM for CP/M) when a /E or /G is  done.  A
+		   jump to the start of the program is inserted  if  needen
+		   so the program can run properly (at 100H for CP/M).
+
+    P and D	   /P and /D allow the origin(s) to be	set  for  the  next
+		   program loaded. /P and /D take  effect  when  seen  (not
+		   deferred), and they have no effect on  programs  already
+		   loaded. The form is /P:<address> or /D:<address>,  where
+		   <address> is the desired origin in the  current  typeout
+		   radix. (Default radix is hex. /O sets radix to octal; /H
+		   to hex.) LINK-80 dos a default /P:<link origin>+3 (i.e.,
+		   103H for CP/M and 4003H for ISIS) to leave room for	the
+		   jump to the start address. NOTE: Do not use /P or /D  to
+		   load programs or data into the locations of the loader's
+		   jump to the start address (100H to 102H for CP/M) unless
+		   it is to  load  the	start  of  the	program  there.  If
+		   programs or data are loaded into  these  locations,	the
+		   jump will not be generated.
+
+		   If no /D is given, data areas are loaded before  program
+		   areas for each module. If a /D is given,  all  Data	and
+		   Common areas are loaded starting at the data origin	and
+		   the program area at the program origin. Example:
+
+			*/P:200,FOO
+			Data	200    300
+			*/R
+			*/P:200 /D:400,FOO
+			Data	400    480
+			Program 200    280
+
+    U		   List the origin and end of the program and data area and
+		   all undefined globals as soon  as  the  current  command
+		   line has been interpreted. The  program  information  is
+		   only printed if a  /D  has  been  done.  Otherwise,	the
+		   program is stored in the data area.
+
+    M		   List the origin and end of the program  and	data  area,
+		   all defined globals and their values, and all  undefined
+		   globals followed by an asterisk. The program information
+		   is only printed if a /D has been  done.  Otherwise,	the
+		   program is stored in the data area.
+
+    S		   Search the filename immediately preceding the /S in	the
+		   command string to satisfy any undefined globals.
+
+
+    4.2.2  CP/M LINK-80 Switches
+
+    The following switches apply to CP/M versions only.
+
+    X		   If a filename/N was specified, /X will cause the file to
+		   be saved in Intel ASCII HEX format with an extension  of
+		   HEX.
+
+		   Example:  FOO/N/X/E	will  create  an  Intel  ASCII	HEX
+		   formatted load module named FOO.HEX.
+
+    Y		   If  a  filename/N  was  specified,  /Y  will  create   a
+		   filename.SYM file when /E is entered. This file contains
+		   the names and addresses of  all  Globals  for  use  with
+		   Digital Research's Symbolic Debugger, SID and ZSID.
+
+		   Example:  FOO/N/Y/E	 creates   FOO.COM   and   FOO.SYM.
+		   MYPROG/N/X/Y/E creates MYPROG.HEX and MYPROG.SYM.
+
+
+    4.2.3  Sample Links
+
+    LINK AND GO
+
+	 A>L80
+	 *EXAMPL,EXMPL1/G
+	 DATA	 3000	 30AC
+	 [304F	 30AC	 49]
+	 [BEGIN EXECUTION]
+
+		   1792      14336
+		  14336     -16383
+		 -16383 	14
+		     14        112
+		    112        896
+	 A>
+
+
+    LINK AND SAVE
+
+	 A>L80
+	 *EXAMPL,EXAMPL1,EXAM/N/E
+	 DATA	 3000	 30AC
+	 [304F	  30AC	  49]
+	 A>
+
+	 Loads and links EXAMPL.REL, EXMPL1.REL and creates EXAM.COM.
+
+
+
+    4.3  FORMAT OF LINK COMPATIBLE OBJECT FILES
+
+
+				     NOTE
+
+		       Section	4.3   is   interesting
+		       material for users who wish  to
+		       know the load format of LINK-80
+		       relocatable object files.  Most
+		       users will want	to  skip  this
+		       section, as it does not contain
+		       material  neccessary   to   the
+		       operation of the package.
+
+
+    LINK-compatible object files consist of a bit stream. Individual fields
+    within the bit stream are not aligned on  byte  boundaries,  except  as
+    noted below. Use of a bit stream for relocatable object files keeps the
+    size of object files to a minimum, thereby	decreasing  the  number  of
+    disk reads/writes.
+
+    There are two basic types of load items: Absolute and Relocatable.	The
+    first bit of an item indicates one of these two types. If the first bit
+    is a 0, the following 8 bits are loaded as an  absolute  byte.  If	the
+    first bit is a 1, the next 2 bits are used	to  indicate  one  of  four
+    types of relocatable items:
+
+	 00	   Special LINK item (see below).
+
+	 01	   Program Relative. Load the following 16 bits
+		   after adding the current Program base.
+
+	 10	   Data Relative. Load the following 16 bits after
+		   adding the current Data base.
+
+	 11	   Common relative. Load the following 16 bits
+		   after adding the current Common base.
+
+    Special LINK items consist of the bit stream 100 followed by:
+
+		   a four-bit control field
+
+		   an optional A field consisting of a two-bit address type
+		   that is the same as the two-bit field  above  except  00
+		   specifies absolute address
+
+		   an optional B field consisting of 3	bits  that  give  a
+		   symbol length and up to 8 bits for each character of the
+		   symbol
+
+    A general representation of a special LINK item is:
+
+	 1 00 xxxx   yy  nn	zzz + characters of symbol name
+		    --------   ---------------------------------
+		    A field		  B field
+
+	 xxxx	   Fout-bit control field (0-15 below)
+	 yy	   Two-bit address type field
+	 nn	   Sixteen-bit value
+	 zzz	   Three-bit symbol length field
+
+    The following special types have a B-field only:
+
+	 0	   Entry symbol (name for search)
+	 1	   Select COMMON block
+	 2	   Program name
+	 3	   Request library search
+	 4	   Extension LINK items (see below)
+
+    The following special LINK items have both an A field and a B field:
+
+	 5	   Define COMMON size
+	 6	   Chain external (A is head of address chain, B is name of
+		   external symbol)
+	 7	   Define entry point (A is address, B is name)
+
+    The following special LINK items have an A field only:
+
+	 8	   External - offset. Used for JMP and CALL to externals
+	 9	   External + offset. The A value will be added to the	two
+		   bytes  starting  at	 the   current	 location   counter
+		   immediately before execution.
+	10	   Define size of Data area (A is size)
+	11	   Set loading location counter to A
+	12	   Chain address. A is head of chain, replace  all  entries
+		   in chain with current location counter. The	last  entry
+		   in the chain has an address field of absolute zero
+	13	   Define program size (A is size)
+	14	   End program (forces to byte boundary)
+
+    The following special LINK item has neither an A nor a B field:
+
+	15	   End file
+
+    An Extension LINK item follows the general	format	of  a  B-field-only
+    special LINK item, but contents of the B-field are not a  symbol  name.
+    Instead, the symbol area contains one character to identify the type of
+    Extension LINK item, followed by from 1 to 7 characters  of  additional
+    information.
+
+    Thus, every Extension LINK item has the format:
+
+	 1 00 0100 zzz i jjjjjjjj
+
+    where
+
+	 zzz	   may be any three bit integer (with 000 representing 8),
+
+	 i	   is an eight bit Extension LINK  item  type  indentifier,
+		   and
+
+	 jjjjjjjj  are zzz-1  eight  bit  character  of  information  whose
+		   significance depends on i
+
+    At present, there is only one Extension LINK item:
+
+	 i	   = X'35' COBOL overlay segment sentinel
+
+	 zzz	   = 010 (binary)
+
+	 j	   = COBOL segment number -49 (decimal)
+
+	 When the overlay segment sentinal is encountered  by  the  linker,
+	 the current overlay segment number is set to the value of j+49. If
+	 the previously existing segment  number  was  non-zero  and  a  /N
+	 switch is in effect, the data area is written to disk	in  a  file
+	 whose name is the current program name and whose extension is Vnn,
+	 where nn are the two hexadecimal digits  representing	the  number
+	 j+49 (decimal).
+
+
+
+    4.4  LINK-80 ERROR MESSAGES
+
+    LINK-80 has the following error messages:
+
+    ?No Start Address	A /G switch was issued, but  no  main  program	had
+			been loaded.
+
+    ?Loading Error	The last file given for input was  not	a  properly
+			formatted LINK-80 object file.
+
+    ?Out of Memory	Not enough memory to load program.
+
+    ?Command Error	Unrecognizable LINK-80 command.
+
+    ?<file> Not Found	<file>, as given in the  command  string,  did	not
+			exist.
+
+    %2nd COMMON Larger /XXXXXX/
+			The first definition of COMMON block  /XXXXXX/	was
+			not the largest definition. Reorder module  loading
+			sequence or change COMMON block definitions.
+
+    %Mult. Def. Global YYYYYY
+			More than one definition for the global  (internal)
+			symbol YYYYYY was encountered  during  the  loading
+			process.
+
+    %Overlaying / Program \ Area  ,Start = xxxx
+		\ Data	  /	  ,Public = <symbol name>(xxxx)
+				  ,External = <symbol name>(xxxx)
+			A /D or /P will cause already  loaded  data  to  be
+			destroyed.
+
+    ?Intersecting / Program \ Area
+		  \ Data    /
+			The program and data area intersect and an  address
+			or external chain entry is  in	this  intersection.
+			The final value cannot be converted  to  a  current
+			value since it is in the area intersection.
+
+    ?Start Symbol - <name> - Undefined
+			After a /E: or /G: is given, the  symbol  specified
+			was not defined.
+
+    Origin / Above \ Loader Memory, Move Anyway (Y or N)?
+	   \ Below /
+			After a /E or /G was  given,  either  the  data  or
+			program area  has  an  origin  or  top	which  lies
+			outside loader memory (i.e., loader origin  to	top
+			of memory). If a Y <cr> is given, LINK-80 will move
+			the area and continue. If anything else  is  given,
+			LINK-80 will exit. In either  case,  if  a  /N	was
+			given, the image will already have been saved.
+
+    ?Can't Save Object File
+			A disk error  occurred	when  the  file  was  being
+			saved.
+
+
+
+    4.5  PROGRAM BREAK INFORMATION
+
+    LINK-80 stores the address of the  first  free  location  in  a  global
+    symbol called $MEMRY if that symbol  has  been  defined  by  a  program
+    loaded. $MEMRY is set to the top of the data area +1.
+
+
+				      NOTE
+
+			If /D  is  given  and  the  data
+			origin is less than the  program
+			area,  the  user  must	be  sure
+			there is enough room to keep the
+			program  from  being  destroyed.
+			This is particularly  true  with
+			the disk driver  for  FORTRAN-80
+			which uses  $MEMRY  to	allocate
+			disk buffers and FCB's.
+
+
+
+
+                                   CHAPTER 5
+
+			     LIB-80 LIBRARY MANAGER
+
+
+
+			      (CP/M Versions Only)
+
+
+
+    LIB-80 is  the  object  time  library  manager  for  CP/M  versions  of
+    FORTRAN-80 and COBOL-80. LIB-80 will be interfaced to  other  operating
+    systems in future releases of FORTRAN-80 and COBOL-80.
+
+
+				    WARNING
+
+			Read this chapter carefully and
+			make a	back-up  copy  of  your
+			libraries before using LIB.  It
+			is not difficult to  destroy  a
+			library with LIB-80.
+
+
+
+
+    5.1  LIB-80 Commands
+
+    To run LIB-80, type LIB followed by  a  carriage  return.  LIB-80  will
+    return the prompt "*" indicating is is ready to accept  commands.  Each
+    command in LIB-80 either lists information about a library or adds	new
+    modules to the library under construction.
+
+    Commands to LIB-80 consist of an optional destination  filename  whichs
+    sets the name of the library being created, followed by an equal  sign,
+    followed by module names separated by commas. The  default	destination
+    filename is FORLIB.LIB. Examples:
+
+	 *NEWLIB=FILE1 <MOD2>, FILE3,TEST
+
+	 *SIN,COS,TAN,ATAN
+
+    Any command specifying  a  set  of	modules  concatenates  the  modules
+    selected  onto  the  end  of  the  last  destination  filename   given.
+    Therefore,
+
+	 *FILE1,FILE2 <BIGSUB>, TEST
+
+    is equivalent to
+
+	 *FILE1
+	 *FILE2 <BIGSUB>
+	 *TEST
+
+
+    5.1.1  Modules
+
+    A module is typically a FORTRAN or COBOL subprogram, main program or  a
+    MACRO-80 assembly that contains ENTRY statements.
+
+    The primary function of LIB-80 is to concatenate modules in .REL  files
+    to form a new library.  In	order  to  extract  modules  from  previous
+    libraries or .REL files, a powerful syntax has been devised to  specify
+    ranges of modules within a .REL file.
+
+    The simplest way to specify a module within a file is simply to use the
+    name of the module. For example:
+
+	 SIN
+
+    But a relative quantity plus  or  minus  255  may  also  be  used.	For
+    example:
+
+	 SIN+1
+
+    specifies the module after SIN and
+
+	 SIN-1
+
+    specifies the one before it.
+
+    Ranges of modules may also be specified by using two dots:
+
+	 ..SIN means all modules up to and including SIN.
+
+	 SIN.. means all modules from SIN to the end of the file.
+
+	 SIN..COS means SIN and COS and all the modules in between.
+
+    Ranges of modules and relative offsets may also be used in combination:
+
+	 SIN+1..COS-1
+
+    To select a given module from a file, use the name of the file followed
+    by the module(s) specified enclosed in angle brackets and separated  by
+    commas:
+
+	 FORLIB <SIN..COS>
+
+		 or
+
+	 MYLIB.REL <TEST>
+
+		 or
+
+	 BIGLIB.REL <FIRST,MIDDLE,LAST>
+
+		 etc.
+
+    If no modules are selected from a file, the all the modules in the file
+    are selected:
+
+	  TESTLIB.REL
+
+
+
+    5.2  LIB-80 SWITCHES
+
+
+				       NOTE
+
+			  /E will destroy your	current
+			  library if there  is	no  new
+			  library  under  construction.
+			  Exit LIB-80  using  Control-C
+			  if you are not  revising  the
+			  library.
+
+
+    A number of switches  are  used  to  control  LIB-80  operation.  These
+    switches are always preceded by a slash.
+
+	 /O   Octal - set Octal typeout mode for /L command.
+
+	 /H   Hex - set Hex typeout for /L command (default).
+
+	 /U   List the symbols which would remain  undefined  on  a  search
+	      through the file specified.
+
+	 /L   List  the  modules  in  the  files  specified   and    symbol
+	      definitions the contain.
+
+	 /C   (Create) Throw away the library under construction and  start
+	      over.
+
+	 /E   Exit to  CP/M.  The  library  under  construction  (.LIB)  is
+	      revised to .REL and any previous copy is deleted.
+
+
+				       NOTE
+
+			  /E will destroy  you	current
+			  library if there  is	no  new
+			  library  under  construction.
+			  Exit LIB-80  using  Control-C
+			  if you are not  revising  the
+			  library.
+
+	 /R   Rename - same as /E but does not exit to CP/M on	completion.
+
+
+
+    5.3  LIB-80 LISTINGS
+
+    To list the contents of a file in cross reference format, use /L:
+
+	 *FORLIB/L
+
+    When building libraries, it is important to order the modules such that
+    any  intermodule  references  are  "forward".  That  is,   the   module
+    containing the global reference should physically appear ahead  of	the
+    module containing the entry point. Otherwise, LINK-80 may  not  satisfy
+    all global references on a single pass through the library.
+
+    Use /U to list the symbols which could be undefined in  a  single  pass
+    through a library.	If  a  module  in  the	library  makes	a  backward
+    reference to a symbol in another module,  /U  will	list  that  symbol.
+    Example:
+
+	 *SYSLIB/U
+
+    NOTE: Since certain modules in the standard FORTRAN and  COBOL  systems
+    are always force-loaded, they will be listed as undefined  by  /U,	but
+    will not cause a problem when loading FORTRAN or COBOL programs.
+
+    Listings are currently always sent to the terminal;  use  control-P  to
+    send the listing to the printer.
+
+
+
+    5.4  SAMPLE LIB SESSION
+
+	     BUILDING A LIBRARY:
+
+		   A>LIB
+		   *TRANLIB=SIN,COS,TAN,ATAN,ACOG
+		   *EXP
+		   */E
+		   A>
+
+
+	     LISTING A LIBRARY:
+
+		   A>LIB *TRANLIB.LIB/U
+		   *TRANLIB.LIB/U
+		       .
+		       .
+		       .
+		   (List of symbols in TRANLIB.LIB)
+		       .
+		       .
+		       .
+		   *Control-C
+		   A>
+
+
+
+
+    5.5  SUMMARY OF SWITCHES AND SYNTAX
+
+    /O	Octal - set listing radix
+    /H	Hex - set listing radix
+    /U	List undefineds
+    /L	List cross reference
+    /C	Create - start LIB over
+    /E	Exit - rename .LIB to .REL and exit
+    /R	Rename - Rename .LIB to .REL
+
+
+    module::=module name [+ or - number]
+
+    module sequence ::=
+
+    module | ..module | module.. | module1..module2
+
+    file specification::=filename [<module sequence>[,<module sequence>]]
+
+    command::= [library filename=] [list of file specifications]
+							[list of switches]
+
+
+
+
+				   APPENDIX A
+
+			    TEKDOS Operating System
+
+
+    The command formats for MACRO-80, LINK-80 and CREF-80  differ  slightly
+    under the TEKDOS operating system.
+
+
+    A.1  TEKDOS COMMAND FILES
+
+    The files F80, M80, and C80 are actually TEKDOS command files  for	the
+    compiler,	assembler,   loader,   and   cross   reference	  programs,
+    respectively. These command files set  the	emulation  mode  to  0	and
+    select the Z-80 assembler processor (see  TEKDOS  documentation),  then
+    execute the appropriate program file. You will note that all  of  these
+    command files are set up to execute the Microsoft programs	from  drive
+    1. Link-80 will also look for the library (FORLIB) on drive 1.  If	you
+    wish to exectute any of this software from drive 0,  the  command  file
+    must be edited and LINK-80 should be given an explicit  library  search
+    directive "FORLIB-S". (See Section 4.2.1 of this manual.)
+
+
+
+    A.2  MACRO-80
+
+    The M80 assembler accepts command lines only. A prompt is not displayed
+    and interactive commands are  not  accepted.  Commands  have  the  same
+    format as TEKDOS assembler commands; i.e., three  filenames  or  device
+    name parameters plus optional switches.
+
+    M80 [objfile] [lstfile] sourcefile [sw1] [sw2...]
+
+    The object ans listing file parameters are optional. These	files  will
+    not be created  if	the  parameters  are  omitted,	however  any  error
+    messages will still be displayed on the console. The available switches
+    are as described in Chapter 2 of this manual, except that the  switches
+    are delimited by commas or spaces instead of slashes.
+
+
+
+
+
+				     -over-
+
+
+    Typed  by  PtB,  89/4,  please  spread  as	wide  as  possible,   among
+    programmers and whoever could use this manual.
+
+
+
+---------------------------+
+Roderik Muit               |
+                           |
+Email: RMUIT@ET.TUDelft.NL |
+
+
+

@@ -1,0 +1,8 @@
+
+h3	.long
+
+p	This pseudo instruction inserts a single or a series of 4-byte long words into the code. Long words are stored with their least significant byte first. This means, $12345678 is stored as $78, $56, $34, $12. 
+
+p	If you need them to be stored 'as seen' then use the 'defm' pseudo instruction.
+
+	

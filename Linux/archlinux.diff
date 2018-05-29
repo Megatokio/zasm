@@ -1,0 +1,56 @@
+diff --git a/Linux/Makefile b/Linux/Makefile
+index 8d28c03..884277e 100755
+--- a/Linux/Makefile
++++ b/Linux/Makefile
+@@ -12,7 +12,6 @@ LINK          = g++
+ LFLAGS        = 
+ LIBS          = $(SUBLIBS) -lpthread 
+ 
+-
+ OBJECTS       = \
+ 		Error.o \
+ 		Label.o \
+@@ -27,7 +26,7 @@ OBJECTS       = \
+ 		Z80Header.o \
+ 		Macro.o \
+ 		cstrings.o \
+-		abort.o \
++		exceptions.o \
+ 		errors.o \
+ 		log.o \
+ 		FD.o \
+@@ -88,14 +87,14 @@ Macro.o:
+ cstrings.o: 
+ 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cstrings.o ../Libraries/cstrings/cstrings.cpp
+ 
+-abort.o: 
+-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o abort.o ../Libraries/kio/abort.cpp
++exceptions.o: 
++	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o exceptions.o ../Libraries/kio/exceptions.cpp
+ 
+ errors.o: 
+ 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o errors.o ../Libraries/kio/errors.cpp
+ 
+ log.o: 
+-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o log.o ../Libraries/kio/log.cpp
++	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o log.o ../Libraries/unix/log.cpp
+ 
+ FD.o: 
+ 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o FD.o ../Libraries/unix/FD.cpp
+@@ -107,13 +106,13 @@ files.o:
+ 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o files.o ../Libraries/unix/files.cpp
+ 
+ z80_clock_cycles.o: 
+-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_clock_cycles.o ../Libraries/Z80/z80_clock_cycles.cpp
++	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_clock_cycles.o ../Libraries/Z80/goodies/z80_clock_cycles.cpp
+ 
+ z80_major_opcode.o: 
+-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_major_opcode.o ../Libraries/Z80/z80_major_opcode.cpp
++	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_major_opcode.o ../Libraries/Z80/goodies/z80_major_opcode.cpp
+ 
+ z80_opcode_length.o: 
+-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_opcode_length.o ../Libraries/Z80/z80_opcode_length.cpp
++	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_opcode_length.o ../Libraries/Z80/goodies/z80_opcode_length.cpp
+ 
+ 
+ 

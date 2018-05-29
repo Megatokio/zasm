@@ -1,0 +1,16 @@
+
+h3	Z180 instructions
+
+p	These are the instructions added in the Z180 / HD64180 cpu.
+
+pre	in0  R,(N)		R = B C D E H L F A
+    mult RR			RR = BC DE HL SP
+    out0 (N),R		R = B C D E H L A
+    otim		
+    otdm		
+    otimr		
+    otdmr		    
+    slp			
+    tst  R			R = B C D E H L (HL) A
+    tst  N
+    tstio N

@@ -1,0 +1,291 @@
+\chapter{Task 0: Pac Tiny User Interface (PTUI)}
+\label{chp:task0}
+
+This chapter implements the GUI for the system called ``PTUI''. This
+task will be loaded into the system as task number [[0]].
+
+
+\section{Graphics}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.8]{../gfx/pac_1.pdf}
+\caption{Graphics Bank 1: Tile Graphics}
+\label{fig:gfxbank1}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.8]{../gfx/pac_1c.pdf}
+\caption{Bank 1 Checkerboard Image}
+\label{fig:gfxbank1c}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.8]{../gfx/pac_2.pdf}
+\caption{Graphics Bank 2: Sprite Graphics}
+\label{fig:gfxbank2}
+\end{center}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.8]{../gfx/pac_2c.pdf}
+\caption{Bank 2 Checkerboard Image}
+\label{fig:gfxbank2c}
+\end{center}
+\end{figure}
+
+As you can see in figures \ref{fig:gfxbank1} - \ref{fig:gfxbank2c},
+The GUI widgets, window ornamentations, and cursor are stored in
+various locations in the graphics banks. (Use the checkerboard
+image to identify the sprite numbers for each of the graphical
+elements.
+
+The tile graphics in bank 1, figure \ref{fig:gfxbank1} are pretty
+basic.  It simply contains alphanumerics for text, as well as the
+widgets needed for the windows.
+
+The sprite graphics in bank 2, figure \ref{fig:gfxbank2} contain
+just the cursor that the joystick will be moving around for the
+GUI.
+
+These banks are the same for Pac-Man and Pengo.  Pengo has one
+other character bank, and one other sprite bank, both of which are
+not used for this task.
+
+This next set of blocks defines those graphical element reference
+numbers, as well as the colors for those elements.
+
+<<Task 0 constants>>=
+	; GUI constants
+<<GUI cursor and wallpaper>>
+<<GUI flags>>
+<<GUI frame and dragbar>>
+<<GUI widgets>>
+<<GUI widget types>>
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Cursor and Wallpaper}
+\label{sec:guicursorwallpaper}
+
+<<GUI cursor and wallpaper>>=
+    ; cursor and wallpaper
+	PcursorS 	=    0	; sprite 0 for the cursor
+	PcursorC 	=    9	; color 9 for the cursor
+
+	CrosshFS	=    1	; crosshair for window movement
+	CrosshC		= 0x09	; crosshair color
+
+	PwpS     	=  162	; wallpaper sprite
+	PwpC     	= 0x10	; wallpaper color 0x13- blues
+
+	LlamaC   	= 0x10	; llama color  (might be the same as PwpC above)
+	LlamaS		= 0x7b	; base of llama tile
+	LlamaFS		=    2  ; llama floating sprite
+	CprtC    	= 0x14	; copyright color 11
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Flags}
+<<GUI flags>>=
+    ; flags
+	F_Noframe 	=    1	; no frame in render (hard flag)
+	F_Frame  	=    2	; frame in render (hard flag)
+
+	F_Dirty  	=    1	; frame needs redraw (soft flag)
+	F_Focus  	=    2	; frame is capturing focus currently
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Frame and Dragbar}
+
+<<GUI frame and dragbar>>=
+    ; -- frame widgets --
+	; close
+	PcloseS  	=  128	; close widget sprite
+	PcloseCS 	=    1	; close widget selected color (5)
+	PcloseCU 	= 0x1e	; close widget unselected color
+
+	; raise
+	PraiseS  	=  131	; raise widget sprite
+	PraiseCS 	=    1	; raise widget selected color (5)
+	PraiseCU 	=  0xc	; raise widget unselected color
+
+    ; -- frame ornaments --
+	PfrmTSel 	=    9	; dragbar text selected color 0x14 0xb
+	PfrmTUns 	=    1	; dragbar text unselected color
+
+	PfrmCSel 	=    1	; frame selected color
+	PfrmCUns 	= 0x1e	; frame unselected color
+
+	; bottom corners
+	PSWcornS 	=  138	; southwest corner
+	PSEcornS 	=  139	; southeast corner
+
+	; top corners
+	PNWcornS 	=    1	; northwest corner 140
+	PNEcornS 	=    1	; northeast corner 141
+
+	; top bar
+	PfN_W    	=  129	; top left	(145 or 129)
+	PfN_N    	=   32	; top center	(146 or 32)
+	PfN_E    	=  130	; top right 	(147 or 130)
+
+	; left bar
+	PfW_N    	=  132	; left top
+	PfW_W    	=  133	; left center
+	PfW_S    	=  134	; left bottom
+
+	; right bar
+	PfE_N    	=  135	; right top
+	PfE_E    	=  136	; right center
+	PfE_S    	=  137	; right bottom
+
+	; bottom bar
+	PfS_W    	=  142	; bottom left
+	PfS_S    	=  143	; bottom center
+	PfS_E    	=  144	; bottom right
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Widgets}
+
+
+<<GUI widgets>>=
+    ; widgets
+	PwC      	=    1	; generic widget color
+	PwBGS    	=  127	; window background sprite
+
+	; button
+	PwbLuS   	=  148	; [    button left unselected sprite
+	PwbRuS   	=  149	;    ] button right unselected sprite
+
+	; selected button
+	PwbLsS   	=  150	; [[   button left selected sprite
+	PwbRsS   	=  151	;   ]] button right selected sprite
+
+	; checkbox
+	PwcuS    	=  152	; [ ] checkbox unselected sprite
+	PwcsS    	=  153	; [X] checkbox selected sprite
+
+	; radio box
+	PwruS    	=  154	; ( ) radio unselected sprite
+	PwrsS    	=  155	; (X) radio selected sprite
+
+	; slider
+	PwsnS    	=  156	; === slider notch sprite
+	PwsbS    	=  157	; =|= slider bar sprite
+
+	; progress bar
+	PwpoS    	=  158	;     progress bar open sprite
+	PwpfS    	=  159	; ### progress bar filled sprite
+
+	; spin
+	PwHsS    	=  160	; <>  horizontal spin controller
+	PwVsS    	=  161	; ^v  vertical spin controller
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Widget Type Flags}
+
+<<GUI widget types>>=
+	; Widget Types (for the frame-widget table)
+
+	W_End    	=    0	; end of the widget list
+	W_Frame  	=    1	; window frame (needs to be first)
+
+	 ; frame flags:
+	 FF_Border 	=    1	; use a border on the frame
+	 FF_NClose 	=    2	; no close button
+	 FF_NRaise 	=    4	; no raise button
+
+	W_MButton 	=    2	; momentary button
+	W_SButton 	=    3	; sticky button
+
+	W_Radio  	=    4	; radio button (flags is the group number)
+	W_Check  	=    5	; check button
+
+	W_SText  	=    6	; static text  (text is the idx of a string)
+	W_DText  	=    7	; dynamic text (data is idx of ram)
+
+	W_DInt   	=    8	; dynamic integer (data is idx in the ram)
+
+	W_HSlider 	=    9	; horizontal slider
+	W_VSlider 	=   10	; vertical slider
+
+	W_HSpin  	=   11	; horizontal spin
+	W_VSpin  	=   12	; vertical spin
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation}
+
+<<Task 0 implementation>>=
+	;; Task 0 - PTUI
+; constants 
+<<Task 0 constants>>
+
+; header
+<<Task 0 header>>
+
+; routines
+<<Task 0 process routine>>
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Header}
+
+<<Task 0 header>>=
+t0header:
+	.byte	0xc9, 0x4a, 0x73, 0x4c	; cookie
+	.byte	0x01			; version
+	.byte	0x04			; requested timeslices
+	.word	t0name			; name 
+	.word	t0process		; process function
+
+t0name:
+	.byte	6			; strlen
+	.asciz	"Task 0"		; name
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Process routine}
+
+<<Task 0 process routine>>=
+t0process:
+	ld      hl, #(colram)   ; base of color ram
+	ld      a, #0x01        ; clear the screen to 0x00
+	ld      b, #0x04        ; 256*4 = 1k
+	call    memsetN         ; do it.
+
+t0p2:
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x41	; 'A'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x42	; 'B'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	ld	hl, #(vidram)	; base of video ram
+	ld	a, #0x43	; 'C'
+	ld	b, #0x04	; 256*4 = 1k
+	call	memsetN
+
+	jp	t0p2
+	halt
+@

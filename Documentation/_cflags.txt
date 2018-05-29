@@ -1,0 +1,59 @@
+
+h3	#cflags
+
+pre	#cflags &lt;option1> &lt;option2> ...
+p	Example:
+pre	#cflags	$CFLAGS --reserve-regs-iy
+
+p	Define or modify the flags passed to the c compiler.
+p	This option is only useful if you include c sources.
+
+p	#cflags defines new flags for the c compiler. If you just want to add another option, you can include the current flags with the keyword $CFLAGS.
+
+p	Some flags are always added and cannot be removed with #cflags:
+	The flags '-S' and '-mz80' for sdcc
+	An include directory passed with "-I" on the command line.
+p	After your custom flags zasm adds '-o', the destination file name and the source file name. In case you use a different c compiler (i don't know whether this is possible) then you can modify passing of the source and destination file with the keywords $SOURCE and $DEST.
+
+h5	useful flags for sdcc:
+
+pre	-Dname[=value]        	Define macro
+	-Ipath                	Add to the header include path
+	--nostdinc            	Do not include the standard directory in the #include search path
+	--Werror              	Treat warnings as errors
+	--std-c89             	Use C89 standard (slightly incomplete)
+	--std-sdcc89          	Use C89 standard with SDCC extensions (default)
+	--std-c99             	Use C99 standard (incomplete)
+	--std-sdcc99          	Use C99 standard with SDCC extensions
+	--funsigned-char      	Make "char" unsigned by default
+	--disable-warning nnnn 	Disable specific warning
+	 
+	--callee-saves func[,func,...]  Cause the called function to save registers instead of the caller
+	--all-callee-saves		all functions save and restore all registers
+	--callee-saves-bc		all functions save/restore BC on entry/exit (z80 only)
+	--fomit-frame-pointer	Leave out the frame pointer.
+	--fno-omit-frame-pointer  Never omit frame pointer (z80 only)
+	--stack-probe			insert call to function __stack_probe at each function prologue
+	--no-c-code-in-asm		don't include c-code as comments in the asm file
+	--no-peep-comments		don't include peephole optimizer comments
+	--codeseg name			put code (and const's) in .area _name, e.g. --codeseg CODE => .area _CODE
+	--reserve-regs-iy		Do not use IY (incompatible with --fomit-frame-pointer) (z80 only)
+	 
+	--nogcse              No GCSE optimisation
+	--nolabelopt          No label optimisation
+	--noinvariant         No optimisation of invariants
+	--noinduction         No loop variable induction
+	--nojtbound           No boundary check for jump tables (dangerous)
+	--noloopreverse       No loop reverse optimisation
+	--no-peep             No peephole assembly file optimisation
+	--no-reg-params       Don't some parameters in registers (On some ports)  TODO: z80?
+	--peep-asm            Do peephole optimization on inline assembly
+	--peep-return         Do peephole optimization for return instructions
+	--no-peep-return      No peephole optimization for return instructions
+	--peep-file file	  use this extra peephole file
+	--max-allocs-per-node Maximum number of register assignments considered at each node of the tree decomposition
+	--nolospre            Disable lospre. lospre is an advanced redundancy elimination technique,
+						  essentially an improved variant of global subexpression elimination.
+	--lospre-unsafe-read  Allow unsafe reads in lospre. code may sometimes read from random memory locations.
+						  (should be ok for the z80, because it has no memory mapped i/o)
+	

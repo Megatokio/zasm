@@ -1,0 +1,135 @@
+
+//-----------------------------------------------------------------
+h3	#compress
+
+pre	#compress <segment_name>
+	#compress <segment_name1> to <segment_name2> 
+
+p	new in version 4.1.0
+
+p	This defines that the named code segment or range of code segments shall be compressed using Einar Saukas' "optimal" LZ77 packer. The named segments must be defined before the #compress directive and they must be #code segments. Compression of #data segments makes no sense, as they are not stored in the output file. zasm currently only supports bottom-up compression, where the decompression increments like in 'ldir'. If multiple segments are compressed then all but the first must not have an explicit address set. They must follow each other without any address gap.
+p	Z80 decompressors are included in the zasm distribution or can be downloaded from <a target=_blank href="https://www.dropbox.com/sh/bgtoq6tdwropzzr/AABLP1X6NU9PWBxhgDHHV9y-a/ZX7?dl=0"><i>Einar Saukas' Dropbox</i></a>.
+
+h4	Defined Labels
+
+p	#compress will define some labels for you to use in your source:
+
+h5	#compress SEGMENT
+pre	SEGMENT_csize
+	SEGMENT_cgain
+	SEGMENT_cdelta
+
+h5	#compress SEGMENT1 to SEGMENT2
+pre	SEGMENT1_to_SEGMENT2_size
+	SEGMENT1_to_SEGMENT2_csize
+	SEGMENT1_to_SEGMENT2_cgain
+	SEGMENT1_to_SEGMENT2_cdelta
+
+p	Note: zasm always defines the following labels for all segments:
+pre	SEGMENT
+	SEGMENT_size
+	SEGMENT_end
+
+h5	SEGMENT_size and SEGMENT1_to_SEGMENT2_size
+p	This is the uncompressed size of the segment(s).
+
+h5	SEGMENT_csize and SEGMENT1_to_SEGMENT2_csize
+p	This is the compressed size of the segment(s) as stored in the output file.
+
+h5	SEGMENT_cgain and SEGMENT1_to_SEGMENT2_cgain
+p	This is the difference between uncompressed and compressed size. If it's negative then compression actually increased the size of your data.
+
+h5	SEGMENT_cdelta and SEGMENT1_to_SEGMENT2_cdelta
+p	A common szenario is that the compressed data and decompressed code segment overlap and the decompressed data overwrites the compressed data while it grows. Then the compressed data must be loaded high enough above the decompressed data so that no unprocessed bytes are overwritten. Label 'cdelta' defines the minimum difference between compressed data <u>end</u> and uncompressed data <u>end</u>.
+
+
+h4	Implementation
+
+p	Compression unavoidably leads to relocated code. So let's start with code relocation first.
+p	Imagine you load code at a 'load_address' and move it down to 'code_address' before it is executed:
+
+pre	#code LOADER, load_address
+	loader:	ld		hl, LOADER_end		; address of #code MCODE after loading
+			ld		de, code_address	; to be moved here
+			ld		bc, MCODE_size
+			ldir
+			jp		reset				; = code_address
+	 
+	#code MCODE, code_address
+	reset:	di
+			ld		sp,0
+			...
+	
+
+p	Note: you must be careful to get your label values right. This can be a real headache.
+p	The whole code is loaded to (or initially located at) 'load_address'. Therefore we declare our LOADER segment to start with this physical address, so that all labels inside this segment are right. (currently there's only one label 'loader'). 
+p	The CODE segment is copied to address 'code_address' and executed there. Therefore we declare our CODE segment to start with this physical address, so that all labels inside this segment are right. 
+p	It becomes obvious that source and destination block must not overlap and the loader code must not be overwritten as well, at least not the last 5 bytes: 'ldir' and 'jp reset'.
+p	Since large code loaded from tape can frequently not be loaded high or low enough so that the relocated block does not overwrite the loader, we have to make one first improvement: If we move the block downwards then put the loader at the end else use lddr instead of ldir. The lddr version is not discussed here as it is not yet supported by zxsp. So let's put the loader at the end:
+
+pre	#code MCODE, code_address
+	reset:	di
+			ld		sp,0
+			...
+	 
+	#code LOADER, load_address + MCODE_size
+	loader:	ld		hl, load_address	; #code MCODE after loading
+			ld		de, code_address	; to be moved here
+			ld		bc, MCODE_size
+			ldir
+			jp		reset				; = code_address
+
+
+p	Now let's add compression: This is very similar except that the code on the tape is compressed and therefore the block will grow during 'ldir'.
+
+pre	#code MCODE, code_address
+	reset:		di
+		ld		sp,0
+		...
+	 
+	#code LOADER, load_address + MCODE_<span class=red>c</span>size
+	loader:	ld		hl, load_address		; #code MCODE after loading
+			ld		de, code_address		; to be moved here
+			;ld		bc, MCODE_size			; not reqired
+			call	decompress_zx7_standard	; ldir
+			jp		reset					; = code_address
+	#include "decompress_zx7_standard.s"	; include the zx7 decompressor
+	 
+	#compress MCODE							; define MCODE to be compressed
+	#assert code_address+MCODE_csize+MCODE_cdelta <= load_address+MCODE_csize
+	#assert	MCODE_end+MCODE_cdelta <= LOADER
+
+p	Mind the difference: the LOADER is no longer located at load_address+MCODE_size but now at load_address+MCODE_<span class=red>c</span>size. Right after loading the bytes from load_address to load_address+MCODE_csize are compressed and not executable at all. 
+p	#compress MCODE defines that the code segment 'MCODE' shall be written compressed to the output file.
+p	Finally there's a check to assert that the decompressed code will not overwrite the not yet processed compressed data. Both #asserts are identical in this example.
+
+h4	Resolving Cyclic Dependencies
+
+p	It's not obvious but zasm resolves a cyclic dependency here: As the LOADER address depends on the compressed MCODE size, all code labels in the LOADER segment are not valid until the compressed MCODE size is valid. But the compressed MCODE size cannot be valid unless all labels in the source are valid, because a not-yet valid label may be used in the MCODE segment and the compressed size may change when the label value is finally resolved. Therefore MCODE_csize never becomes valid.
+
+p	zasm uses a 'preliminary' state here to solve this problem and therefore requires at least one more pass to assemble the source. 
+p	Sometimes 'preliminary' labels may toggle between each pass or infinitely grow and grow and grow, depending on your source. Then assembly fails. The way to solve this situation depends on the kind and location of the problem. Frequently the problem results from code alignments in your source. E.g. there is a '.align 2' and in one pass it adds no space, zasm adjusts the segment address by one and now it inserts a byte, annihilating zasm's effort. Similarly the compressed data size can toggle between two values when a label used in the uncompressed code depends on the compressed data size.
+
+p	This can eventually be solved by adding a dummy byte. The effect will not last for ever, if it happens again remove the byte.
+
+h5	__date__ and __time__
+p	Normally the assembly success should be predictable. If the uncompressed code contains assembly-time dependent data, as __date__ and __time__, then assembly may succeed or fail unpredictably: you assemble: it fails, you assemble again: it succeeds, you assemble again: it fails, and so on. Using the 1-byte trick may eliminate the problem for a while, but may also just put this data in a uncompressed section instead.
+
+h4	Compression Time
+
+p	Though the zx7 compression is pretty fast on small code blocks, it can become very slow on larger ones because it has a quadratic time stamp. Additionally larger sources with lots of segments tend to require more passes for the assembler. If assembly time becomes too long then you can do two things:
+p	• Split the compressed blocks. This will speed up assembly time but grow your source, both for additional calls to the decompressor and a not so good compression result.
+	• Store and compress data in separate files and #insert them. This is the traditional method anyway. This is good for static data with no references to other data but does not work if it contains references to non-const labels in the rest of the program. 
+
+h4	Supported Target Files
+
+p	Compression can be used with most file formats. There are certain restrictions on what can be compressed, e.g. the file headers of snapshot files cannot be compressed. While with TAP files the major benefit is the reduced loading time, the major benefit for snapshot files probably is that you can store more game data like levels.
+
+p	Currently (vs. 4.1.0) Z80 files cannot be compressed. This will be implemented as soon as possible.
+
+
+
+
+
+
+

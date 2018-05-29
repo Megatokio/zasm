@@ -1,0 +1,5 @@
+
+h3	include
+
+p	Use of the 'include' pseudo instruction is an alternate syntax for the '#include' assembler directive. 
+	See chapter '#include' for details.

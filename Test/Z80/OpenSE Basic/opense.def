@@ -1,0 +1,779 @@
+; Definitions file for opense.asm
+; Copyright (c) 2011-2012 Andrew Owen
+
+; X80 maths co-processor instruction set (uses binutils style macros)
+
+; parameter definitions
+; (period used to distinguish from assembler commands)
+
+.le	equ	0	; less than or equal
+.ge	equ	1	; greater or equal
+.ne	equ	2	; not equal
+.gt	equ	3	; greater than
+.lt	equ	4	; less than
+.eq	equ	5	; equal
+.lz	equ	2DH	; less than zero
+.gz	equ	2EH	; greater than zero
+
+; instruction macros
+
+.macro	fwait		; stop the Z80
+	rst	28h
+.endm
+
+.macro	fjpt	n	; jump if true
+	defb	0x00, \n - $
+.endm
+
+.macro	fxch		; exchange
+	defb	0x01
+.endm
+
+.macro	fdel		; delete
+	defb	0x02
+.endm
+
+.macro	fsub		; subtract
+	defb	0x03
+.endm
+
+.macro	fmul		; multiply
+	defb	0x04
+.endm
+
+.macro	fdiv		; divide
+	defb	0x05
+.endm
+
+.macro	ftop		; to power
+	defb	0x06
+.endm
+
+.macro	fbor		; binary or
+	defb	0x07
+.endm
+
+.macro	fband		; binary and
+	defb	0x08
+.endm
+
+.macro	fcp	n	; compare (.le ... gtz)
+	defb	0x09 + \n
+.endm
+
+.macro	fadd		; add
+	defb	0x0f
+.endm
+
+.macro	fbands		; binary and string
+	defb	0x10
+.endm
+
+.macro	fcps	n	; compare string (.le to .eq)
+	defb	0x11 + \n
+.endm
+
+.macro	fcat		; concatenate string
+	defb	0x17
+.endm
+
+.macro	fvals		; value string
+	defb	0x18
+.endm
+
+.macro	fusrs		; user string
+	defb	0x19
+.endm
+
+.macro	fread		; read in
+	defb	0x1a
+.endm
+
+.macro	fneg		; negate
+	defb	0x1b
+.endm
+
+.macro	fasc		; character to ASCII
+	defb	0x1c
+.endm
+
+.macro	fval		; value
+	defb	0x1d
+.endm
+
+.macro	flen		; length of string
+	defb	0x1e
+.endm
+
+.macro	fsin		; sine
+	defb	0x1f
+.endm
+
+.macro	fcos		; cosine
+	defb	0x20
+.endm
+
+.macro	ftan		; tangent
+	defb	0x21
+.endm
+
+.macro	fasin		; arcsine
+	defb	0x22
+.endm
+
+.macro	facos		; arccosine
+	defb	0x23
+.endm
+
+.macro	fatan		; arctangent
+	defb	0x24
+.endm
+
+.macro	flogn		; natural logarithm
+	defb	0x25
+.endm
+
+.macro	fexp		; exponential
+	defb	0x26
+.endm
+
+.macro	fint		; integer (rounded down)
+	defb	0x27
+.endm
+
+.macro	fsqrt		; square root
+	defb	0x28
+.endm
+
+.macro	fsgn		; signum
+	defb	0x29
+.endm
+
+.macro	fabs		; absolute value
+	defb	0x2a
+.endm
+
+.macro	fpeek		; PEEK
+	defb	0x2b
+.endm
+
+.macro	fin		; IN
+	defb	0x2c
+.endm
+
+.macro	fusr		; user address
+	defb	0x2d
+.endm
+
+.macro	fstrs		; string
+	defb	0x2e
+.endm
+
+.macro	fchrs		; character
+	defb	0x2f
+.endm
+
+.macro	fnot		; not
+	defb	0x30
+.endm
+
+.macro	fmove		; move
+	defb	0x31
+.endm
+
+.macro	fmod		; modulus
+	defb	0x32
+.endm
+
+.macro	fjp	n	; jump
+	defb	0x33, \n - $
+.endm
+
+.macro	fstk		; stack data
+	defb	0x34
+.endm
+
+.macro	fdjnz	n	; djnz
+	defb	0x35, \n - $
+.endm
+
+.macro	fce		; chip enable
+	defb	0x38
+.endm
+
+.macro	fget		; get
+	defb	0x39
+.endm
+
+.macro	ftrn		; truncate
+	defb	0x3a
+.endm
+
+.macro	fsgl		; single operation
+	defb	0x3b
+.endm
+
+.macro	fetof		; e to floating-point
+	defb	0x3c
+.endm
+
+.macro	frstk		; restack
+	defb	0x3d
+.endm
+
+.macro	fstk0		; stack 0
+	defb	0xa0
+.endm
+
+.macro	fstk1		; stack 1
+	defb	0xa1
+.endm
+
+.macro	fstk_5		; stack half
+	defb	0xa2
+.endm
+
+.macro	fstkpix_5	; stack pi/2
+	defb	0xa3
+.endm
+
+.macro	fstk10		; stack 10
+	defb	0xa4
+.endm
+
+.macro	fst	n	; store (mem 0-5)
+	defb	0xc0 + \n
+.endm
+
+.macro	fgt	n	; get (mem 0-5)
+	defb	0xe0 + \n
+.endm
+
+
+; colours
+
+black			equ	0x00
+blue			equ	0x01
+red				equ	0x02
+magenta			equ	0x03
+green			equ	0x04
+cyan			equ	0x05
+yellow			equ	0x06
+white			equ	0x07
+
+
+; control characters
+
+ctrl_true_vid	equ	0x04
+ctrl_inv_vid	equ	0x05
+ctrl_caps		equ	0x06
+ctrl_comma		equ	0x06
+ctrl_edit		equ	0x07
+ctrl_left		equ	0x08
+ctrl_right		equ	0x09
+ctrl_down		equ	0x0a
+ctrl_up			equ	0x0b
+ctrl_rubout		equ	0x0c
+ctrl_n_l		equ	0x0d
+ctrl_symbol		equ	0x0e
+ctrl_number		equ	0x0e
+ctrl_graphics	equ	0x0f
+ctrl_pen		equ	0x10
+ctrl_paper		equ	0x11
+ctrl_flash		equ	0x12
+ctrl_bright		equ	0x13
+ctrl_inverse	equ	0x14
+ctrl_over		equ	0x15
+ctrl_at			equ	0x16
+ctrl_tab		equ	0x17
+
+
+; printable characters
+
+pchr_pound		equ	'`'
+pchr_copyright	equ	0x7f
+
+
+;canned tokens
+
+ctk_out			equ	0x00
+ctk_lprint		equ	0x01
+ctk_llist		equ	0x02
+ctk_stop		equ	0x03
+ctk_read		equ	0x04
+ctk_data		equ	0x05
+ctk_restore		equ	0x06
+ctk_new			equ	0x07
+
+; 0x08 - still used as backspace
+
+ctk_continue	equ	0x09
+ctk_dim			equ	0x0a
+ctk_rem			equ	0x0b
+ctk_for			equ	0x0c
+
+; 0x0d - still used as enter 
+
+ctk_gosub		equ	0x0e
+ctk_input		equ	0x0f
+ctk_load		equ	0x10
+ctk_list		equ	0x11
+ctk_let			equ	0x12
+ctk_pause		equ	0x13
+ctk_next		equ	0x14
+ctk_poke		equ	0x15
+ctk_print		equ	0x16
+ctk_plot		equ	0x17
+ctk_run			equ	0x18
+ctk_save		equ	0x19
+ctk_randomize	equ	0x1a
+ctk_if			equ	0x1b
+ctk_cls			equ	0x1c
+ctk_draw		equ	0x1d
+ctk_clear		equ	0x1e
+ctk_return		equ	0x1f
+
+
+; tokens
+
+tk_rnd			equ	0xa5
+tk_inkey_str	equ	0xa6
+tk_pi			equ	0xa7
+tk_fn			equ	0xa8
+tk_point		equ	0xa9
+tk_screen_str	equ	0xaa
+tk_attr			equ	0xab
+tk_at			equ	0xac
+tk_tab			equ	0xad
+tk_val_str		equ	0xae
+tk_code			equ	0xaf
+tk_val			equ	0xb0
+tk_len			equ	0xb1
+tk_sin			equ	0xb2
+tk_cos			equ	0xb3
+tk_tan			equ	0xb4
+tk_asn			equ	0xb5
+tk_acs			equ	0xb6
+tk_atn			equ	0xb7
+tk_ln			equ	0xb8
+tk_exp			equ	0xb9
+tk_int			equ	0xba
+tk_sqr			equ	0xbb
+tk_sgn			equ	0xbc
+tk_abs			equ	0xbd
+tk_peek			equ	0xbe
+tk_in			equ	0xbf
+tk_usr			equ	0xc0
+tk_str_str		equ	0xc1
+tk_chr_str		equ	0xc2
+tk_not			equ	0xc3
+tk_bin			equ	0xc4
+tk_or			equ	0xc5
+tk_and			equ	0xc6
+tk_l_eql		equ	0xc7
+tk_gr_eq		equ	0xc8
+tk_neql			equ	0xc9
+tk_line			equ	0xca
+tk_then			equ	0xcb
+tk_to			equ	0xcc
+tk_step			equ	0xcd
+tk_deffn		equ	0xce
+tk_dir			equ	0xcf
+tk_format		equ	0xd0
+tk_move			equ	0xd1
+tk_erase		equ	0xd2
+tk_open			equ	0xd3
+tk_close		equ	0xd4
+tk_merge		equ	0xd5
+tk_verify		equ	0xd6
+tk_beep			equ	0xd7
+tk_circle		equ	0xd8
+tk_pen			equ	0xd9
+tk_paper		equ	0xda
+tk_flash		equ	0xdb
+tk_bright		equ	0xdc
+tk_inverse		equ	0xdd
+tk_over			equ	0xde
+tk_out			equ	0xdf
+tk_lprint		equ	0xe0
+tk_llist		equ	0xe1
+tk_stop			equ	0xe2
+tk_read			equ	0xe3
+tkdata			equ	0xe4
+tk_restore		equ	0xe5
+tk_new			equ	0xe6
+tk_border		equ	0xe7
+tk_continue		equ	0xe8
+tk_dim			equ	0xe9
+tk_rem			equ	0xea
+tk_for			equ	0xeb
+tk_goto			equ	0xec
+tk_gosub		equ	0xed
+tk_input		equ	0xee
+tk_load			equ	0xef
+tk_list			equ	0xf0
+tk_let			equ	0xf1
+tk_pause		equ	0xf2
+tk_next			equ	0xf3
+tk_poke			equ	0xf4
+tk_print		equ	0xf5
+tk_plot			equ	0xf6
+tk_run			equ	0xf7
+tk_save			equ	0xf8
+tk_randomize	equ	0xf9
+tk_if			equ	0xfa
+tk_cls			equ	0xfb
+tk_draw			equ	0xfc
+tk_clear		equ	0xfd
+tk_return		equ	0xfe
+tk_copy			equ	0xff
+tk_delete		equ	0x00
+tk_edit			equ	0x01
+tk_renum		equ	0x02
+tk_palette		equ	0x03
+tk_sound		equ	0x04
+tk_onerr		equ	0x05
+
+
+; i/o ports
+
+ula				equ	0xfe
+scld			equ	0xff
+ay_reg			equ	0xc0f5
+ay_tmxdat		equ	0x00f6
+ay_128dat		equ	0xbffd
+ulaplus_reg		equ	0xbf3b
+ulaplus_dat		equ	0xff3b
+
+
+; restarts
+
+start			equ	0x00
+error_1			equ	0x08
+print_a			equ	0x10
+get_ch			equ	0x18
+next_ch			equ	0x20
+fp_calc			equ	0x28
+bc_spaces		equ	0x30
+interrupt		equ	0x38
+
+
+; command classes
+
+no_f_ops		equ	0x00
+var_rqd			equ	0x01
+expr_num_str	equ	0x02
+num_exp_0		equ	0x03
+chr_var			equ	0x04
+var_syn			equ	0x05
+num_exp			equ	0x06
+col_offst		equ	0x07
+two_c_s_num		equ	0x08
+two_csn_col		equ	0x09
+str_exp			equ	0x0a
+tap_offst		equ	0x0b
+numexp_nofops	equ	0x0c
+
+
+; errors
+
+OK						equ	0xff
+NEXT_without_FOR		equ	0x00
+Undefined_variable		equ	0x01
+Bad_subscript			equ	0x02
+Out_of_memory			equ	0x03
+Off_screen				equ	0x04
+Number_too_large		equ	0x05
+RETURN_without_GOSUB	equ	0x06
+End_of_file				equ	0x07
+STOP_statement			equ	0x08
+Bad_argument			equ	0x09
+Integer_out_of_range	equ	0x0a
+Syntax_error			equ	0x0b
+BREAK_CONTINUE_repeats	equ	0x0c
+End_of_DATA				equ	0x0d
+Bad_filename			equ	0x0e
+No_room_for_line		equ	0x0f
+STOP_in_INPUT			equ	0x10
+FOR_without_NEXT		equ	0x11
+Bad_device				equ	0x12
+Bad_colour				equ	0x13
+BREAK_into_program		equ	0x14
+Bad_CLEAR_address		equ	0x15
+Missing_statement		equ	0x16
+Bad_stream				equ	0x17
+Undefined_FN			equ	0x18
+Parameter_error			equ	0x19
+Loading_error			equ	0x1a
+
+
+; system variables
+
+bitmap			equ	0x4000
+attrmap			equ	0x5800
+palbuf			equ	0x5b00
+
+oldsp			equ	0x5bfe		; (iy - 0x38)
+kstate			equ	oldsp + 2	; (iy - 0x3a)
+kstate_4		equ	kstate + 4	; (iy - 0x36)
+lastk			equ	kstate + 8	; (iy - 0x32)
+repdel			equ	lastk + 1	; (iy - 0x31)
+repper			equ	repdel + 1	; (iy - 0x30)
+defadd			equ	repper + 1	; (iy - 0x2f)
+defadd_h		equ	defadd + 1	; (iy - 0x2e)
+kdata			equ	defadd + 2	; (iy - 0x2d)
+vdudata			equ	kdata + 1	; (iy - 0x2c)
+vdudata_h		equ	vdudata + 1	; (iy - 0x2b)
+strms			equ	vdudata + 2	; (iy - 0x2a)
+strms_fe		equ	strms + 2	; (iy - 0x28)
+strms_ff		equ	strms + 4	; (iy - 0x26)
+strms_00		equ	strms + 6	; (iy - 0x24)
+strms_01		equ	strms + 8	; (iy - 0x22)
+strms_02		equ	strms + 10	; (iy - 0x20)
+strms_03		equ	strms + 12	; (iy - 0x1e)
+strms_04		equ	strms + 14	; (iy - 0x1c)
+strms_05		equ	strms + 16	; (iy - 0x1a)
+strms_06		equ	strms + 18	; (iy - 0x18)
+strms_07		equ	strms + 20	; (iy - 0x16)
+strms_08		equ	strms + 22	; (iy - 0x14)
+strms_09		equ	strms + 24	; (iy - 0x12)
+strms_10		equ	strms + 26	; (iy - 0x10)
+strms_11		equ	strms + 28	; (iy - 0x0e)
+strms_12		equ	strms + 30	; (iy - 0x0c)
+strms_13		equ	strms + 32	; (iy - 0x0a)
+strms_14		equ	strms + 34	; (iy - 0x08)
+strms_15		equ	strms + 36	; (iy - 0x06)
+chars			equ	strms + 38	; (iy - 0x04)
+errsound		equ	chars + 2	; (iy - 0x02)
+click			equ	errsound + 1; (iy - 0x01)
+errnr			equ	click + 1	; (iy + 0x00)
+flags			equ	errnr + 1	; (iy + 0x01)
+dflag			equ	flags + 1	; (iy + 0x02)
+errsp			equ	dflag + 1	; (iy + 0x03)
+listsp			equ	errsp + 2	; (iy + 0x05)
+mode			equ	listsp + 2	; (iy + 0x07)
+newppc			equ	mode + 1	; (iy + 0x08)
+nsppc			equ	newppc + 2	; (iy + 0x0a)
+ppc				equ	nsppc + 1	; (iy + 0x0b)
+subppc			equ	ppc + 2		; (iy + 0x0d)
+bordcr			equ	subppc + 1	; (iy + 0x0e)
+eppc			equ	bordcr + 1	; (iy + 0x0f)
+eppc_h			equ	eppc + 1	; (iy + 0x10)
+vars			equ	eppc + 2	; (iy + 0x11)
+dest			equ	vars + 2	; (iy + 0x13)
+chans			equ	dest + 2	; (iy + 0x15)
+curchl			equ	chans + 2	; (iy + 0x17)
+prog			equ	curchl + 2	; (iy + 0x19)
+nxtline			equ	prog + 2	; (iy + 0x1b)
+datadd			equ	nxtline + 2	; (iy + 0x1d)
+eline			equ	datadd + 2	; (iy + 0x1f)
+kcur			equ	eline	+2	; (iy + 0x21)
+chadd			equ	kcur + 2	; (iy + 0x23)
+xptr			equ	chadd + 2	; (iy + 0x25)
+worksp			equ	xptr + 2	; (iy + 0x27)
+stkbot			equ	worksp + 2	; (iy + 0x29)
+stkend			equ	stkbot + 2	; (iy + 0x2b)
+stkend_h		equ	stkend + 1	; (iy + 0x2c)
+breg			equ	stkend + 2	; (iy + 0x2d)
+mem				equ	breg + 1	; (iy + 0x2e)
+klflag			equ	mem + 2		; (iy + 0x30)
+dfsz			equ	klflag + 1	; (iy + 0x31)
+sdtop			equ	dfsz + 1	; (iy + 0x32)
+coppc			equ	sdtop + 2	; (iy + 0x34)
+cosppc			equ	coppc + 2	; (iy + 0x36)
+flage			equ	cosppc + 1	; (iy + 0x37)
+stril			equ	flage + 1	; (iy + 0x38)
+taddr			equ	stril + 2	; (iy + 0x3a)
+seed			equ	taddr + 2	; (iy + 0x3c)
+frames			equ	seed + 2	; (iy + 0x3e)
+frames_h		equ	frames + 2	; (iy + 0x40)
+udg				equ	frames + 3	; (iy + 0x41)
+xcoord			equ	udg + 2		; (iy + 0x43)
+ycoord			equ	xcoord + 1	; (iy + 0x44)
+onerrflag		equ	xcoord + 2	; (iy + 0x45)
+onerrflag_h		equ	xcoord + 3	; (iy + 0x46)
+user			equ	onerrflag + 2;(iy + 0x47)
+echoe			equ	user + 1	; (iy + 0x48)
+dfcc			equ	echoe + 2	; (iy + 0x4a)
+dfccl			equ	dfcc + 2	; (iy + 0x4c)
+sposnu			equ	dfccl + 2	; (iy + 0x4e)
+sposnu_h		equ	sposnu + 1	; (iy + 0x4f)
+sposnl			equ	sposnu + 2	; (iy + 0x50)
+sposnl_h		equ	sposnl + 1	; (iy + 0x51)
+scrct			equ	sposnl + 2	; (iy + 0x52)
+attrp			equ	scrct + 1	; (iy + 0x53)
+maskp			equ	attrp + 1	; (iy + 0x54)
+attrt			equ	maskp + 1	; (iy + 0x55)
+maskt			equ	attrt + 1	; (iy + 0x56)
+pflag			equ	maskt + 1	; (iy + 0x57)
+membot			equ	pflag + 1	; (iy + 0x58)
+mem_0_1			equ	membot + 1	; (iy + 0x59)
+mem_0_2			equ	membot + 2	; (iy + 0x5a)
+mem_0_3			equ	membot + 3	; (iy + 0x5b)
+mem_0_4			equ	membot + 4	; (iy + 0x5c)
+mem_1			equ	membot + 5	; (iy + 0x5d)
+mem_1_1			equ	membot + 6	; (iy + 0x5e)
+mem_1_2			equ	membot + 7	; (iy + 0x5f)
+mem_1_3			equ	membot + 8	; (iy + 0x60)
+mem_1_4			equ	membot + 9	; (iy + 0x61)
+mem_2			equ	membot + 10	; (iy + 0x62)
+mem_2_1			equ	membot + 11	; (iy + 0x63)
+mem_2_2			equ	membot + 12	; (iy + 0x64)
+mem_2_3			equ	membot + 13	; (iy + 0x65)
+mem_2_4			equ	membot + 14	; (iy + 0x66)
+mem_3			equ	membot + 15	; (iy + 0x67)
+mem_3_1			equ	membot + 15	; (iy + 0x68)
+mem_3_2			equ	membot + 17	; (iy + 0x69)
+mem_3_3			equ	membot + 18	; (iy + 0x6a)
+mem_3_4			equ	membot + 19	; (iy + 0x6b)
+mem_4			equ	membot + 20	; (iy + 0x6c)
+mem_4_1			equ	membot + 21	; (iy + 0x6d)
+mem_4_2			equ	membot + 22	; (iy + 0x6e)
+mem_4_3			equ	membot + 23	; (iy + 0x6f)
+mem_4_4			equ	membot + 24	; (iy + 0x70)
+mem_5			equ	membot + 25	; (iy + 0x71)
+mem_5_1			equ	membot + 26	; (iy + 0x72)
+mem_5_2			equ	membot + 27	; (iy + 0x73)
+mem_5_3			equ	membot + 28	; (iy + 0x74)
+mem_5_4			equ	membot + 29	; (iy + 0x75)
+nmiadd			equ	membot + 30	; (iy + 0x76)
+ramtop			equ	nmiadd + 2	; (iy + 0x78)
+pramt			equ	ramtop + 2	; (iy + 0x7a)
+channels		equ	pramt + 2
+
+
+; system variable IY offsets
+
+; negative
+
+_oldsp			equ 0x38
+_kstate			equ	0x3a
+_kstate_4		equ	0x36
+_lastk			equ	0x32
+_repdel			equ	0x31
+_repper			equ	0x30
+_defadd			equ	0x2f
+_defadd_h		equ	0x2e
+_kdata			equ	0x2d
+_vdudata		equ	0x2c
+_vdudata_h		equ	0x2b
+_strms			equ	0x2a
+_strms_fe		equ	0x28
+_strms_ff		equ	0x26
+_strms_00		equ	0x24
+_strms_01		equ	0x22
+_strms_02		equ	0x20
+_strms_03		equ	0x1e
+_strms_04		equ	0x1c
+_strms_05		equ	0x1a
+_strms_06		equ	0x18
+_strms_07		equ	0x16
+_strms_08		equ	0x14
+_strms_09		equ	0x12
+_strms_10		equ	0x10
+_strms_11		equ	0x0e
+_strms_12		equ	0x0c
+_strms_13		equ	0x0a
+_strms_14		equ	0x08
+_strms_15		equ	0x06
+_chars			equ	0x04
+_errsound		equ	0x02
+_click			equ	0x01
+
+; positive
+
+_errnr			equ	0x00
+_flags			equ	0x01
+_dflag			equ	0x02
+_errsp			equ	0x03
+_listsp			equ	0x05
+_mode			equ	0x07
+_newppc			equ	0x08
+_nsppc			equ	0x0a
+_ppc			equ	0x0b
+_subppc			equ	0x0d
+_bordcr			equ	0x0e
+_eppc			equ	0x0f
+_eppc_h			equ	0x10
+_vars			equ	0x11
+_dest			equ	0x13
+_chans			equ	0x15
+_curchl			equ	0x17
+_prog			equ	0x19
+_nxtline		equ	0x1b
+_datadd			equ	0x1d
+_eline			equ	0x1f
+_kcur			equ	0x21
+_kcur_h			equ	0x22
+_chadd			equ	0x23
+_xptr			equ	0x25
+_xptr_h			equ	0x26
+_worksp			equ	0x27
+_stkbot			equ	0x29
+_stkend			equ	0x2b
+_stkend_h		equ	0x2c
+_breg			equ	0x2d
+_mem			equ	0x2e
+_klflag			equ	0x30
+_dfsz			equ	0x31
+_sdtop			equ	0x32
+_coppc			equ	0x34
+_cosppc			equ	0x36
+_flage			equ	0x37
+_stril			equ	0x38
+_taddr			equ	0x3a
+_seed			equ	0x3c
+_frames			equ	0x3e
+_frames_h		equ	0x40
+_udg			equ	0x41
+_xcoord			equ	0x43
+_ycoord			equ	0x44
+_onerrflag		equ	0x45
+_onerrflag_h	equ	0x46
+_user			equ	0x47
+_echoe			equ	0x48
+_dfcc			equ	0x4a
+_dfccl			equ	0x4c
+_sposnu			equ	0x4e
+_sposnu_h		equ	0x4f
+_sposnl			equ	0x50
+_sposnl_h		equ	0x51
+_scrct			equ	0x52
+_attrp			equ	0x53
+_maskp			equ	0x54
+_attrt			equ	0x55
+_maskt			equ	0x56
+_pflag			equ	0x57
+_membot			equ	0x58
+_mem_0_1		equ	0x59
+_mem_0_2		equ	0x5a
+_mem_0_3		equ	0x5b
+_mem_0_4		equ	0x5c
+_mem_1			equ	0x5d
+_mem_1_1		equ	0x5e
+_mem_1_2		equ	0x5f
+_mem_1_3		equ	0x60
+_mem_1_4		equ	0x61
+_mem_2			equ	0x62
+_mem_2_1		equ	0x63
+_mem_2_2		equ	0x64
+_mem_2_3		equ	0x65
+_mem_2_4		equ	0x66
+_mem_3			equ	0x67
+_mem_3_1		equ	0x68
+_mem_3_2		equ	0x69
+_mem_3_3		equ	0x6a
+_mem_3_4		equ	0x6b
+_mem_4			equ	0x6c
+_mem_4_1		equ	0x6d
+_mem_4_2		equ	0x6e
+_mem_4_3		equ	0x6f
+_mem_4_4		equ	0x70
+_mem_5			equ	0x71
+_mem_5_1		equ	0x72
+_mem_5_2		equ	0x73
+_mem_5_3		equ	0x74
+_mem_5_4		equ	0x75
+_nmiadd			equ	0x76
+_ramtop			equ	0x78
+_pramt			equ	0x7a

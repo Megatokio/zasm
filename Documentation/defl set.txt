@@ -1,0 +1,35 @@
+
+h3	defl, set and '='
+	defl, set
+	
+p	Define a redefinable named value:
+
+pre	<name>[:][:] set  <value>
+	<name>[:][:] defl <value>
+	<name>[:][:] = <value>
+
+p	Labels defined with this keyword can be redefined at some later position.	
+p	Especially for use in macros it is useful to allow labels which can be redefined to another value.
+
+p	Example: define a macro which counts the occurances af something:
+	Note: the final count is only valid after the last use of this macro in your source!
+
+pre	foo		set	0
+			macro COUNT
+	foo		set foo+1
+			endm
+
+p	Example: use of a redefinable label in place of a program label:
+	Note: forward jumping couldn't be implemented this way!
+
+pre			macro WAIT
+			ld		b,10
+	foo		defl	$
+			call	wait_1ms
+			djnz	foo
+			endm
+			
+p	The label's value is valid from the position where it was defined to the position where it is redefinedor the end of the source. References to this label <b>before</b> it's first definition are illegal!
+
+p	For more information see the chapter about label definition.
+	

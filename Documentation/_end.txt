@@ -1,0 +1,20 @@
+
+h3	#end
+	
+pre	#end
+
+
+
+p	Define the logical end of your source.
+
+p	<tt>#end</tt> must not be inside an <tt>#if</tt> branch or in a <tt>#local</tt> scope. This is so that using <tt>#end</tt> does not disable the test for a missing <tt>#endif</tt> or <tt>#endlocal</tt>.
+
+p	Anything after #end is ignored by the assembler.
+
+p	Alternate syntax:
+
+p	zasm also accepts 'end' as a pseudo instruction:
+
+pre		end
+p	or
+pre		.end

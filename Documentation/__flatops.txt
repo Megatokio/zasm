@@ -1,0 +1,31 @@
+
+
+H5	--flatops, .flatops, _flatops_
+	flatops
+
+p	Related command line option, pseudo instruction and predefined label
+
+p	Evaluate expressions strictly from left to right, disobeying any operator precedence.
+p	Old assemblers sometimes didn't know about operator precedence and were designed this way for simplicity.
+p	Use this option if error messages about byte values or offsets out of range are reported by zasm and these expressions make more sense when evaluated this way.
+
+p	Normal operator precedence in zasm is:
+
+pre	unary ! ~ + –  ▶︎  >> <<  ▶︎  & | ^  ▶︎  * / %  ▶︎  + –  ▶︎  > >= etc.  ▶︎  && ||  ▶︎  ?:
+
+p	Note that this is not the precedence as defined for C. <b>B-)</b>. The hierarchy of operators in c is very bad.
+
+p	If option --flatops is selected, then the label _flatops_ is defined and can be tested with 'defined(_flatops_)' in expressions.
+
+
+
+                    
+
+
+
+
+
+
+
+
+

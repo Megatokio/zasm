@@ -1,0 +1,643 @@
+\chapter{Interrupt Service Routine}
+\label{chp:isr}
+
+This chapter describes the Interrupt Sercice Routine within the
+kernel.  This chapter covers the basic Timer as well as the whole
+task switching routine.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{ISR Overall View}
+
+Here is the overall view of the interrupt service routine, which
+gets called 60 times a second, when the [[VBLANK]] happens in the
+video hardware:
+
+<<Interrupt Service Routine implementation>>=
+.isr:
+<<Interrupt disable interrupts and save regs>>
+<<Interrupt clear the watchdog>>
+<<Interrupt incrememnt global timer>>
+<<Interrupt task management>>
+<<Interrupt enable interrupts and restore regs>>
+@
+
+
+We need to disable interrupts, both in the CPU was well as in the
+external interrupt mechanism.  In the process of doing this, we
+will dirty up a few registers, so we might as well save them aside
+in here also.
+
+<<Interrupt disable interrupts and save regs>>=
+	di			; disable interrupts (no re-entry!)
+	push	af		; store aside some registers
+	xor	a		; a = 0
+	ld	(irqen), a	; disable external interrupt mechanism
+	push	bc
+	push	de
+	push	hl
+	push	ix
+	push	iy
+@
+
+Later on, we'll need to turn interrupts back on, and restore those
+registers.
+
+<<Interrupt enable interrupts and restore regs>>=
+	    ; restore the registers
+	pop	iy
+	pop	ix
+	pop 	hl
+	pop	de
+	pop	bc
+	ld	a, #0x01	; a = 1
+	ld	(irqen), a	; enable external interrupt mechanism
+	pop	af
+	ei			; enable processor interrupts
+	reti			; return from interrupt routine
+@
+
+
+Anyway, we've still got a [[0]] loaded into [[a]] from the above
+disabling, so we can just send that over to the watchdog as well.
+
+Dealing with the watchdog timer in here prevents the user code
+(tasks) from having to deal with it at all.  The original intention
+of the watchdog reset hardware is described in \S\ref{sec:hardarch}.
+
+<<Interrupt clear the watchdog>>=
+	ld	(watchdog), a	; kick the dog
+@
+
+
+Also, while in the interrupt routine we want to increment the global
+timer variable.
+
+The timer is a value in RAM that gets updated by the IRQ/Vblank routine.
+<<Timer RAM>>=
+	    ; timer counter (word)
+	timer		= (ram + 21)
+@
+
+<<Interrupt incrememnt global timer>>=
+	ld	bc, (timer)	; bc = timer
+	inc	bc		; bc++
+	ld	(timer), bc	; timer = bc
+@
+
+We could try to do the timer the following way instead, which is fewer
+bytes of asm, but would only increment the lower byte of the timer,
+which we don't want.  Our current timer is 16 bits, which means that it
+is only good for about 18 minutes before it overflowed.  If we only
+used 8 bits, our timer would overflow after four seconds.  Conversely,
+a 24 bit timer would last for roughly 77 hours, while a 32 bit timer
+would last for roughly 821 days... almost three years.
+
+<<bad timer>>=
+	; timer valid for only 4 seconds:
+	ld	hl, #(timer)	; hl = &timer
+	inc	(hl)		; inc the lower 8 bits of the timer.
+@
+
+Future changes to the OS will include an updated timer with a 16 bit
+``epoch counter'' which will give us this 821 day uptime capability,
+but until then, 18 minutes is probably longer than we'll go before we
+crash anyway. ;)
+
+And that's the basics.  Without the task switching, the above is
+a useful and fully functional ISR.  The sections that follow will
+add in the task switching.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Task Switching}
+\label{sec:taskswitch}
+
+% okay... third time... hopefully this is good this time...
+
+The tasks will run in the foreground, just going about their
+business.  These tasks will be interrupted and switched out by the
+Task Manager from within the Interrupt routine.  This will control
+how much time each task gets, managing their stacks, and all of
+that fun stuff.  Tasks can also give up their remaining time if
+they are done, waiting for IO or a timer to complete or what have
+you.
+
+The task switcher is also the backend for the [[exec]] and [[kill]]
+routines, which are described in \S\ref{chp:taskexec}.  That is to
+say that when a task is instantiated with the [[exec]] command, or
+a task slot is cleared with the [[kill]] command, it really only
+sets flags directly from those commands.  All of the work of setting
+up the task to run in a task slot is handled here in this routine.
+
+%JJJ FUTURE
+
+The task switcher will also be the backend for the [[sleep]] routine,
+once that is implemented correctly.
+
+%%%%%%%%%%%%%%%
+\subsection{Design}
+
+The design described here supports up to four concurrently running
+tasks, selected from up to 256 tasks available in the program ROM.
+There can be multiple instances of the same task running.
+
+Each of the four tasks has its own space in RAM for their own stack
+and local variables.  Each task gets [[0x00c0]] or (192) bytes of
+ram which they can use for stack and local variables.  Being that
+the tasks will be written in asm, this should hopefully be more
+than enough.  
+
+There is a variable in RAM, [[ramBase]] which points to the base
+of RAM for the currently running task.   Tasks will need to define
+their local variables with reference to this value.  Once a task
+is started, this value will not change.
+
+<<Task Constants>>=
+        stacksize       = 192           ; number of bytes per stack
+@
+
+And here's where we'll define the stack ram itself:
+
+<<Task Stack RAM>>=
+            ; stack regions for the four tasks
+        stackbottom     = (stack-(stacksize*4)) ; 192 bytes (bottom of stack 3)
+        stack3          = (stack-(stacksize*3)) ; 192 bytes
+        stack2          = (stack-(stacksize*2)) ; 192 bytes
+        stack1          = (stack-(stacksize*1)) ; 192 bytes
+        stack0          = (stack-(0)) 		; top of space - sprite ram
+@
+
+This leaves [[0x4c00]] thru [[0x4cff]] for program/user ram.
+
+We need to be able to access the above values from the program
+easily, so we'll set up a table in ROM.
+
+<<Task Switch ROM>>=
+	    ; table of stack/user RAM usage (stacks, ram)
+stacklist:
+	.word	stack0
+	.word	stack1
+	.word	stack2
+	.word	stack3
+	.word	stackbottom
+@
+
+The way this table is used is twofold.  To find the initial stack
+pointer for a task slot, just index into the stacklist ([[(task
+slot number) * 2]]) bytes in.  To find the value to put in [[ramBase]],
+just go to the next item in the array.  (([[(task slot number + 1)
+* 2]]).
+
+
+%%%%%%%%%%%%%%%
+\subsubsection{Task Slot Indexes}
+
+There are two bytes in RAM per slot that the kernel uses to keep
+track of the task running in those slots, as well as a way for the
+task slots to be controlled.  These are the [[slotIdx]] and
+[[slotCtrl]] arrays.
+
+The task slot indexes ([[slotId]]) show which task is loaded in
+which task slot.  This is a single byte (8 bit) index into the
+[[tasklist]], which we will define later.
+
+<<Task RAM>>=
+	    ; which task is in which slot (index into tasklist)
+	slotIdx		= (ram + 0) ; 4 bytes, one per slot
+	slotIdx0	= (ram + 0)
+	slotIdx1	= (ram + 1)
+	slotIdx2	= (ram + 2)
+	slotIdx3	= (ram + 3)
+@
+
+To define these as 'open', we use the following constant:
+
+<<Task RAM>>=
+	slotOpen	= 0xff
+@
+	
+
+Here are the bytes to control each slot.  By setting flags in these
+slots, the ISR will do different things to the slot.
+
+<<Task RAM>>=
+	    ; control information for each slot (to be handled by switcher)
+	slotCtrl	= (ram + 4) ; 4 bytes, one per slot
+	slot0Ctrl	= (ram + 4)
+	slot1Ctrl	= (ram + 5)
+	slot2Ctrl	= (ram + 6)
+	slot3Ctrl	= (ram + 7)
+@
+
+And here are the bits we can set for the control:
+
+First of all, if bit [[7]] is set, we know that the slot is in use.
+
+<<Task RAM>>=
+	C_InUse		= 7
+@
+
+If bit [[4]] is set, then the lower four bits are for extenstion commands.
+This means that if a task wants to perform these actions on the slot, it
+will set bit [[4]], and one of the lower three bits.
+
+Bit [[0]] is the command to kill the task running in that slot.
+Bit [[1]] is the command to start up the task in that slot.
+Bit [[2]] is the command to relinquish the remaining time for this slot. (Force a task switch, regardless of time left for the slot.)
+
+<<Task RAM>>=
+	C_EXT0		= 4
+	    killSlot	= 0
+	    execSlot	= 1
+	    sleepSlot	= 2
+@
+
+When a task is switched out, we really only need to store the
+current stack pointer for that slot.  That stack pointer is stored
+somewhere in the [[slotSP]] array.   \emph{NOTE}: the stack pointer
+location for the currently running slot does not contain valid
+data.  For example, if Slot 2 is active, then [[slotSP2]] contains invalid data.
+
+<<Task RAM>>=
+	; stack pointers for the four slots
+	slotSP		= (ram + 8)  ; 8 bytes, two per slot
+        slotSP0		= (ram + 8)
+        slotSP1		= (ram + 10)
+        slotSP2		= (ram + 12)
+        slotSP3		= (ram + 14)
+@
+
+When a task is running, we need a way to tell it what the base of
+ram for it is.  A task will define its variables in ram with
+reference to this base pointer.  The task can look at [[ramBase]]
+to retrieve this data pointer.  For example,  a task may have one
+word stored in [[(ramBase) + 0]], and a byte stored in [[(ramBase)
++ 2]].  This enables tasks to have their own distinct memory blocks
+so that you can accurately run the same task code multiple times,
+without them interfering.
+
+<<Task RAM>>=
+	; Base of ram for the currently active slot.
+	ramBase		= (ram + 16)	; word
+@
+
+We also have one flag which the switcher uses to keep track of the state of 
+the slots.  This is the [[taskFlag]] byte.
+
+<<Task RAM>>=
+	    ; various flags about the task switcher system
+	taskFlag	= (ram + 18)	; byte
+@
+
+The lower four bits will show if a slot is in use.  If this bit is set, the
+slot is in use.
+
+<<Task RAM>>=
+	slot0use	= 0
+	slot1use	= 1
+	slot2use	= 2
+	slot3use	= 3
+@
+
+And the fun one.  If the [[taskActive]] flag is set, then the task
+switching system is running. Clear this, and no switching will take
+place.
+
+<<Task RAM>>=
+	taskActive	= 7
+@
+	
+
+And of course, the switcher needs to know which slot is the currently
+active slot.  This is contained in the [[taskSlot]] byte.
+
+<<Task RAM>>=
+	    ; the currently active slot number
+	taskSlot	= (ram + 19)	; byte
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Task Slot Timing}
+
+Each slot will be alotted a certain amount of time.  This will
+change for each slot based on if it is ``sleeping'', or based on
+the priority of the task.  Or at least, that's how it will be in
+the future.  For now, this will be equally distributed, and requested
+priorities are ignored.  Also, for now, the ``sleep'' command is
+dumb, and will just loop within the specified task.  Future
+implementations of ``sleep'' in the task switching system will
+interrupt other tasks when the sleep timer expires, to insure that
+correct timing is given to time-specific tasks.
+
+The switcher will count down the number of ticks that the current
+slot has before it needs to switch it out.  This value is simply
+set when a task is switched in, and decremented subsequent times
+through the task switching code.  This [[slotTime]] value can only
+be up to 255, which is fine, considering that this is about four
+seconds.  Generally, each task should only be run for about 5-10 
+clock ticks.
+
+<<Task RAM>>=
+	    ; how many ticks does this slot have before it gets swapped out
+	slotTime	= (ram + 20)	; byte
+@
+
+
+For phase one, we will always use a predefined time per task.  Make
+this larger to really show how processing switches from one task
+to the other.  For now, making this around [[4]] should be plenty.
+(4/60ths or 1/15th of a second)
+
+<<Task Constants>>=
+	slotTicks	= 4	; number of ticks per slot to start with
+@
+
+%%%%%%%%%%%%%%%%%%%%
+\subsection{Task Search / Task List}
+\label{sec:tasklist}
+
+Future versions of the OS might include a routine that scans through
+ROM to find available tasks to run them.  Thiw will allow for ROMs,
+cartridges, or banks to be switched in while the system is live.
+
+In the future, this will produce a [[0]] terminated list of pointers
+to the headers in RAM, but for now, we will just have this so-called
+[[tasklist]] in ROM.
+
+This is just a list of the headers, terminated with a [[0]]
+
+<<Task List>>=
+	; list of all tasks available, null terminated
+tasklist:
+	.word t0header
+	.word t1header
+	.word t2header
+	.word t3header
+	.word 0x0000
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Task System Initialization}
+\label{sec:tasksysinit}
+
+Now the initialization.  This sets it up such that the above ram
+locations have been initialized properly, and the task switcher in
+\S\ref{sec:taskswitch} knows that the task slot is empty.
+
+First, we need clear the flags, to insure that all of the slots
+are open, and that the task switcher is disabled.
+
+<<Task System Initialization>>=
+        ;; initialize tasks
+	    ; clear flags
+	xor	a		; a = 0
+	ld	(taskFlag), a	; clear all task flags
+@
+
+We initialize the stack pointers.  This will get replaced in the
+task switcher, but for now, we will initialize it in here as well.
+We'll just set them all to 0x0000
+
+<<Task System Initialization>>=
+	    ; clear the dormant stack pointers (set all four to 0x0000)
+	xor	a		; a = 0
+	ld	b, #8		; 8 bytes (4 one-word variables)
+	ld	hl, #(slotSP)	; base of slot stack pointers
+	call	memset256	; clear it
+@
+
+We set all of the task slots as "open" in the slot index pointers as
+well.  We do this by setting the indexes to the special constant,
+[[openslot]], defined above.  
+
+<<Task System Initialization>>=
+	    ; set all slots as open
+	ld	a, #(slotOpen)	; a = openslot
+	ld	b, #4		; 4 bytes
+	ld	hl, #(slotIdx)	; base of slot index bytes
+	call	memset256
+@
+
+Now we need to clear out all of the control bytes as well.
+
+<<Task System Initialization>>=
+	    ; clear control bytes 
+	xor	a		; a = 0
+	ld	b, #4		; 4 bytes
+	ld	hl, #(slotCtrl)	; base of slot control bytes
+	call	memset256
+@
+
+We also need to set the [[taskSlot]] variable to something.
+
+<<Task System Initialization>>=
+	    ; clear taskSlot
+	xor	a		; a = 0
+	ld	(taskSlot), a	; taskSlot = 0
+@
+
+Finally, enable the task switcher.
+
+<<Task System Initialization>>=
+	    ; enable the task switcher
+	ld	hl, (taskFlag)
+	set	#taskActive, (hl)	; set the flag
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Task Slot Management Mechanism}
+
+This section defines the basic overall view of the task slot
+management routines of the Interrupt Service Routine.  The various
+things that can happen within this framework are defined in
+\S\ref{sec:taskfcns} and \S\ref{sec:tasktimefcns}.
+
+First, we need the wrapper which checks to see if the task switching
+is active.  We simply check the [[taskActive]] bit of the [[taskFlag]]
+RAM byte.  If the flag was zero ([[Z]])  the bit is not set, and
+we need to skip over the control flag check routine and the task
+switching routine. to the [[.doneTask]] label.
+
+<<Interrupt task management>>=
+	    ;; task management stuff
+	    ; check for disabled switching
+	ld	hl, (taskFlag)
+	bit	#taskActive, (hl)	; check to see if task switching is on
+	jr	Z, .doneTask		; jp over if switching is disabled
+<<Interrupt check control flags>>
+<<Interrupt attempt to switch to next task>>
+.doneTask:
+@
+
+
+%%%%%%%%%%%%%%%
+\subsection{Control Flag Check}
+
+Before we change active task slots, we need to check the control
+flags for all of the slots to see if they need to be maintained.
+
+<<Interrupt check control flags>>=
+	; check to see if any of the control flags are set
+	    ; loop throgh all slots
+	    ; check for kill
+	    ; check for sleep
+	    ; check for start
+@
+
+<<notes>>=
+GUI task should always be running (task 0)
+never kill the gui task
+for now, the gui task is just a tight loop, slot 0
+
+slotMask = 0x03
+current slot (taskSlot) is always valid
+taskSlot = 0x4c??
+
+**go to next valid slot:
+
+**Start new task:
+    move SP into (slotSP)[curr]
+    set SP to base of slot
+    push (start point of task)
+    push (extra registers as 0x00)
+    move SP into (slotSP)[thisslot]
+    set this slot as 'in use'
+    clear slot flags
+    move (slotSP)[curr] into SP
+
+**Kill,start, relinquish
+    all require a flags check loop before the main loop
+    (every time in the ISR, check the flags for all slots)
+
+    (tmp) = 0
+  .loop
+    check ctrl reg for changes:
+        if set to kill:
+            mark slot as not in use
+        if set to start:
+            **start new task
+    inc (tmp)
+    if (tmp) < 4, jp .loop
+
+    if set to relinquish time:
+    set (slottime) to 1
+
+
+@
+
+%%%%%%%%%%%%%%%
+\subsection{Task Switch Routine}
+
+First, we need to wrap the task switcher with a check to see if it
+is time\footnote{...wait for it...} to switch task slots yet.  We
+simply look at the [[slotTime]] byte to see if it is greater than
+[[0]].  If it is greater than zero, then we skip over the task
+switching routine.
+
+If we are still greater than zero, we skip over the task switch.
+Then we just reload [[C]] with the slot time, decrement it, and
+store it back in Ram.
+
+We could save a few bytes, and decrement the counter before we do
+anything, but that would mean that the above sleep would set the
+time left to [[1]] instead of [[0]] which seems wrong.  For the
+few extra bytes that it saves us, it's more intuitive to do it this
+way.
+
+<<Interrupt attempt to switch to next task>>=
+	    ;; check to see if we need to task switch yet
+	ld	hl, #slotTime		; hl = time address
+	ld	c, (hl)			; c = current time for active slot
+	    ; check the current value
+	xor	a			; a = 0
+	cp	c			; is C >=0?  ( Carry set )
+	jp	C, .noSwitch		; still greater than zero?
+<<Interrupt switch to next task>>
+.noSwitch:
+	    ; decrement the slot timer
+	ld	hl, #slotTime		; hl = time address
+	ld	c, (hl)			; c = current time for active slot
+	dec	c			; current time --
+	ld	(hl), c			; store the current time
+@
+
+
+XXX Need to break this up and document it better XXX
+
+<<Interrupt switch to next task>>=
+	    ;; change to next dormant task (or this one...)
+.tsNext:
+	ld	a, (taskSlot)		; a = current task slot (a is try)
+	ld	e, a			; de = current slot
+.tsloop1:
+	inc	a			; ++try
+	and	a, #slotMask		; try &= 0x03
+	ld	hl, #(slotCtrl)		; hl = slotCtrl base
+	ld	c, a
+	ld	b, #0x00		; bc = task number
+	add	hl, bc			; hl = control for this task
+	bit	#C_InUse, (hl)		; check the flag
+	jr	NZ, .tsloop1		; if not active, inc again
+	    ; compare selected task with "current"
+	ld	a, e			; A = current (again)
+	cp	c			; compare A(curr) and C(try)
+	jr	Z, .overslot1		; skip this next bit if we're there
+.storeTheSP:
+	    ; snag the SP into IX
+	ld	ix, #0x0000		; zero ix
+	add	ix, sp			; ix = SP
+
+	    ; setup HL as ram location to store SP
+	ld	hl, #(slotSP)		; hl = base of slotSP array
+	ld	d, #0x00		; de = current slot  
+	rlc	e			;    = current slot * 2
+					; bc still contains the try value
+	add	hl, de			; hl = base of current slot SP
+	push	ix			; de
+	pop	de			;    = SP
+	    ; store the current SP
+	ld	(hl), e			; (hl) = 
+	inc	hl
+	ld	(hl), d			;      = de   (really SP)
+.loadInTheSP:
+	    ; swap in the new SP
+	ld	d, #0
+	ld	e, c			; de = new slot number
+	rlc	e			;    = new slot number * 2
+	ld	hl, #(slotSP)		; hl = base of slotSP array
+	add	hl, de			; hl = base of new slot SP
+	    ; snag it and shove it into place
+	ld	e, (hl)			; de = 
+	inc	hl
+	ld	d, (hl)			;    = new sp
+	ld	h, d			; hl =
+	ld	l, e			;    = sp
+	ld	sp, hl			; new SP!
+.setupVars:
+	    ; set up reference variables
+	ld	a, c			; a = c
+	ld	(taskSlot), a		; taskSlot = new slot number
+	    ; set up ramBase
+	ld	hl, #(stackList)	; hl = base of stackList array
+	ld	e, c			; e = new slot
+	inc	e			; e = new slot + 1
+	rlc	e			; e = (new slot + 1) * 2
+	ld	d, #0			; de = (new slot + 1) * 2 
+	add	hl, de			;    = index of this slot + 1 word
+	ld	c, (hl)			; bc =
+	inc	hl
+	ld	b, (hl)			;    = new ramBase item
+	ld	hl, #(ramBase)
+	ld	(hl), c			; ramBase =
+	inc	hl
+	ld	(hl), b			;         = correct value!
+.overslot1:
+	ld	hl, #slotTime		; hl = time address
+	ld	(hl), #slotTicks	; reset the ticks for this task
+@
+

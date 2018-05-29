@@ -1,0 +1,16 @@
+
+h3	#! (Shebang)
+
+pre	#!/usr/local/bin zasm --flatops -uwy -x
+
+p	A line starting with '#!' is effectively ignored by the assembler like a comment. Normally such a line would be the first line in your source file if you make the file executable. Then you can 'run' the source to produce the output file. This is handy if lots of command line options must be passed to assemble this file. 
+
+p	Note: This line is ignored by <b>zasm</b>. If it is line 1 of your source file then it is evaluated by the <b>shell</b> when the file is run as a command.
+
+pre	$> # this will assemble the file using line 1: ('-x' => Intel-Hex)
+	$> ./mysourcefile.asm
+
+pre	$> # this will assemble the file ignoring line 1: (no '-x' => binary file)
+	$> zasm mysourcefile.asm --flatops -x
+
+p	This feature is used in the regression selftest of zasm with command line option -T / --test.

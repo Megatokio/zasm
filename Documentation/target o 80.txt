@@ -1,0 +1,31 @@
+
+h3	#target .O and .80
+	o, 80
+
+p.magenta <i>this format is not yet well tested. If there are problems please send an email to <a href="mailto:kio@little-bat.de">Kio</a>.</i>
+
+p	This creates a tape file for use with an ZX80 emulator. The '.o' and '.80' file formats are identical. The tape file will be loaded to the ram start at address $4000. There was no choice…
+
+p	Code may be stored in one or more #code segments. However, the first segment must be at least 0x28 bytes long and contain the system variables.
+
+pre	#target	80
+	#code	<name>,<start>,<len>
+		...
+
+p	See the ZX80 .o template file: <a target="image" href="../Examples/template_o.asm">template_o.asm</a> 
+
+p	The tape data is always loaded to $4000, so this is the only choice for the <start> address in the #code directive. The <size> may be any value up to a maximum of $C000, but most ZX80 had at most 16 kB of ram if extended with an external memory expansion, only 1 kB if none.
+
+p	The ram starts with system variables from $4000 to $4028, which must be set to proper values. The variable E_LINE at $400A, which contains the end of ram address, must be calculated properly and is checked by the assembler. 
+
+p	Note that zasm has a convenient assembler directive to translate from the ascii (or utf-8) characters in your source file to the non-ascii character set of the ZX80:
+
+pre	#charset ZX80
+
+p	You can include c sources in your assembler file, but there are two pitfalls:
+
+p	You can use the character set translation of zasm to translate strings in your c source as well. But unluckily character literals are not exported as character literals by the c compiler sdcc but as their ascii code and zasm has no chance to detect this. So character literals in your c source are not translated.
+
+p	Second, character 0x00 is used in c sources as a string end indicator, but it is also a valid character for the ZX80: the space. So you'll have to think of a way to work around this problem.
+
+

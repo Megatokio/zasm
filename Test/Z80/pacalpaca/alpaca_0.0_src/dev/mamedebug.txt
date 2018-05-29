@@ -1,0 +1,118 @@
+MAME Debugger commands
+
+A [<update>]
+        Animate (trace) and update display once per frame [or every <update> opcodes only]
+
+D <1|2> <address>
+        Display memory <1|2> starting at <address>
+
+E <1|2> [<address>]
+        Edit memory window <1|2> [at <address>]
+
+M <1|2> [BYTE|WORD|DWORD]
+        Change memory window mode to default [to BYTE|WORD|DWORD (or 0|1|2)]
+
+F
+	Fast
+
+G [<address>]
+        Go [and break at <address>]
+
+J <address>
+        Jump to <address> in disassembly window
+
+R <register> <value>
+        Replace <register> with <value> (<value> may also be a <register>)
+
+BP, BPX <address> [<times>]
+        Break on execution of <address> [after ignoring it <times>]
+
+BC
+	Clear execution breakpoint
+
+RP <register> [<value> [<mask>]]
+        Break if <register> changes [to <value> [compare after applying <mask>]]
+
+RC
+        Clear register watchpoint
+WP, BPW <address> [<value>]
+	Break if data at <address> changes [to <value>]
+
+WC
+	Clear data watchpoint
+
+HERE
+	Run to cursor
+
+DASM <filename> <start> <end> [<boolean>]
+	Disassemble to <filename> from address <start> to <end>
+	Opcode dump on by default [OFF|NO|0 without]
+
+DUMP <filename> <start> <end> [<data size> [<ASCII mode> [<prog/data memory>]]]
+	Dump to <filename> from address <start> to <end>
+	[data size BYTE|WORD|DWORD (also 0|1|2)]
+	[ASCII mode OFF|TRANSLATE|FULL (also 0|1|2)]
+	[PROG or DATA memory (also 0|1) for CPUs supporting it]
+
+TRACE {<filename> [<reg1> [<reg2>...]]}|OFF
+	Trace to <filename> [dumping <reg1> [<reg2>...]] | OFF to stop tracing.
+
+SAVE <filename> <start> <end> [OPCODES|DATA]
+	Save binary to <filename> from address <start> to <end>
+	[either OPCODES (from OP_ROM, default) or DATA (from OP_RAM), also 0|1].
+
+SCANLINE
+	Toggles the display of scanlines
+
+IGNORE <cpunum>
+	Ignore CPU #<cpunum> while debugging or tracing
+
+OBSERVE <cpunum>
+	Observe CPU #<cpunum> while debugging or tracing
+
+REPEAT rate
+	Set keyboard initial repeat rate (rate/frame will increase to 1/frame)
+
+CASE DEFAULT|LOWER|UPPER (also 0|1|2)
+	Set disassembly case style.
+
+OPCODES <boolean>
+	Display opcodes in disassembly window
+
+RELATIVE <boolean>
+	Display relative jump addresses in disassembly window
+
+SQUEEZE <boolean>
+	Allow squeezed memory display
+
+COLOR <element> <foreground> [<background>]
+	Set <element> color to <foreground> on BLACK [or <background>].
+	For a list of <elements> and <colors> see mamedbg.cfg
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+PGUP	 Move cursor up one page in disassembly window
+PGDN	 Move cursor down one page in disassembly window
+HOME	Move cursor to first page in disassembly window
+END	Move cursor to last page in disassembly window
+LEFT	Back to the previous point in 'follow history'
+RIGHT	Follow the current instruction's code or data reference
+TAB	Switch between windows (backwards SHIFT+TAB)
+D	Change disassembly case style to default
+L	Change disassembly case style to lower case
+U	Change disassembly case style to upper case
+M	Toggle disassembly opcode display mode
+H	Toggle between hex, ASCII and full character set mode
+P	Toggle memory display between DATA and PROGRAM memory (Harvard-architecture CPUs)
+I	Toggle memory display between CPU internal and normal memory
+M	Switch memory display mode between bytes, words and dwords
+S	Search memory for a sequence of bytes
+F1	Help - maybe you realized this ;)
+F2	Toggle breakpoint at current cursor position
+F4	Set data watchpoint to current memory location
+F6	Set the focus to the next (not ignored) CPU
+F8	Step one instruction
+F9	Animate (trace) at speed set by last \"A\" command
+F10	Step over instruction at cursor (ie. execute call, jsr or bsr)
+F12	Go!
+ESC	Go!

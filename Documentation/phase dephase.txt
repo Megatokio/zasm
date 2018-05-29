@@ -1,0 +1,57 @@
+
+h3	.phase and .dephase
+	phase, dephase
+
+pre		.phase <address>
+		...
+		.dephase
+		
+p	This pseudo instruction sets the logical origin for the following code to the new address. The new logical origin is valid until the .dephase instruction resets it to the physical origin or another .phase instruction sets it to another value. <i class=magenta>(note: in zasm v3 'org' was used to change the logical origin.)</i>
+
+p	The logical code address is what you mostly work with. E.g. program labels and '$' refer to the logical code address. This logical code address can be moved with .phase and .dephase. 
+
+p	The physical code address is the address at which the code stored by the assembler is supposed to be visible to the cpu. (At least it should be.) Because most code is executed where it was stored (which means: it was not copied somewhere else in ram before it is executed there) the physical and the logical address are most times the same. 
+
+p	.phase and .dephase are typically used if some portions of code are copied from rom into ram, where it can be modified by the running program.
+
+p	In case you need to access the physical address of the code at a position where you have shifted the logical address with .phase you can use '$$' instead of '$'.
+
+p	Note: the physical code address is biased to the 'org' address resp. to the start address of the current #code or #data segment, not the start of the eprom!
+
+
+		
+
+h5	Example: relocated jump table
+	relocate, relocatable, relocator
+
+p	In this example a jump table is copied from rom to ram, either to assert fixed addresses or to allow the running program to patch some entries:
+
+pre				...					; some code
+				ccf
+				ret
+
+				.phase 	$FE00		; shift origin
+	rom_table:	equ	$$
+	ram_table:	equ $
+
+	putchar:	jp		putchar_rom
+	puttext:	jp		puttext_rom
+	getchar:	jp		getchar_rom
+	getline:	jp		getline_rom
+
+	table_size:	equ		$ - ram_table
+
+				.dephase			; back to physical code address
+
+	gizmo:		ld		de,ram_table
+				ld		hl,rom_table
+				ld		bc,table_size
+				ldir
+
+				ld	a,0				; more code
+				...
+
+
+
+
+	

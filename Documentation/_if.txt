@@ -1,0 +1,23 @@
+
+h3	#if, #elif, #else, #endif
+	if, elif, else, endif
+
+pre	#if <condition>
+		...
+	#elif <condition>
+		...
+	#else
+		...
+	#endif
+
+p	#if starts a block of assembler instructions, which is only assembled if the given <condition> is true. The <condition> must be evaluatable in pass 1. Conditional assembly may be nested. Any assembler directive except pairing #else, #elif and #endif, and any assembler instruction or pseudo instruction is skipped if the <condition> is false. If the pairing #endif is not found until the end of file then a nesting error is assumed. Note, that #include is also skipped if <condition> is false.
+
+p	As an exception the pseudo instructions 'if' and 'endif' are detected and handled just like '#if' and '#endif'. <i class=magenta>note: this may change.</i>
+
+p	After an #if directive where the <condition> was false, the #elif <condition> is checked and if it is true, the following block is assembled. if it is false, or if already a block was assembled within this #if ... #endif range, the following block is skipped. #elif is optional and may occur multiple times after #if.
+
+p	After an #if directive, #else negates the <condition>. If it was false it becomes true and the following assembler instructions are assembled. If it was true it becomes false and the following assembler instructions are skipped. #else is optional and should only occur once before the #endif assembler directive. If #else occurs after some #elif directives, then the #else part is a final 'catch all'.
+
+p	The #endif directive finishes conditional assembly as started with the #if directive.
+
+
