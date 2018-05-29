@@ -1,1 +1,8 @@
 Documentation/*.htm
+Distributions
+*.webloc
+*.zip
+*.pdf
+*.html
+sdcc/bin
+info.vh
