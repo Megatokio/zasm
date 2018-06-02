@@ -114,7 +114,7 @@ public:
 	uint		max_errors;
 	uint		pass;
 	bool		end;
-	uint		verbose;
+	int			verbose;
 	Validity	validity;		// validity of generated code
 	int			labels_changed;	// count value changes of (preliminary) labels
 	int			labels_resolved;// count labels which became valid

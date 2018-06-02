@@ -30,25 +30,25 @@
 	2014-05-21	kio work on 4.0.0 started
 */
 
-#include	"config.h"
-#include	<stdlib.h>
-#include	"unix/FD.h"
-#include	"unix/files.h"
-#include	"kio/kio.h"
-#include	"Z80Assembler.h"
-#include	"helpers.h"
+#include "config.h"
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include "Libraries/unix/FD.h"
+#include "Libraries/unix/files.h"
+#include "Libraries/kio/kio.h"
+#include "Z80Assembler.h"
+#include "helpers.h"
 
 
-cstr appl_name = "zasm";
-cstr version   = "4.2.1";
+//static const char appl_name[] = "zasm";
+static const char version[] = "4.2.1";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
 //
-static cstr help =
+static const char help[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
 "  zasm - z80 assembler (c) 1994 - 2018 Günter Woigk.\n"
 "  version %s, %s, for %s.\n"										// version, date, platform
@@ -107,7 +107,7 @@ static cstr compiledatestr ()
 	static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
 	uint m=0; while (strncmp(ansidate, months+3*m++, 3)) {}
-	uint d = strtol(ansidate+4,NULL,10);
+	uint d = uint(strtol(ansidate+4,nullptr,10));
 	cptr y = ansidate+7;
 	return usingstr("%s-%02u-%02u",y,m,d);
 }
@@ -144,7 +144,7 @@ static void read_testdir (cstr path, Array<cstr>& filepaths)
 		int fd = open(filepath,O_RDONLY,0664);		// test for Shebang:
 		if (fd<0) continue;							// failed to open file
 		char bu[3] = "aa";
-r:		int n = (int)read(fd,bu,2);					// read "#!"
+r:		int n = int(read(fd,bu,2));					// read "#!"
 		if (n<0 && errno==EINTR) goto r;
 		if (n<0 && errno==EAGAIN) { usleep(5000); goto r; }
 		close(fd);
@@ -172,43 +172,43 @@ static void split_command_line (cstr s, Array<cstr>& args)
 	//   characters are removed. Backslashes preceding characters without a special meaning are left unmodified.
 
 	char zbu[256];
-	for (uptr q = uptr(s); ; )
+	for (;;)
 	{
 		// skip gap:
-		while (*q && *q<=' ') { q++; }
-		if (*q==0) break;
+		while (*s && uchar(*s)<=' ') { s++; }
+		if (*s==0) break;
 
 		// copy word:
 		ptr z = zbu;
-		while (*q > ' ')
+		while (uchar(*s) > ' ')
 		{
-			if (*q == '\'')		// strong quote
+			if (*s == '\'')		// strong quote
 			{
-				q++;
-				while (*q && *q!='\'') { *z++ = *q++; }
-				if (*q) q++;
+				s++;
+				while (*s && *s!='\'') { *z++ = *s++; }
+				if (*s) s++;
 				continue;
 			}
 
-			if (*q=='"')		// weak quote
+			if (*s=='"')		// weak quote
 			{
-				q++;
-				while (*q && *q!='"')
+				s++;
+				while (*s && *s!='"')
 				{
-					if (*q == '\\')
+					if (*s == '\\')
 					{
-						uchar c = *(q+1);
-						if (c=='$' || c=='`' || c=='"' || c=='\\') q++;	// skip over '\'
+						char c = *(s+1);
+						if (c=='$' || c=='`' || c=='"' || c=='\\') s++;	// skip over '\'
 					}
-					*z++ = *q++;
+					*z++ = *s++;
 				}
-				if (*q) q++;
+				if (*s) s++;
 				continue;
 			}
 
 			// plain char
-			if (*q == '\\' && *(q+1)) q++;	// skip over '\'
-			*z++ = *q++;
+			if (*s == '\\' && *(s+1)) s++;	// skip over '\'
+			*z++ = *s++;
 		}
 
 		// store word:
@@ -216,16 +216,16 @@ static void split_command_line (cstr s, Array<cstr>& args)
 	}
 }
 
-int main( int argc, cstr argv[] )
+static int doit( Array<cstr> argv )
 {
 	// PROGRAM ENTRY POINT!
 
 	double start = now();
 
 // options:
-	uint verbose     = 1;	// 0=off, 1=default, 2=verbose
-	uint outputstyle = 'b';	// 0=none, 'b'=binary, 'x'=intel hex, 's'=motorola s-records
-	uint liststyle   = 1;	// 0=none, 1=plain, 2=with objcode, 4=with label listing, 6=both, 8=clock cycles
+	int  verbose     = 1;	// 0=off, 1=default, 2=verbose
+	int  outputstyle = 'b';	// 0=none, 'b'=binary, 'x'=intel hex, 's'=motorola s-records
+	int  liststyle   = 1;	// 0=none, 1=plain, 2=with objcode, 4=with label listing, 6=both, 8=clock cycles
 	bool clean		 = no;
 	bool ixcbr2		 = no;
 	bool ixcbxh		 = no;
@@ -242,16 +242,16 @@ int main( int argc, cstr argv[] )
 	bool cgi_mode	 = no;
 	uint maxerrors   = 30;
 // filepaths:
-	cstr inputfile  = NULL;
-	cstr outputfile = NULL;	// or dir
-	cstr listfile   = NULL;	// or dir
-	cstr tempdir    = NULL;
-	cstr c_compiler = NULL;
-	cstr c_includes	= NULL;
-	cstr stdlib_dir	= NULL; // for #include standard library
+	cstr inputfile  = nullptr;
+	cstr outputfile = nullptr;	// or dir
+	cstr listfile   = nullptr;	// or dir
+	cstr tempdir    = nullptr;
+	cstr c_compiler = nullptr;
+	cstr c_includes	= nullptr;
+	cstr stdlib_dir	= nullptr; // for #include standard library
 
 //	eval arguments:
-	for (int i=1; i<argc; )
+	for (uint i=1; i<argv.count(); )
 	{
 		cptr s = argv[i++];
 
@@ -259,7 +259,7 @@ int main( int argc, cstr argv[] )
 		{
 			if (!inputfile)  { inputfile = s; continue; }
 			// if outfile is not prefixed with -o then it must be the last argument:
-			if (!outputfile && i==argc) { outputfile = s; continue; }
+			if (!outputfile && i==argv.count()) { outputfile = s; continue; }
 			if (!listfile)   { listfile = s; continue; }
 			goto h;
 		}
@@ -290,7 +290,7 @@ int main( int argc, cstr argv[] )
 				{
 					char* ep; ulong n = strtoul(s+12,&ep,10);
 					if (*ep||n==0||n>999) goto h;
-					maxerrors = (uint)n; continue;
+					maxerrors = uint(n); continue;
 				}
 			goto h;
 		}
@@ -312,16 +312,16 @@ int main( int argc, cstr argv[] )
 
 			case 'v': if (*(s+1)>='0' && *(s+1)<='3') verbose = *++s - '0'; else ++verbose; continue;
 
-			case 'i': if (inputfile  || i==argc) goto h; else inputfile  = argv[i++]; continue;
+			case 'i': if (inputfile  || i==argv.count()) goto h; else inputfile  = argv[i++]; continue;
 			case 'o': if (*(s+1)=='0') { outputstyle = 0; ++s; continue; }
-					  if (outputfile || i==argc) goto h; else outputfile = argv[i++]; continue;
+					  if (outputfile || i==argv.count()) goto h; else outputfile = argv[i++]; continue;
 			case 'l': if (*(s+1)=='0') { liststyle = 0; ++s; continue; }
-					  if (listfile   || i==argc) goto h; else listfile   = argv[i++]; continue;
+					  if (listfile   || i==argv.count()) goto h; else listfile   = argv[i++]; continue;
 
-			case 'c': if (c_compiler || i==argc) goto h; else c_compiler = argv[i++]; continue;
-			case 'I': if (c_includes || i==argc) goto h; else c_includes = argv[i++]; continue;
-			case 'L': if (stdlib_dir || i==argc) goto h; else stdlib_dir = argv[i++]; continue;
-			case 't': if (tempdir    || i==argc) goto h; else tempdir    = argv[i++]; continue;
+			case 'c': if (c_compiler || i==argv.count()) goto h; else c_compiler = argv[i++]; continue;
+			case 'I': if (c_includes || i==argv.count()) goto h; else c_includes = argv[i++]; continue;
+			case 'L': if (stdlib_dir || i==argv.count()) goto h; else stdlib_dir = argv[i++]; continue;
+			case 't': if (tempdir    || i==argv.count()) goto h; else tempdir    = argv[i++]; continue;
 			default:  goto h;
 			}
 		}
@@ -350,7 +350,7 @@ int main( int argc, cstr argv[] )
 		if (verbose) logline("zasm: found %u test source files\n",testfiles.count());
 
 		// assemble & compare all test sources:
-		uint errors = 0;
+		int errors = 0;
 		for (uint i=0; i<testfiles.count(); i++)
 		{
 			cstr testfile = testfiles[i];
@@ -378,11 +378,11 @@ int main( int argc, cstr argv[] )
 			args.append("-i");
 			args.append(testfile);
 			args.append("--compare");
-			for (int j=1; j<argc; j++) { args.append(argv[j]); }
+			for (uint j=1; j<argv.count(); j++) { args.append(argv[j]); }
 
 			// recursively call self:
 			change_working_dir(directory_from_path(testfile));	// to find output dir
-			errors += main(args.count(),args.getData());
+			errors += doit(std::move(args));
 		}
 
 		if (verbose)
@@ -565,14 +565,16 @@ int main( int argc, cstr argv[] )
 
 	if (verbose)		// show errors on stderr:
 	{
-		cstr current_file = NULL;
+		cstr current_file = nullptr;
 		for (uint i=0; i<errors; i++)
 		{
 			Error const& e = ass.errors[i];
 			SourceLine* sourceline = e.sourceline;
 			if (!sourceline)
 			{
-				if (current_file) log("\n"); current_file=NULL; log("--> %s\n",e.text);
+				if (current_file) log("\n");
+				current_file = nullptr;
+				log("--> %s\n",e.text);
 				continue;
 			}
 
@@ -585,7 +587,7 @@ int main( int argc, cstr argv[] )
 
 			cstr linenumber = tostr(sourceline->sourcelinenumber+1);
 			log( "%s: %s\n", linenumber, sourceline->text);
-			log( "%s%s^ %s\n", spacestr(strlen(linenumber)+2), sourceline->whitestr(), e.text);
+			log( "%s%s^ %s\n", spacestr(int(strlen(linenumber))+2), sourceline->whitestr(), e.text);
 		}
 
 		log( "assembled file: %s\n    %u lines, %u pass%s, %3.4f sec.\n",
@@ -597,6 +599,10 @@ int main( int argc, cstr argv[] )
 	return errors>0;	// 0=ok, 1=errors
 }
 
+int main (int argc, cstr argv[])
+{
+	return doit(Array<cstr>(argv,uint(argc)));
+}
 
 
 
