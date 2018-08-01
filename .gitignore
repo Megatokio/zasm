@@ -6,3 +6,6 @@ Distributions
 *.html
 sdcc/bin
 info.vh
+Linux/*.o
+Linux/zasm
+
