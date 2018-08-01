@@ -223,8 +223,8 @@ private:
 	void	setLabelValue(Label*, int32, Validity) throws ;
 	void	setLabelValue(Label*, Value const&) throws ;
 
-	void	setError		(const any_error&);			// set error for current file, line & column
-	void	addError		(cstr format, ...) __printflike(2,3); // add error without source line
+	void	setError		(const any_error&);					  // set error for current file, line & column
+	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
 	void	init_c_flags	();
 	void	init_c_tempdir	()							THF;
 	void	init_c_compiler	(cstr cc = NULL)			throws;

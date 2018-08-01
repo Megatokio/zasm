@@ -48,12 +48,12 @@ extern char** environ;
 
 // hints may be set by caller:
 //
-cstr sdcc_compiler_path = NULL;
-cstr sdcc_include_path = NULL;
-cstr sdcc_library_path = NULL;
-cstr vcc_compiler_path = NULL;
-cstr vcc_include_path = NULL;
-cstr vcc_library_path = NULL;
+cstr sdcc_compiler_path = nullptr;
+cstr sdcc_include_path = nullptr;
+cstr sdcc_library_path = nullptr;
+cstr vcc_compiler_path = nullptr;
+cstr vcc_include_path = nullptr;
+cstr vcc_library_path = nullptr;
 
 
 // Priorities for Z80Assembler::value(…)
@@ -92,16 +92,20 @@ void Z80Assembler::setError (const any_error& e)
 {
 	// set error for current file, line & column
 
-	errors.append(Error(e.what(), &current_sourceline()));
+	SourceLine* sourceline = current_sourceline_index < source.count() ? &current_sourceline() : nullptr;
+
+	errors.append(Error(e.what(), sourceline));
 }
 
-void Z80Assembler::addError (cstr format, ...)
+void Z80Assembler::setError (cstr format, ...)
 {
-	// set error without associated source line
+	// set error for current file, line & column
+
+	SourceLine* sourceline = current_sourceline_index < source.count() ? &current_sourceline() : nullptr;
 
     va_list va;
     va_start(va,format);
-	errors.append( Error(format, NULL, va) );
+	errors.append( Error(format, sourceline, va) );
     va_end(va);
 }
 
@@ -422,14 +426,14 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 				long ofsz = old.file_size();
 				long nfsz = nju.file_size();
 
-				if (ofsz!=nfsz) addError("file size mismatch: old=%li, new=%li", ofsz, nfsz);
+				if (ofsz!=nfsz) setError("file size mismatch: old=%li, new=%li", ofsz, nfsz);
 				uint32 bsize = uint32(min(ofsz,nfsz));
 				uint8 obu[bsize]; old.read_data(obu,bsize);
 				uint8 nbu[bsize]; nju.read_data(nbu,bsize);
 				for (uint32 i=0; i<bsize && errors.count()<max_errors; i++)
 				{
 					if (obu[i]==nbu[i]) continue;
-					addError("mismatch at $%04lX: old=$%02X, new=$%02X",ulong(i),obu[i],nbu[i]);
+					setError("mismatch at $%04lX: old=$%02X, new=$%02X",ulong(i),obu[i],nbu[i]);
 				}
 				if (errors.count()) liststyle |= 2; else liststyle = 0;
 			}
@@ -439,7 +443,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			}
 		}
 	}
-	catch (any_error& e) { addError("%s",e.what()); }
+	catch (any_error& e) { setError("%s",e.what()); }
 
 	if (errors.count() && compare_to_old) liststyle |= 6;	// opcodes, labels
 
@@ -450,7 +454,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			listpath = endswith(listpath,"/") ? catstr(listpath, basename, ".lst") : listpath;
 			writeListfile(listpath, liststyle);
 		}
-		catch (any_error& e) { addError("%s",e.what()); }
+		catch (any_error& e) { setError("%s",e.what()); }
 	}
 }
 
@@ -577,8 +581,8 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 	}
 	while (labels_resolved>0);
 
-	if (pass>99) { addError("internal error: pass > 99"); return; } // 'labels_resolved' not properly updated
-	if (validity==invalid) { addError("some labels failed to resolve"); return; }
+	if (pass>99) { setError("internal error: pass > 99"); return; } // 'labels_resolved' not properly updated
+	if (validity==invalid) { setError("some labels failed to resolve"); return; }
 
 	// Pass 4++
 	// Es gibt immer noch Values, die preliminary sind,
@@ -595,7 +599,7 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 		if (validity==valid || errors.count()) return;
 	}
 
-	if (labels_changed>0) { addError("some labels failed to settle"); return; }
+	if (labels_changed>0) { setError("some labels failed to settle"); return; }
 
 	// Label values have settled.
 	// jetzt müssen wir alles nochmal mit alle Labels = valid laufen lassen,
@@ -651,7 +655,7 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 		}
 
 		if (errors.count()) return;
-		addError("source did not become valid. :-(");
+		setError("source did not become valid. :-(");
 		return;
 	}
 
@@ -740,9 +744,9 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 
 	// stop on errors:
 	if (errors.count()) return;
-	if (cond[0]!=no_cond) { addError("#endif missing"); return; } // TODO: set error marker in '#if/#elif/#else' line
+	if (cond[0]!=no_cond) { setError("#endif missing"); return; } // TODO: set error marker in '#if/#elif/#else' line
 	assert(!cond_off);
-	if (local_labels_index!=0) { addError("#endlocal missing"); return; } // TODO: set error marker in '#local' line
+	if (local_labels_index!=0) { setError("#endlocal missing"); return; } // TODO: set error marker in '#local' line
 
 	try
 	{
@@ -782,7 +786,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 	}
 	catch(any_error& e)
 	{
-		addError("%s",e.what());
+		setError("%s",e.what());
 		return;
 	}
 }
@@ -901,7 +905,7 @@ uint Z80Assembler::assembleSingleLine (uint address, cstr instruction, char buff
 
 	CodeSegment& segment = dynamic_cast<CodeSegment&>(current_segment());
 
-	if (segment.size>4) addError("resulting code size exceeds size of z80 opcodes");	// defs etc.
+	if (segment.size>4) setError("resulting code size exceeds size of z80 opcodes");	// defs etc.
 	if (errors.count()) return 0;
 	memcpy(buffer,segment.getData(),segment.size);
 	return segment.size;
@@ -3312,19 +3316,19 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		segments.append(segment);
 
 		Label* l = global_labels().find(name);
-		if (l && l->is_defined) addError("label %s redefined",name);
+		if (l && l->is_defined) setError("label %s redefined",name);
 		q.label = new Label(name,segment,q.sourcelinenumber,0/*address*/,invalid,yes/*global*/,yes/*defined*/,l!=NULL);
 		global_labels().add(q.label);
 
 		cstr lname = catstr(name,"_end");
 		l = global_labels().find(lname);
-		if (l && l->is_defined) addError("label %s redefined",lname);
+		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, segment, q.sourcelinenumber,
 							 0/*address+size*/, invalid, yes/*global*/, yes/*defined*/, l!=NULL/*used*/) );
 
 		lname = catstr(name,"_size");
 		l = global_labels().find(lname);
-		if (l && l->is_defined) addError("label %s redefined",lname);
+		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, segment, q.sourcelinenumber,
 							 0/*size*/, invalid, yes/*global*/, yes/*defined*/, l!=NULL/*used*/) );
 	}
@@ -3513,19 +3517,19 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 		segments.append(s);
 
 		Label* l = global_labels().find(name);
-		if (l && l->is_defined) addError("label %s redefined",name);
+		if (l && l->is_defined) setError("label %s redefined",name);
 		l = new Label(name,s,current_sourceline_index,0,invalid,yes,yes,l!=NULL);
 		global_labels().add(l);
 		q.label = l;
 
 		cstr lname = catstr(name,"_end");
 		l = global_labels().find(lname);
-		if (l && l->is_defined) addError("label %s redefined",lname);
+		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=NULL) );
 
 		lname = catstr(name,"_size");
 		l = global_labels().find(lname);
-		if (l && l->is_defined) addError("label %s redefined",lname);
+		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=NULL) );
 	}
 	else

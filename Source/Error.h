@@ -42,7 +42,7 @@ public:
 
 public:
 	Error (cstr text, SourceLine* sourceline);
-	Error (cstr text, SourceLine* sourceline, va_list va);
+	Error (cstr text, SourceLine* sourceline, va_list va) __printflike(2,0);
 };
 
 

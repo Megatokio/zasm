@@ -62,7 +62,7 @@ public:
 	Label (cstr name, Segment*, uint sourceline, int32 value, Validity, bool is_global, bool is_defined, bool is_used);
 	Label (cstr name, Segment*, uint sourceline, Value const&, bool is_global, bool is_defined, bool is_used);
 	Label (Label const&);
-	~Label ()				asserts { assert(cnt==0); }
+	~Label ()				noexcept { assert(cnt==0); }
 
 	int32	get_value()		{ return value.value; }
 	bool	is_invalid()	{ return value.validity == invalid; }

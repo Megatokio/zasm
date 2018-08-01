@@ -34,7 +34,7 @@ syntax_error::syntax_error (cstr s, ...) noexcept
 {
     va_list va;
     va_start(va,s);
-    text = usingstr(s,va);
+    text = newcopy(usingstr(s,va));
     va_end(va);
 }
 
@@ -44,6 +44,6 @@ fatal_error::fatal_error (cstr s, ...) noexcept
 {
     va_list va;
     va_start(va,s);
-    text = usingstr(s,va);
+    text = newcopy(usingstr(s,va));
     va_end(va);
 }

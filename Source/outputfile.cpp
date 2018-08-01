@@ -1283,16 +1283,16 @@ void Z80Assembler::checkSnaFile () throws
 	SnaHead* head = (SnaHead*)hs.getData();
 
 	// verify some values from header:
-	if ((head->i>>6)==1) addError(
+	if ((head->i>>6)==1) setError(
 		"segment %s: i register must not be in range [0x40 .. 0x7F] (i=0x%02X)", hs.name, head->i);
-	if (head->iff2&~4) addError(
+	if (head->iff2&~4) setError(
 		"segment %s: iff2 byte must be 0 or 4 (iff2=0x%02X)", hs.name, head->iff2);
 	uint16 sp = head->spl + 256*head->sph;
-	if (sp>0 && sp<0x4002) addError(
+	if (sp>0 && sp<0x4002) setError(
 		"segment %s: sp register must not be in range [0x0001 .. 0x4001] (sp=0x%04X)", hs.name, sp);
-	if (head->int_mode>2) addError(
+	if (head->int_mode>2) setError(
 		"segment %s: interrupt mode must be in range 0 .. 2 (im=%u)", hs.name, head->int_mode);
-	if (head->border>7) addError(
+	if (head->border>7) setError(
 		"segment %s: border color byte must not be in range 0 .. 7 (brdr=%u)", hs.name, head->border);
 	if (errors.count()) return;
 
@@ -1302,10 +1302,10 @@ void Z80Assembler::checkSnaFile () throws
 	{
 		CodeSegment& s = segments[i];
 		addr += s.outputSize();
-		if (addr>0x10000) { addError(
+		if (addr>0x10000) { setError(
 			"segment %s extends beyond ram end (end=0x%05X)", s.name, uint(addr)); break; }
 	}
-	if (addr<0x10000) addError(
+	if (addr<0x10000) setError(
 		"target SNA: total ram size must be 0xC000 bytes (size=0x%04X)", uint(addr-0x4000));
 }
 
@@ -1331,7 +1331,7 @@ void Z80Assembler::checkAceFile () throws
 	uint32 ramsize = segments.totalCodeSize();
 
 	bool ramsize_valid = ramsize==0x2000 || ramsize==0x6000 || ramsize==0xA000;
-	if (!ramsize_valid) addError(
+	if (!ramsize_valid) setError(
 		"total ram size must be 0x2000 (3k), 0x6000 (+16k) or 0xA000 (+32k) (size=%u)",uint(ramsize));
 
 	// #code VRAM_COPY,   $2000, $400
@@ -1348,7 +1348,7 @@ void Z80Assembler::checkAceFile () throws
 		CodeSegment& s = segments[i];
 		if (s.size==0) continue;		// skip & don't check address
 
-		if (s.address.value!=addr) addError(
+		if (s.address.value!=addr) setError(
 			"segment %s must start at 0x%04X (address=0x%04X)", s.name, uint(addr), uint(s.address));
 		if (s.compressed) throw syntax_error(
 			"segment %s cannot be compressed",s.name);
@@ -1366,33 +1366,33 @@ void Z80Assembler::checkAceFile () throws
 				for (uint i=0; i<8;  i++) zbu[0x40+2*i]=0;	// clear settings
 				for (uint i=0; i<18; i++) zbu[0x80+2*i]=0;	// clear registers
 				bool empty=yes; for (int i=1; i<0x200 && empty; i++) { empty = zbu[i]==0; }
-				if (!empty) addError("segment %s must be empty except for settings and registers", s.name);
+				if (!empty) setError("segment %s must be empty except for settings and registers", s.name);
 
 				// check registers:
 				AceHead* head = (AceHead*)&s[offs];
-				if (peek2Z(&head->flag_8001) != 0x8001) addError("segment %s: segment[0].flag must be 0x8001", s.name);
+				if (peek2Z(&head->flag_8001) != 0x8001) setError("segment %s: segment[0].flag must be 0x8001", s.name);
 				uint ramtop = peek2Z(&head->ramtop);
-				if (ramsize_valid && ramtop!=0x2000+ramsize) addError(
+				if (ramsize_valid && ramtop!=0x2000+ramsize) setError(
 					"segment %s: settings[0].ramtop != ram end address 0x%04X (ramtop=0x%04X)",
 					s.name, 0x2000+uint(ramsize), ramtop);
 
 				uint sp = peek2Z(&head->sp);
-				if (sp<0x2002) addError(
+				if (sp<0x2002) setError(
 					"segment %s: z80_regs[6].sp must not be in range [0x0000 .. 0x2001] (sp=0x%04X)", s.name, sp);
-				if (sp>ramtop) addError(
+				if (sp>ramtop) setError(
 					"segment %s: z80_regs[6].sp points behind settings[0].ramtop (sp=0x%04X, ramtop=0x%04X)",
 					s.name, sp, ramtop);
-				if (peek2Z(&head->im)>2) addError(
+				if (peek2Z(&head->im)>2) setError(
 					"segment %s: z80_regs[12].int_mode must be in range 0 .. 2 (im=%u)", s.name, head->im);
-				if (peek2Z(&head->iff1)>1) addError(
+				if (peek2Z(&head->iff1)>1) setError(
 					"segment %s: z80_regs[13].iff1 must be 0 or 1 (iff1=%u)", s.name, head->iff1);
-				if (peek2Z(&head->iff2)>1) addError(
+				if (peek2Z(&head->iff2)>1) setError(
 					"segment %s: z80_regs[14].iff2 must be 0 or 1 (iff2=%u)", s.name, head->iff2);
-				if (peek2Z(&head->i)>255) addError(
+				if (peek2Z(&head->i)>255) setError(
 					"segment %s: z80_regs[15].reg_i must be in range 0 .. 0xff (i=%u)", s.name, head->i);
-				if (peek2Z(&head->r)>255) addError(
+				if (peek2Z(&head->r)>255) setError(
 					"segment %s: z80_regs[16].reg_r must be in range 0 .. 0xff (r=%u)", s.name, head->r);
-				if (peek2Z(&head->flag_80) != 0x80) addError(
+				if (peek2Z(&head->flag_80) != 0x80) setError(
 					"segment %s: z80_regs[17].flag must be 0x80", s.name);
 				break;
 			}
@@ -1408,7 +1408,7 @@ void Z80Assembler::checkAceFile () throws
 			{
 				uint32* bu = (uint32*)&s[offs]; bool empty=yes;
 				for (int i=0; i<0x100 && empty; i++) { empty = bu[i]==0; }
-				if (!s.isEmpty()) addError(
+				if (!s.isEmpty()) setError(
 					"segment %s: page 0x%04X-0x%04X must be empty", s.name, uint(addr), uint(addr+0x3ff));
 				break;
 			}
@@ -1466,7 +1466,7 @@ void Z80Assembler::checkZX80File () throws
 
 	// valid ram size: 1k, 2k, 3k, 4k, 16k
 	bool ramsize_valid = ramsize>=sizeof(ZX80Head)+1 && ramsize<=16 kB;
-	if (!ramsize_valid) addError(
+	if (!ramsize_valid) setError(
 		"total ram size out of range: must be ≥40+1 ($28+1) and ≤16k (size=$%04X",ramsize);
 	if (ramsize<sizeof(ZX80Head)) return;
 
@@ -1480,7 +1480,7 @@ void Z80Assembler::checkZX80File () throws
 
 	ZX80Head* head = (ZX80Head*)hs.getData();
 	uint16 E_LINE = peek2Z(&head->E_LINE);
-	if (ramsize_valid && E_LINE != 0x4000+ramsize) addError(
+	if (ramsize_valid && E_LINE != 0x4000+ramsize) setError(
 		"segment %s: E_LINE ($400A) must match ram end address $%04X (E_LINE=$%04X)",
 		hs.name, 0x4000+uint(hs.size), E_LINE);
 
@@ -1576,7 +1576,7 @@ a:		CodeSegment& s = segments[hi++];
 
 	// valid ram size: sizeof(sysvars)-9+1 .. 16k-9
 	bool ramsize_valid = ramsize >= 125+1 && ramsize <= 16 kB;
-	if (!ramsize_valid) addError(
+	if (!ramsize_valid) setError(
 		"total ram size out of range: must be ≥125+1 ($7D+1) and ≤16k (size=$%04X)",ramsize);
 
 	CodeSegment& hs = segments[hi];
@@ -1589,7 +1589,7 @@ a:		CodeSegment& s = segments[hi++];
 
 	ZX81Head* head = (ZX81Head*)hs.getData();
 	uint16 E_LINE = peek2Z(&head->E_LINE);
-	if (ramsize_valid && E_LINE != 0x4000+ramsize) addError(
+	if (ramsize_valid && E_LINE != 0x4000+ramsize) setError(
 		"segment %s: E_LINE must match ram end address $%04X (E_LINE=$%04X)", hs.name, 0x4000+uint(hs.size), E_LINE);
 
 	if (verbose)	// last byte of a (clean) file must be 0x80 (last byte of VARS):
@@ -1630,13 +1630,13 @@ void Z80Assembler::checkZ80File () throws
 	if (hs.size == z80v1len)
 	{
 		// check header:
-		if (!head.pch && !head.pcl) addError("header v1.45: PC at offset 6 must not be 0");
+		if (!head.pch && !head.pcl) setError("header v1.45: PC at offset 6 must not be 0");
 
 		// check segments:
-		if (segments.count()>2) addError("v1.45: only one ram page allowed");
+		if (segments.count()>2) setError("v1.45: only one ram page allowed");
 		CodeSegment& s = segments[i0+1];
-		if (s.size!=0xc000) addError("segment %s: v1.45: page size must be 0xC000",s.name);
-		if (s.has_flag) addError("segment %s: v1.45: no page ID allowed",s.name);
+		if (s.size!=0xc000) setError("segment %s: v1.45: page size must be 0xC000",s.name);
+		if (s.has_flag) setError("segment %s: v1.45: no page ID allowed",s.name);
 
 		// comfort: clear compression flag if size increases:
 		if (head.data!=255 && head.data&0x20 && compressed_page_size_z80(s.getData(),0xc000)>0xc000) head.data -= 0x20;
@@ -1689,13 +1689,13 @@ void Z80Assembler::checkZ80File () throws
 	for (uint i=i0+1; i<segments.count(); i++)
     {
 		CodeSegment& s = segments[i];
-        if (!s.has_flag) { addError("segment %s: page ID missing",s.name); continue; }
+        if (!s.has_flag) { setError("segment %s: page ID missing",s.name); continue; }
         uint page_id = s.flag;
 
         switch (page_id)
         {
         case 2:	// rom at address 0x4000
-				if(!paged_mem) addError(
+				if(!paged_mem) setError(
 					"segment %s: invalid page ID: this model does not have 32 kB of rom",s.name);
 				goto anypage;
         case 0:	// rom at address 0x0000
@@ -1715,21 +1715,21 @@ void Z80Assembler::checkZ80File () throws
 rampage:	page_id -= 3;
 			if (varying_pagesize)	// b&w machines:
 			{
-				if (page_id>7) { addError("segment %s: page ID out of range",s.name); continue; }
-				if (loaded & (1<<page_id)) { addError("segment %s: page ID occured twice",s.name); continue; }
+				if (page_id>7) { setError("segment %s: page ID out of range",s.name); continue; }
+				if (loaded & (1<<page_id)) { setError("segment %s: page ID occured twice",s.name); continue; }
 				loaded |= 1<<page_id;
 				int32 size = 1024 << page_id;
-				if (size!=s.size) { addError("segment %s: page size does not match page ID",s.name); continue; }
-				if (int(addr+size)>s.size) {addError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
+				if (size!=s.size) { setError("segment %s: page size does not match page ID",s.name); continue; }
+				if (int(addr+size)>s.size) {setError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
 				addr += size;
 			}
 			else	// std. 16k page:
 			{
-				if (page_id >= ramsize>>14) { addError("segment %s: page ID out of range",s.name); continue; }
-				if (loaded & (1<<page_id)) { addError("segment %s: page ID occured twice",s.name); continue; }
+				if (page_id >= ramsize>>14) { setError("segment %s: page ID out of range",s.name); continue; }
+				if (loaded & (1<<page_id)) { setError("segment %s: page ID occured twice",s.name); continue; }
 				loaded |= 1<<page_id;
 				addr += 16 kB;
-anypage:		if (s.size!=16 kB) { addError("segment %s: page size must be 16 kB",s.name); continue; }
+anypage:		if (s.size!=16 kB) { setError("segment %s: page size must be 16 kB",s.name); continue; }
 			}
 			continue;
         }
@@ -1742,7 +1742,7 @@ anypage:		if (s.size!=16 kB) { addError("segment %s: page size must be 16 kB",s.
 		uint32 missing = needed &= ~loaded;
 		for (int i=0; i<32; i++)
 		{
-			if ((missing>>i)&1) addError("code segment for page ID %i is missing",i+3);
+			if ((missing>>i)&1) setError("code segment for page ID %i is missing",i+3);
 		}
 	}
 }
