@@ -44,7 +44,7 @@
 void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 {
 	assert(errors.count()==0);
-	assert(dname!=NULL);
+	assert(dname != nullptr);
 
 	if (!target) { target = ROM; target_ext = "rom"; }
 	if (style=='x' && (target==ROM || target==BIN)) target_ext = "hex";
@@ -58,8 +58,8 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 	{
 	case TARGET_UNSET:
 	case ROM:
-	case BIN:	if (style=='x') writeHexFile(fd);
-				if (style=='s') writeS19File(fd);
+	case BIN:	if (style=='x') { writeHexFile(fd); return; }
+				if (style=='s') { writeS19File(fd); return; }
 				return writeBinFile(fd);
 	case SNA:	return writeSnaFile(fd);
 	case Z80:	return writeZ80File(fd);
