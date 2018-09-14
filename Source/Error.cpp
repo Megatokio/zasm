@@ -28,7 +28,7 @@
 
 Error::Error (cstr text, SourceLine* sourceline)
 :
-	text(text),
+	text(dupstr(text)),
 	sourceline(sourceline)
 {}
 
