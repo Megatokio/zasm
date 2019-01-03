@@ -299,7 +299,7 @@ OTHER_FILES += \
     ../Test/zx82_rom.lst \
 	../Test/8080/Altair8800_Monitor.lst \
 	../Test/8080/Altair8800_Monitor.asm \
-
+	../Test/Z80/rept.asm \
 
 
 

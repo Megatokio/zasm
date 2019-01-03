@@ -412,6 +412,7 @@ OTHER_FILES += \
     ../Test/Z80/mybios4_mod2.asm \
     ../Test/Z80/print.asm \
     ../Test/Z80/qsort.asm \
+    ../Test/Z80/rept.asm \
     ../Test/Z80/s.asm \
     ../Test/Z80/SE Basic 094v018.asm \
     ../Test/Z80/Serial I:O test.asm \

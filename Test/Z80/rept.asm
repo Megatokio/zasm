@@ -1,4 +1,4 @@
-
+#!/usr/local/bin/zasm -o original/
 
 
 .org $8000
