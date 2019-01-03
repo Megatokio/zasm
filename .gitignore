@@ -4,6 +4,7 @@ Distributions
 *.zip
 *.pdf
 *.html
+*.lst
 sdcc/bin
 info.vh
 Linux/*.o
