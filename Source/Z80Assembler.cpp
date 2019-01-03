@@ -1950,8 +1950,6 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 			if (!n.is_valid()){ n=1; setError("count must be evaluatable in pass 1"); }
 			if (n>0x8000)     { n=1; setError("number of repetitions too high"); }
 			if (n<0)          { n=1; setError("number of repetitions negative"); }
-			if (source.count() + n*(e-a-1) > 1000000)
-				throw fatal_error("total source exceeds 1,000,000 lines");
 		}
 	}
 
@@ -1971,7 +1969,12 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 		//if (s.testDotWord("macro")) throw fatal_error("");
 	}
 
-	if (pass>1)	// => just skip the rept macro
+	if (pass==1)
+	{
+		if (source.count() + n*(e-a-1) > 1000000)
+			throw fatal_error("total source exceeds 1,000,000 lines");
+	}
+	else // if (pass>1)	// => just skip the rept macro
 	{
 		q.skip_to_eol();
 		return;
