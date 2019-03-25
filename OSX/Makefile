@@ -2,18 +2,22 @@
 # 	Makefile for building zasm
 #############################################################################
 
-CC            = gcc
-CXX           = g++
-DEFINES       = -DNDEBUG -DQT_NO_DEBUG
-CFLAGS        = -pipe -O2 -Wall -W -D_REENTRANT -fPIE $(DEFINES)
-CXXFLAGS      = -pipe -Wno-multichar -O2 -std=c++0x -Wall -W -D_REENTRANT -fPIE $(DEFINES)
-INCPATH       = -I. -I.. -I../Source -I../Libraries
-LINK          = g++
-LFLAGS        = -Wl
-LIBS          = $(SUBLIBS) -lpthread 
+TARGET      = zasm
 
+MACHINE     = -m64     # -m32 or -m64 or empty
 
-OBJECTS       = \
+CC          = gcc
+CXX         = g++
+DEFINES     = -DNDEBUG -DQT_NO_DEBUG -D_REENTRANT
+CFLAGS      = $(MACHINE) -pipe -Os -Wall $(DEFINES)
+CXXFLAGS    = $(CFLAGS) -std=c++11 -Wno-multichar
+INCPATH     = -I. -I.. -I../Source -I../Libraries
+LINK        = g++
+LFLAGS      = -Wl $(MACHINE)
+LIBS        = -lpthread -lz
+STRIP       = strip
+
+OBJECTS     = \
 		Error.o \
 		Label.o \
 		main.o \
@@ -26,94 +30,72 @@ OBJECTS       = \
 		listfile.o \
 		Z80Header.o \
 		Macro.o \
+		Value.o \
+		zx7.o \
+		SyntaxError.o \
 		cstrings.o \
 		exceptions.o \
-		errors.o \
-		log.o \
 		FD.o \
 		tempmem.o \
 		files.o \
 		z80_clock_cycles.o \
 		z80_major_opcode.o \
-		z80_opcode_length.o
+		z80_opcode_length.o \
+		kio.o \
+		WavFile.o \
+		audio.o
 
 
-TARGET        = zasm
+.PHONY:	all clean
 
-first: 	all
-all: 	Makefile $(TARGET)
+all: 	$(TARGET)
 
-$(TARGET):  $(OBJECTS)  
-	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS)
+clean:
+		rm *.o $(TARGET)
 
-	
+$(TARGET):  Makefile $(OBJECTS)
+	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
+	$(STRIP) $(TARGET)
+
+
 ####### Compile
 
-Error.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Error.o ../Source/Error.cpp
+%.o : ../Source/%.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $@ $<
 
-Label.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Label.o ../Source/Label.cpp
-
-main.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../Source/main.cpp
-
-Segment.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Segment.o ../Source/Segment.cpp
-
-Source.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Source.o ../Source/Source.cpp
-
-Z80Assembler.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Z80Assembler.o ../Source/Z80Assembler.cpp
-
-CharMap.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o CharMap.o ../Source/CharMap.cpp
-
-helpers.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o helpers.o ../Source/helpers.cpp
-
-outputfile.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o outputfile.o ../Source/outputfile.cpp
-
-listfile.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o listfile.o ../Source/listfile.cpp
-
-Z80Header.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Z80Header.o ../Source/Z80Header.cpp
-
-Macro.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Macro.o ../Source/Macro.cpp
-
-cstrings.o: 
+cstrings.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cstrings.o ../Libraries/cstrings/cstrings.cpp
 
-exceptions.o: 
+exceptions.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o exceptions.o ../Libraries/kio/exceptions.cpp
 
-errors.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o errors.o ../Libraries/kio/errors.cpp
-
-log.o: 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o log.o ../Libraries/unix/log.cpp
-
-FD.o: 
+FD.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o FD.o ../Libraries/unix/FD.cpp
 
-tempmem.o: 
+tempmem.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tempmem.o ../Libraries/unix/tempmem.cpp
 
-files.o: 
+files.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o files.o ../Libraries/unix/files.cpp
 
-z80_clock_cycles.o: 
+z80_clock_cycles.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_clock_cycles.o ../Libraries/Z80/goodies/z80_clock_cycles.cpp
 
-z80_major_opcode.o: 
+z80_major_opcode.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_major_opcode.o ../Libraries/Z80/goodies/z80_major_opcode.cpp
 
-z80_opcode_length.o: 
+z80_opcode_length.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_opcode_length.o ../Libraries/Z80/goodies/z80_opcode_length.cpp
+
+kio.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o kio.o ../Libraries/kio/kio.cpp
+
+WavFile.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o WavFile.o ../Libraries/audio/WavFile.cpp
+
+audio.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o audio.o ../Libraries/audio/audio.cpp
+
 
 
 

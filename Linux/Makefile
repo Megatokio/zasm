@@ -2,20 +2,22 @@
 # 	Makefile for building zasm
 #############################################################################
 
-# MACHINE: -m32 or -m64 or empty:
-MACHINE		  = -m64
+TARGET      = zasm
 
-CC            = gcc
-CXX           = g++
-DEFINES       = -DNDEBUG -DQT_NO_DEBUG
-CFLAGS        = -pipe -O2 -Wall -W -D_REENTRANT -fPIE $(DEFINES)
-CXXFLAGS      = $(MACHINE) -pipe -Wno-multichar -O2 -std=c++11 -Wall -W -Wno-deprecated-declarations -D_REENTRANT -fPIE $(DEFINES)
-INCPATH       = -I. -I.. -I../Source -I../Libraries
-LINK          = g++
-LFLAGS        = $(MACHINE) 
-LIBS          = -lpthread -lz
+MACHINE     = -m64     # -m32 or -m64 or empty
 
-OBJECTS       = \
+CC          = gcc
+CXX         = g++
+DEFINES     = -DNDEBUG -DQT_NO_DEBUG -D_REENTRANT
+CFLAGS      = $(MACHINE) -pipe -Os -Wall $(DEFINES)
+CXXFLAGS    = $(CFLAGS) -std=c++11 -Wno-multichar
+INCPATH     = -I. -I.. -I../Source -I../Libraries
+LINK        = g++
+LFLAGS      = $(MACHINE)
+LIBS        = -lpthread -lz
+STRIP       = strip
+
+OBJECTS     = \
 		Error.o \
 		Label.o \
 		main.o \
@@ -44,22 +46,23 @@ OBJECTS       = \
 		audio.o
 
 
-TARGET        = zasm
+.PHONY:	all clean
 
-first: 	all
-all: 	Makefile $(TARGET)
-clean:  
+all: 	$(TARGET)
+
+clean:
 		rm *.o $(TARGET)
 
-$(TARGET):  $(OBJECTS)
+$(TARGET):  Makefile $(OBJECTS)
 	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS)
+	$(STRIP) $(TARGET)
 
 
 ####### Compile
 
 %.o : ../Source/%.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $@ $<
-	
+
 cstrings.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cstrings.o ../Libraries/cstrings/cstrings.cpp
 
