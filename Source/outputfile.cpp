@@ -359,7 +359,12 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 				{
 					samples.grow(num_samples);
 					fd.read_bytes(samples.getData(),num_samples);
-					if(!s->signed_samples) convert_audio(reinterpret_cast<Array<uint8>&>(samples),samples);
+					if(!s->signed_samples)
+					{
+						int8* z = samples.getData();
+						const uint8* q = reinterpret_cast<const uint8*>(z);
+						convert_audio(q, z, samples.count());
+					}
 				}
 				else
 				{
