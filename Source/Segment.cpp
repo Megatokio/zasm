@@ -92,7 +92,7 @@ DataSegment* Segments::find (cstr name) const
 		if (auto s = dynamic_cast<DataSegment*>(data[i].ptr()))
 			if (eq(s->name,name)) return s;
 	}
-	return NULL;
+	return nullptr;
 }
 
 
@@ -371,7 +371,7 @@ void Segment::storeHexBytes (cptr data, uint n) throws
 		char d = *data++;
 		if (!is_hex_digit(d)) throw syntax_error("only hex characters allowed: '%c'",d);
 
-		store((digit_value(c)<<4) + digit_value(d));
+		store((hex_digit_value(c)<<4) + hex_digit_value(d));
 	}
 }
 
