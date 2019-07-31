@@ -33,11 +33,11 @@
 #include "unix/MyFileInfo.h"
 #include "Z80Assembler.h"
 #include "Segment.h"
-#include "Z80/Z80opcodes.h"
+#include "z80_opcodes.h"
 #include "Templates/HashMap.h"
 #include "helpers.h"
 #include "CharMap.h"
-#include "Z80/goodies/z80_major_opcode.h"
+#include "z80_major_opcode.h"
 #include "zx7.h"
 #include <math.h>
 #include "Templates/StrArray.h"
@@ -103,10 +103,10 @@ void Z80Assembler::setError (cstr format, ...)
 
 	SourceLine* sourceline = current_sourceline_index < source.count() ? &current_sourceline() : nullptr;
 
-    va_list va;
-    va_start(va,format);
+	va_list va;
+	va_start(va,format);
 	errors.append( Error(format, sourceline, va) );
-    va_end(va);
+	va_end(va);
 }
 
 static bool doteq (cptr w, cptr s)
@@ -138,19 +138,19 @@ cstr Z80Assembler::unquotedstr (cstr s0)
 	// just unquote a string
 	// Z80 assemblers did not use the c-style escapes ...
 
-    if (!s0||!*s0) return emptystr;
+	if (!s0||!*s0) return emptystr;
 
-    str  s = dupstr(s0);
-    int  n = int(strlen(s));
-    char c = s[0];
+	str  s = dupstr(s0);
+	int  n = int(strlen(s));
+	char c = s[0];
 
-    if (n>=2 && (c=='"'||c=='\'') && s[n-1]==c)
-    {
+	if (n>=2 && (c=='"'||c=='\'') && s[n-1]==c)
+	{
 		s[n-1] = 0;
 		s++;
-    }
+	}
 
-    return s;
+	return s;
 }
 
 cstr Z80Assembler::get_filename (SourceLine& q, bool dir) throws
@@ -1246,20 +1246,20 @@ label:	if (casefold) w = lowerstr(w);
 			   Label noch nicht definiert?
 			   => context==lokal?
 				  => lokales Label?
-				     => Label wurde schon einmal referenziert und dabei eingetragen
-				        ACTION: no action
-				     globales label?
-				     => Label wurde mit .globl deklariert
-				        es ist *auch* in globals[] eingetragen.
-				        wenn es später mit #include library definiert wird, wird es auch hier definiert sein.
-				        ACTION: no action
+					 => Label wurde schon einmal referenziert und dabei eingetragen
+						ACTION: no action
+					 globales label?
+					 => Label wurde mit .globl deklariert
+						es ist *auch* in globals[] eingetragen.
+						wenn es später mit #include library definiert wird, wird es auch hier definiert sein.
+						ACTION: no action
 			   => context==global?
-			      => lokales Label?
-			         => can't happen (Internal Error)
-			         globales Label?
-			         => Label wurde schon einmal referenziert und dabei eingetragen
+				  => lokales Label?
+					 => can't happen (Internal Error)
+					 globales Label?
+					 => Label wurde schon einmal referenziert und dabei eingetragen
 						oder Label wurde mit .globl deklariert
-				        ACTION: no action
+						ACTION: no action
 			*/
 			Label* l = local_labels().find(w);
 			if (!l && if_pending)
@@ -2687,9 +2687,9 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 					// Vcc _does_ handle modified header files or modified CFLAGS or upgraded Vcc itself!
 
 	// create pipe:
-    const int R=0,W=1;
-    int pipout[2];
-    if (pipe(pipout)) throw fatal_error(errno);
+	const int R=0,W=1;
+	int pipout[2];
+	if (pipe(pipout)) throw fatal_error(errno);
 
 	// compile source file:
 
@@ -2699,14 +2699,14 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 	if (child_id==0)			// child process:
 	{
 		close(pipout[R]);		// close unused fd
-        close(1);				// close stdout
-        close(2);				// close stderr
+		close(1);				// close stdout
+		close(2);				// close stderr
 		int r1 = dup(pipout[W]);// becomes lowest unused fileid: stdout
-	 	int r2 = dup(pipout[W]);// becomes lowest unused fileid: stderr
-        (void)r1; (void)r2;
-        assert(r1==1);
-        assert(r2==2);
-        close(pipout[W]);		// close unused fd
+		int r2 = dup(pipout[W]);// becomes lowest unused fileid: stderr
+		(void)r1; (void)r2;
+		assert(r1==1);
+		assert(r2==2);
+		close(pipout[W]);		// close unused fd
 
 		int result = chdir(source_directory);	// => partial paths passed to sdcc will start in source dir
 		if (result) exit(errno);
@@ -2775,8 +2775,8 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 				throw fatal_error("\"%s %s\" returned exit code %i\n- - - - - -\n%s- - - - - -\n",
 					filename_from_path(c_compiler), filename_from_path(fqn_q), int(WEXITSTATUS(status)), bu);
 			}
-            else if (verbose)
-                log("%s",bu);
+			else if (verbose)
+				log("%s",bu);
 		}
 		else if (WIFSIGNALED(status))		// child process terminated by signal
 		{
