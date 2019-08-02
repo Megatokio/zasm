@@ -28,6 +28,8 @@
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
+#include <cmath>
+#include <unistd.h>
 #include "unix/FD.h"
 #include "unix/files.h"
 #include "unix/MyFileInfo.h"
@@ -39,8 +41,8 @@
 #include "CharMap.h"
 #include "z80_major_opcode.h"
 #include "zx7.h"
-#include <math.h>
 #include "Templates/StrArray.h"
+#include "kio/peekpoke.h"
 
 
 extern char** environ;

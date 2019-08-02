@@ -34,12 +34,12 @@ enum Z80Variant { isaZ80, isa8080, isaZ180 };
 
 /*	calculate length of Z80 opcode
 */
-EXT	uint z80_opcode_length(uint8* ip);
+extern	uint z80_opcode_length(uint8* ip);
 
 
 /*	calculate length of Z80, 8080 or Z180/HD64180 opcode
 */
-EXT	uint z80_opcode_length(uint8* ip, Z80Variant variant);
+extern	uint z80_opcode_length(uint8* ip, Z80Variant variant);
 
 
 

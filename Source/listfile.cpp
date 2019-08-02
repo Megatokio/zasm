@@ -30,6 +30,7 @@
 #include "helpers.h"
 #include "z80_clock_cycles.h"
 #include "z80_opcode_length.h"
+#include "kio/peekpoke.h"
 
 static cstr oo_str(uint n)
 {

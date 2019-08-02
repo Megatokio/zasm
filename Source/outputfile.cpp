@@ -29,8 +29,9 @@
 #include "helpers.h"
 #include "unix/files.h"
 #include "zx7.h"
-#include "Libraries/audio/WavFile.h"
-#include "Libraries/audio/audio.h"
+#include "audio/WavFile.h"
+#include "audio/audio.h"
+#include "kio/peekpoke.h"
 #include <zlib.h>
 
 
@@ -261,7 +262,7 @@ void Z80Assembler::writeZ80File (FD& fd) throws
 	else // write v2.0++ pages:
 	{
 		for (uint i=i0+1; i<segments.count(); i++)
-	    {
+		{
 			CodeSegment& s = segments[i];
 			write_compressed_page_z80( fd, s.flag, s.getData(), s.size);
 		}
@@ -1692,30 +1693,30 @@ void Z80Assembler::checkZ80File () throws
 	uint32 loaded = 0;
 
 	for (uint i=i0+1; i<segments.count(); i++)
-    {
+	{
 		CodeSegment& s = segments[i];
-        if (!s.has_flag) { setError("segment %s: page ID missing",s.name); continue; }
-        uint page_id = s.flag;
+		if (!s.has_flag) { setError("segment %s: page ID missing",s.name); continue; }
+		uint page_id = s.flag;
 
-        switch (page_id)
-        {
-        case 2:	// rom at address 0x4000
+		switch (page_id)
+		{
+		case 2:	// rom at address 0x4000
 				if(!paged_mem) setError(
 					"segment %s: invalid page ID: this model does not have 32 kB of rom",s.name);
 				goto anypage;
-        case 0:	// rom at address 0x0000
+		case 0:	// rom at address 0x0000
 				goto anypage;
-        case 1:	// IF1, Disciple or Plus D Rom
+		case 1:	// IF1, Disciple or Plus D Rom
 				goto anypage;		// TODO: b&w machines may have different rom size (not yet supported in zxsp)
-        case 11: // Multiface Rom or ram page if ram size > 128k
+		case 11: // Multiface Rom or ram page if ram size > 128k
 				if (ramsize>128 kB) goto rampage; else goto anypage;
 		case 12: // SPECTRA Rom
 		case 13: // SPECTRA Ram
 		case 14: // SPECTRA Ram
 				if (spectra_used) goto anypage; else goto rampage;
 		case 8:	// convert page number 48k -> 128k
-			    if (!paged_mem && !varying_pagesize) page_id = 3;
-			    goto rampage;
+				if (!paged_mem && !varying_pagesize) page_id = 3;
+				goto rampage;
 		default:
 rampage:	page_id -= 3;
 			if (varying_pagesize)	// b&w machines:
@@ -1737,8 +1738,8 @@ rampage:	page_id -= 3;
 anypage:		if (s.size!=16 kB) { setError("segment %s: page size must be 16 kB",s.name); continue; }
 			}
 			continue;
-        }
-    }
+		}
+	}
 
 	if (errors.count()) return;
 	if (addr<ramsize)

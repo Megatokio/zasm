@@ -1,29 +1,29 @@
 /*	Copyright  (c)	Günter Woigk 1994 - 2019
-  					mailto:kio@little-bat.de
+					mailto:kio@little-bat.de
 
 	This file is free software
 
- 	This program is distributed in the hope that it will be useful,
- 	but WITHOUT ANY WARRANTY; without even the implied warranty of
- 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
- 	Permission to use, copy, modify, distribute, and sell this software and
- 	its documentation for any purpose is hereby granted without fee, provided
- 	that the above copyright notice appear in all copies and that both that
- 	copyright notice and this permission notice appear in supporting
- 	documentation, and that the name of the copyright holder not be used
- 	in advertising or publicity pertaining to distribution of the software
- 	without specific, written prior permission.  The copyright holder makes no
- 	representations about the suitability of this software for any purpose.
- 	It is provided "as is" without express or implied warranty.
+	Permission to use, copy, modify, distribute, and sell this software and
+	its documentation for any purpose is hereby granted without fee, provided
+	that the above copyright notice appear in all copies and that both that
+	copyright notice and this permission notice appear in supporting
+	documentation, and that the name of the copyright holder not be used
+	in advertising or publicity pertaining to distribution of the software
+	without specific, written prior permission.  The copyright holder makes no
+	representations about the suitability of this software for any purpose.
+	It is provided "as is" without express or implied warranty.
 
- 	THE COPYRIGHT HOLDER DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
- 	INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
- 	EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY SPECIAL, INDIRECT OR
- 	CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
- 	DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- 	TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- 	PERFORMANCE OF THIS SOFTWARE.
+	THE COPYRIGHT HOLDER DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+	INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+	EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+	CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+	DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+	TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+	PERFORMANCE OF THIS SOFTWARE.
 
 	2002-01-20	kio	port to unix started
 	2002-01-28	kio	3.0.0 released
@@ -35,9 +35,10 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include "Libraries/unix/FD.h"
-#include "Libraries/unix/files.h"
-#include "Libraries/kio/kio.h"
+#include <unistd.h>
+#include "unix/FD.h"
+#include "unix/files.h"
+#include "kio/kio.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
 
@@ -119,25 +120,25 @@ static void read_testdir (cstr path, Array<cstr>& filepaths)
 	// skips "original/", "ALT/" and "s/"
 	// adds all ".asm" files which start with "#!"
 
-    assert(eq(path,fullpath(path,no)));
+	assert(eq(path,fullpath(path,no)));
 
-    DIR* dir = opendir(path);
-    if (!dir) return;								// error
+	DIR* dir = opendir(path);
+	if (!dir) return;								// error
 
-    for (;;)
-    {
-        dirent* direntry = readdir(dir);
-        if (!direntry) break;
+	for (;;)
+	{
+		dirent* direntry = readdir(dir);
+		if (!direntry) break;
 
-        cstr filename = direntry->d_name;
-        if (filename[0]=='.') continue;				// "." or ".." or hidden file or folder
+		cstr filename = direntry->d_name;
+		if (filename[0]=='.') continue;				// "." or ".." or hidden file or folder
 		cstr filepath = catstr(path,filename);
 
-        struct stat filestat;
-        if (lstat(filepath,&filestat)) continue; 	// error
+		struct stat filestat;
+		if (lstat(filepath,&filestat)) continue; 	// error
 		if (S_ISDIR(filestat.st_mode) && ne(filename,"original") && ne(filename,"ALT") && ne(filename,"s"))
 			read_testdir(catstr(filepath,"/"), filepaths);
-	    //if(S_ISLNK(filestat.st_mode)) continue;  	// skip all symlinks, files or folders
+		//if(S_ISLNK(filestat.st_mode)) continue;  	// skip all symlinks, files or folders
 		if (!S_ISREG(filestat.st_mode)) continue;	// not a file
 		if (!endswith(filename,".asm")) continue;	// no assembler source file
 
@@ -152,9 +153,9 @@ r:		int n = int(read(fd,bu,2));					// read "#!"
 		if (ne(bu,"#!")) continue;					// does not start with #!/usr/local/zasm …
 
 		filepaths.append(filepath);
-    }
+	}
 
-    closedir(dir);
+	closedir(dir);
 }
 
 static void split_command_line (cstr s, Array<cstr>& args)

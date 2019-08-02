@@ -28,7 +28,7 @@
 #include "kio/kio.h"
 
 
-EXT uint8 z80_major_opcode(cstr q) noexcept(false); // any_error
+extern uint8 z80_major_opcode(cstr q) noexcept(false); // any_error
 
 
 
