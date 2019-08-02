@@ -28,8 +28,8 @@
 #include "unix/files.h"
 #include "unix/tempmem.h"
 #include "helpers.h"
-#include "z80_clock_cycles.h"
-#include "z80_opcode_length.h"
+#include "Z80/goodies/z80_clock_cycles.h"
+#include "Z80/goodies/z80_opcode_length.h"
 #include "kio/peekpoke.h"
 
 static cstr oo_str(uint n)

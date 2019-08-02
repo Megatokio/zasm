@@ -47,9 +47,9 @@ SOURCES += \
 	Libraries/unix/FD.cpp \
 	Libraries/unix/tempmem.cpp \
 	Libraries/unix/files.cpp \
-	Source/z80_clock_cycles.cpp \
-	Source/z80_major_opcode.cpp \
-	Source/z80_opcode_length.cpp \
+	Libraries/Z80/goodies/z80_clock_cycles.cpp \
+	Libraries/Z80/goodies/z80_major_opcode.cpp \
+	Libraries/Z80/goodies/z80_opcode_length.cpp \
 	Libraries/kio/kio.cpp \
 	Libraries/audio/WavFile.cpp \
 	Libraries/audio/audio.cpp
@@ -73,6 +73,7 @@ HEADERS += \
 	Libraries/cstrings/base85.h \
 	Libraries/cstrings/cstrings.h \
 	Libraries/kio/kio.h \
+	Libraries/kio/detect_configuration.h \
 	Libraries/kio/exceptions.h \
 	Libraries/kio/standard_types.h \
 	Libraries/kio/peekpoke.h \
@@ -81,11 +82,11 @@ HEADERS += \
 	Libraries/unix/files.h \
 	Libraries/Templates/Array.h \
 	Libraries/Templates/HashMap.h \
-	Source/z80_clock_cycles.h \
-	Source/z80_major_opcode.h \
-	Source/z80_major_opcode_tables.h \
-	Source/z80_opcode_length.h \
-	Source/z80_opcodes.h \
+	Libraries/Z80/goodies/z80_clock_cycles.h \
+	Libraries/Z80/goodies/z80_major_opcode.h \
+	Libraries/Z80/goodies/z80_major_opcode_tables.h \
+	Libraries/Z80/goodies/z80_opcode_length.h \
+	Libraries/Z80/goodies/z80_opcodes.h \
 	Libraries/hash/sdbm_hash.h \
 	Libraries/Templates/template_helpers.h \
 	Libraries/Templates/RCObject.h \
