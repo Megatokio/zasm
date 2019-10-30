@@ -1,8 +1,8 @@
-# zasm
+## zasm
 
 zasm - Z80 and 8080 assembler
 
-You also need to checkout https://bitbucket.org/megatokio/Libraries. (uppercase 'L' - bitbucket sucks..) 
+You also need to checkout https://github.com/megatokio/Libraries. (uppercase 'L') 
 There should be a commit with tag *zasm*. 
 Project *zasm* already contains a symlink to '../Libraries/'.
 
