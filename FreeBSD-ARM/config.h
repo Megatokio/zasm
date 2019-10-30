@@ -44,7 +44,6 @@
 //#define HAVE_SYS_ISA_DEFS_H	// <sys/isa_defs.h>
 //#define HAVE_SYS_LOADAVG_H	// <sys/loadavg.h>
 #define HAVE_SYS_STAT_H 1		// <sys/stat.h>
-#define HAVE_SYS_SYSCTL_H 1		// <sys/sysctl.h>
 #define HAVE_SYS_TYPES_H 1		// <sys/types.h>
 #define HAVE_SYS_UTSNAME_H 1	// <sys/utsname.h>
 #define HAVE_SYS_WAIT_H 1		// <sys/wait.h>
