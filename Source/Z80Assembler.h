@@ -215,8 +215,8 @@ private:
 				else throw syntax_error("current segment does not provide a '$$' address");
 			}
 
-	uint	getCondition	(SourceLine&, bool expect_comma) throws ;
-	uint	getRegister		(SourceLine&, Value&)		throws;
+	int 	getCondition	(SourceLine&, bool expect_comma) throws ;
+	int 	getRegister		(SourceLine&, Value&)		throws;
 	uint	get8080Register	(SourceLine& q)				throws;
 	uint	get8080WordRegister	(SourceLine& q, uint)	throws;
 

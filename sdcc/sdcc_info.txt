@@ -6,7 +6,7 @@ Usage info for using c sources in zasm can be found in Examples/.
 This file contains additional notes for using sdcc.
 
 
-The 'library/' directory contained in this folder is recommended to be used with zasm. Use command line option '-I'.
+The 'include/' directory contained in this folder is recommended to be used with zasm. Use command line option '-I'.
 This 'lib/' dir must be used for '#include library' or '#include system library' to work. Use command line option '-L'.
 You may use the binaries in 'bin/', but any sdcc distro should work.
 For more information on how to include c sources in zasm see http://k1.spdns.de/Develop/Projects/zasm/Documentation/.
@@ -110,7 +110,7 @@ Optimization options:
 	--peep-file file	use this extra peephole file
 	--max-allocs-per-node 	Maximum number of register assignments considered at each node of the tree decomposition
 	--nolospre            	Disable lospre. lospre is an advanced redundancy elimination technique,
-			 	essentially an improved variant of global subexpression elimination.
+				essentially an improved variant of global subexpression elimination.
 	--lospre-unsafe-read  	Allow unsafe reads in lospre. code may sometimes read from random memory locations.
 				(should be ok for the z80, because it has no memory mapped i/o)
 
@@ -244,17 +244,17 @@ i/o:
 Named address spaces for bank switching:
 
 	void setb0(void);		// The function that sets the currently active memory bank to b0
-    void setb1(void);			// The function that sets the currently active memory bank to b1
-    __addressmod setb0 spaceb0;		// Declare a named address space called spaceb0 that uses setb0()
-    __addressmod setb1 spaceb1;		// Declare a named address space called spaceb1 that uses setb1()
-    spaceb0 int x;			// An int in address space spaceb0
-    spaceb1 int *y;			// A pointer to an int in address space spaceb1
-    spaceb0 int *spaceb1 z;		// A pointer in addr.space sapceb1 that points to an int in addr.space spaceb0
-    __addressmod const setb0 spaceb0; 	// Declare a named address space called spaceb0 that uses setb0()
-    __addressmod setb1 spaceb1;		// Declare a named address space called spaceb1 that uses setb1() and resides in ROM
-    const spaceb0 int x = 42;		// An int in address space spaceb0
-    spaceb1 int *y;			// A pointer to an int in address space spaceb1
-    const spaceb0 int *spaceb1 z;	// A pointer in addr.space sapceb1 that points to a const int in addr.space spaceb0
+	void setb1(void);			// The function that sets the currently active memory bank to b1
+	__addressmod setb0 spaceb0;		// Declare a named address space called spaceb0 that uses setb0()
+	__addressmod setb1 spaceb1;		// Declare a named address space called spaceb1 that uses setb1()
+	spaceb0 int x;			// An int in address space spaceb0
+	spaceb1 int *y;			// A pointer to an int in address space spaceb1
+	spaceb0 int *spaceb1 z;		// A pointer in addr.space sapceb1 that points to an int in addr.space spaceb0
+	__addressmod const setb0 spaceb0; 	// Declare a named address space called spaceb0 that uses setb0()
+	__addressmod setb1 spaceb1;		// Declare a named address space called spaceb1 that uses setb1() and resides in ROM
+	const spaceb0 int x = 42;		// An int in address space spaceb0
+	spaceb1 int *y;			// A pointer to an int in address space spaceb1
+	const spaceb0 int *spaceb1 z;	// A pointer in addr.space sapceb1 that points to a const int in addr.space spaceb0
 
 
 ei/di and interrupts:

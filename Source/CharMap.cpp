@@ -48,20 +48,18 @@ static UCS2Char ucs2_from_utf8 (cptr s) throws
 	// throws on error
 	// from Unicode/UTF-8.h
 
-	UCS4Char n; uint i;
-
 	assert(s);
 
-	n = uchar(*s);							// UCS-4 char code akku
-	if (utf8_is_7bit(n)) return UCS2Char(n);	// 7-bit ascii char
-	if (utf8_is_fup(n)) throw data_error("broken character in map (unexpected UTF-8 fup character)");
+	if (utf8_is_7bit(*s)) return UCS2Char(*s);	// 7-bit ascii char
+	if (utf8_is_fup(*s)) throw data_error("broken character in map (unexpected UTF-8 fup character)");
+	UCS4Char n = uchar(*s);					// UCS-4 char code akku
 											// 0x80 … 0xBF: unexpected fups
 // multi-byte character:
-	i = 0;									// UTF-8 character size
-	int8 c = n & ~0x02;						// force stop at i=6
+	uint i = 0;								// UTF-8 character size
+	int8 c = int8(n & ~0x02u);				// force stop at i=6
 	while (char(c<<(++i)) < 0)				// loop over fup bytes
 	{
-		uchar c1 = *(++s);
+		char c1 = *(++s);
 		if (utf8_no_fup(c1)) throw data_error("broken character in map (truncated UTF-8 character)");
 		n = (n<<6) + (c1&0x3F);
 	}
@@ -117,7 +115,7 @@ CharMap::CharMap (CharSet charset)
 				addMappings("abcdefghijklmnopqrstuvwxyz",0x40-26);
 				addMappings("█▟▙▄▜▐▚▗",128^0x80);
 				break;
-	case ZXSP:	for (int c=32;c<127;c++) charmap[c] = c;
+	case ZXSP:	for (int c=32;c<127;c++) charmap[c] = uchar(c);
 			//	charmap[9]  = 6;		// tab
 			//	charmap[10] = 13;		// nl
 			//	charmap[8]  = 8;		// cursor left
@@ -126,7 +124,7 @@ CharMap::CharMap (CharSet charset)
 				addMappings("©\u00A0▝▘▀▗▐▚▜▖▞▌▛▄▟▙█",127);	// \u00A0 = nbsp
 				break;										// note: Qt Creator silently replaces nbsp with space :-(
 	case JUPITER:
-				for (int c=32;c<127;c++) charmap[c] = c;
+				for (int c=32;c<127;c++) charmap[c] = uchar(c);
 			//	charmap[10] = 13;		// nl
 				addMappings("█▙▟▄▛▌▞▖",16);
 				addMappings("£",96);
@@ -134,7 +132,7 @@ CharMap::CharMap (CharSet charset)
 				addMappings("\u00A0▝▘▀▗▐▚▜",144);	// \u00A0 = nbsp
 				break;								// note: Qt Creator silently replaces nbsp with space :-(
 	case JUPITER_INVERTED:
-				for (int c=32;c<127;c++) charmap[c] = c|0x80;
+				for (int c=32;c<127;c++) charmap[c] = uchar(c|0x80);
 			//	charmap[10] = 13;		// nl
 				addMappings("█▙▟▄▛▌▞▖",16^0x80);
 				addMappings("£",96^0x80);
@@ -143,9 +141,9 @@ CharMap::CharMap (CharSet charset)
 				break;									// note: Qt Creator silently replaces nbsp with space :-(
 //	case ASCII:
 //	case NONE:
-	default:	for (int c=0;c<127;c++) charmap[c] = c;
+	default:	for (int c=0;c<127;c++) charmap[c] = uchar(c);
 				break;
- 	}
+	}
 }
 
 CharMap::CharSet CharMap::charsetFromName (cstr w)
@@ -195,7 +193,7 @@ void CharMap::addMappings (cUTF8Str map, uint first_char_in_map) throws
 
 	while (*p)
 	{
-		add(ucs2_from_utf8(p),c++);
+		add(ucs2_from_utf8(p),uchar(c++));
 		while (utf8_is_fup(*++p)) {}
 	}
 }
@@ -234,7 +232,7 @@ uchar CharMap::operator[] (UCS2Char key) const noexcept
 pstr CharMap::translate (cptr q) throws
 {
 	pstr zstr = pstr(tempstr(strlen(q)));
-	uptr z = zstr;
+	uint len = 0;
 
 	while (*q)
 	{
@@ -244,17 +242,18 @@ pstr CharMap::translate (cptr q) throws
 
 		if (key<128 && charmap[key]!=NC)
 		{
-			*z++ = charmap[key];
+			zstr[++len] = charmap[key];
 		}
 		else
 		{
 			if (!HashMap::contains(key))
 				throw data_error("target character set does not contain '%s'",substr(q0,q));
-			*z++ = HashMap::get(key);
+			zstr[++len] = HashMap::get(key);
 		}
 	}
 
-	*zstr = z-zstr+1;
+	if (len > 255) throw data_error("text string too long");
+	zstr[0] = uchar(len);
 	return zstr;
 }
 

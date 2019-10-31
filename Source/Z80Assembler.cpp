@@ -4438,7 +4438,7 @@ enum // enumeration of Z80 identifiers
 	XMMBC, XMMDE, XMMHL, XBCPP, XDEPP, XHLPP,	// (hl++) etc. for compound opcodes
 };
 
-uint Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
+int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 {
 	// test and skip over condition
 	// returns NIX or enum [Z, NZ .. P]
@@ -4467,7 +4467,7 @@ uint Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 	throw syntax_error("illegal condition");
 }
 
-uint Z80Assembler::getRegister (SourceLine& q, Value& n) throws
+int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 {
 	// test and skip over register or value
 	// returns register enum:
@@ -4501,7 +4501,7 @@ uint Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 
 		case '(':
 			{
-				uint r;
+				int r;
 				if (q.testWord("hl")) { r=XHL; if (*q=='+'&&*(q.p+1)=='+'){ q+=2; r=XHLPP; } q.expect(')'); return r; }
 				if (q.testWord("de")) { r=XDE; if (*q=='+'&&*(q.p+1)=='+'){ q+=2; r=XDEPP; } q.expect(')'); return r; }
 				if (q.testWord("bc")) { r=XBC; if (*q=='+'&&*(q.p+1)=='+'){ q+=2; r=XBCPP; } q.expect(')'); return r; }
@@ -4586,7 +4586,7 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 	int    r,r2;
 	Value  n,n2;
 	uint32 instr;
-	cptr   depp=0;						// dest error position ptr: for instructions where
+	cptr   depp = nullptr;				// dest error position ptr: for instructions where
 										// source is parsed before dest can be checked
 	assert(current_segment_ptr);
 
