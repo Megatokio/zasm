@@ -53,6 +53,11 @@ SOURCES += \
 	Libraries/audio/WavFile.cpp
 
 HEADERS += \
+	Libraries/Templates/RCArray.h \
+	Libraries/Templates/RCObject.h \
+	Libraries/Templates/relational_operators.h \
+	Libraries/Templates/sort.h \
+	Libraries/Templates/template_helpers.h \
 	Source/Error.h \
 	Source/Label.h \
 	Source/Segment.h \

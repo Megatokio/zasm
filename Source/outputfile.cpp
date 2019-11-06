@@ -171,8 +171,8 @@ void Z80Assembler::writeS19File (FD& fd) throws
 	}
 
 	// eof marker:
-	write_srecord(fd,S19_RecordCount,srcount,NULL,0);
-	write_srecord(fd,S19_BlockEnd,0,NULL,0);
+	write_srecord(fd,S19_RecordCount,srcount,nullptr,0);
+	write_srecord(fd,S19_BlockEnd,0,nullptr,0);
 }
 
 void Z80Assembler::writeTapFile (FD& fd) throws
@@ -186,7 +186,7 @@ void Z80Assembler::writeTapFile (FD& fd) throws
 	//		db	checksum		; simple xor of blocktype + data bytes
 
 	CodeSegments segments(this->segments);
-	while (!segments[0]->has_flag) { assert(segments[0]->size==0); segments.remove(0); }
+	while (!segments[0]->has_flag) { assert(segments[0]->size==0); segments.remove(0u); }
 
 	// OLD until 4.1.6:
 	// Jupiter Ace tape files were detected by analyzing the blocks:
@@ -744,7 +744,7 @@ void Z80Assembler::checkTapFile () throws
 	// This is similar to concatenating segments with non-consecutive physical address in bin and rom files.
 
 	CodeSegments segments(this->segments);
-	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0); }
+	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
 		throw syntax_error("tape block %s: flag byte missing (argument #4)", segments[0]->name);
@@ -1107,7 +1107,7 @@ void Z80Assembler::checkTzxFile () throws
 	// Check code segments:
 
 	CodeSegments segments(this->segments);
-	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0); }
+	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
 		throw syntax_error("tape block %s: flag byte missing (argument #4)", segments[0]->name);

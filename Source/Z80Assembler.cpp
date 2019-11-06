@@ -286,21 +286,21 @@ static uint charcode_from_utf8 (cptr& s) throws
 Z80Assembler::Z80Assembler ()
 :
 	timestamp(now()),
-	source_directory(NULL),
-	source_filename(NULL),
-	temp_directory(NULL),
+	source_directory(nullptr),
+	source_filename(nullptr),
+	temp_directory(nullptr),
 	target(TARGET_UNSET),
-	target_ext(NULL),
-	target_filepath(NULL),
+	target_ext(nullptr),
+	target_filepath(nullptr),
 	current_sourceline_index(0),
-	current_segment_ptr(NULL),
+	current_segment_ptr(nullptr),
 	local_labels_index(0),
 	local_blocks_count(0),
-	reusable_label_basename(NULL),
+	reusable_label_basename(nullptr),
 	cond_off(0),
 	if_pending(false),
 	if_values_idx(0),
-	charset(NULL),
+	charset(nullptr),
 	cmd_dpos(),			// := invalid
 	max_errors(30),
 	pass(0),
@@ -309,12 +309,12 @@ Z80Assembler::Z80Assembler ()
 	validity(invalid),
 	labels_changed(0),
 	labels_resolved(0),
-	c_compiler(NULL),
+	c_compiler(nullptr),
 	is_sdcc(no),
 	is_vcc(no),
-	c_includes(NULL),
-	stdlib_dir(NULL),
-	c_tempdir(NULL),
+	c_includes(nullptr),
+	stdlib_dir(nullptr),
+	c_tempdir(nullptr),
 	c_qi(-1),
 	c_zi(-1),
 	ixcbr2_enabled(no),	// 	e.g. set b,(ix+d),r2
@@ -467,7 +467,7 @@ void Z80Assembler::setLabelValue (Label* label, Value const& value) throws
 
 void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) throws
 {
-	if (label->segment==NULL)							// .globl or defined before ORG
+	if (label->segment==nullptr)							// .globl or defined before ORG
 	{
 		label->segment = current_segment_ptr;			// mit '.globl' deklarierte Label haben noch kein Segment
 		label->sourceline = current_sourceline_index;	// und keine Source-Zeilennummer
@@ -529,16 +529,16 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 	segments.purge();
 
 	// add labels for options:
-	if (syntax_8080)			global_labels().add(new Label("_asm8080_",	NULL,0,1,valid,yes,yes,no));
-	if (target_z80 && syntax_8080) global_labels().add(new Label("_z80_",	NULL,0,1,valid,yes,yes,no));
-	if (target_z180)			global_labels().add(new Label("_z180_",		NULL,0,1,valid,yes,yes,no));
-	if (target_8080)			global_labels().add(new Label("_8080_",		NULL,0,1,valid,yes,yes,no));
-	if (ixcbr2_enabled)			global_labels().add(new Label("_ixcbr2_",	NULL,0,1,valid,yes,yes,no));
-	if (ixcbxh_enabled)			global_labels().add(new Label("_ixcbxh_",	NULL,0,1,valid,yes,yes,no));
-	if (allow_dotnames)			global_labels().add(new Label("_dotnames_",	NULL,0,1,valid,yes,yes,no));
-	if (require_colon)			global_labels().add(new Label("_reqcolon_",	NULL,0,1,valid,yes,yes,no));
-	if (casefold)				global_labels().add(new Label("_casefold_",	NULL,0,1,valid,yes,yes,no));
-	if (flat_operators)			global_labels().add(new Label("_flatops_",	NULL,0,1,valid,yes,yes,no));
+	if (syntax_8080)			global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
+	if (target_z80 && syntax_8080) global_labels().add(new Label("_z80_",	nullptr,0,1,valid,yes,yes,no));
+	if (target_z180)			global_labels().add(new Label("_z180_",		nullptr,0,1,valid,yes,yes,no));
+	if (target_8080)			global_labels().add(new Label("_8080_",		nullptr,0,1,valid,yes,yes,no));
+	if (ixcbr2_enabled)			global_labels().add(new Label("_ixcbr2_",	nullptr,0,1,valid,yes,yes,no));
+	if (ixcbxh_enabled)			global_labels().add(new Label("_ixcbxh_",	nullptr,0,1,valid,yes,yes,no));
+	if (allow_dotnames)			global_labels().add(new Label("_dotnames_",	nullptr,0,1,valid,yes,yes,no));
+	if (require_colon)			global_labels().add(new Label("_reqcolon_",	nullptr,0,1,valid,yes,yes,no));
+	if (casefold)				global_labels().add(new Label("_casefold_",	nullptr,0,1,valid,yes,yes,no));
+	if (flat_operators)			global_labels().add(new Label("_flatops_",	nullptr,0,1,valid,yes,yes,no));
 
 	// setup errors:
 	errors.purge();
@@ -675,7 +675,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 
 	// reset charset conversion:
 	delete charset;
-	charset = NULL;
+	charset = nullptr;
 
 	// final: true = this may be the last pass.
 	// wird gelöscht, wenn:
@@ -692,7 +692,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 
 	// init segments:
 	asmInstr = &Z80Assembler::asmPseudoInstr;
-	current_segment_ptr = NULL;
+	current_segment_ptr = nullptr;
 	cmd_dpos = Value();			// invalidate dpos_at_start_of line for '$' and '$$': no segment!
 	for (uint i=0;i<segments.count();i++) { segments[i]->rewind(); }
 
@@ -717,7 +717,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 			else
 			{
 				l->is_redefinable = no;
-				assert(source[l->sourceline]->label == NULL);
+				assert(source[l->sourceline]->label == nullptr);
 				source[l->sourceline]->label = l;
 			}
 		}
@@ -1115,7 +1115,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 				for (uint i=global?0:local_labels_index;;i=labels[i].outer_index)
 				{
 					Label* label = labels[i].find(w);
-					if (label!=NULL && label->is_defined) { n=1; break; }
+					if (label!=nullptr && label->is_defined) { n=1; break; }
 					if (i==0) { n=0; break; }
 				}
 				if_values.append(n);
@@ -1138,7 +1138,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 				for (uint i=global?0:local_labels_index;;i=labels[i].outer_index)
 				{
 					Label* label = labels[i].find(w);
-					if (label!=NULL) { n = label->is_used && !label->is_defined; break; }
+					if (label!=nullptr) { n = label->is_used && !label->is_defined; break; }
 					if (i==0) { n=0; break; }
 				}
 				if_values.append(n);
@@ -1206,14 +1206,14 @@ hi:			n = value(q);
 		}
 		else if (eq(w,"target"))
 		{
-			if (!target && current_segment_ptr==NULL) throw syntax_error("#target not yet defined");
+			if (!target && current_segment_ptr==nullptr) throw syntax_error("#target not yet defined");
 			n = q.testWord(target ? target_ext : "ROM");
 			if (!n && !is_name(q.nextWord())) throw syntax_error("target name expected");
 			goto kzop;
 		}
 		else if (eq(w,"segment"))
 		{
-			if (current_segment_ptr==NULL) throw syntax_error("#code or #data segment not yet defined");
+			if (current_segment_ptr==nullptr) throw syntax_error("#code or #data segment not yet defined");
 			n = q.testWord(current_segment_ptr->name);
 			if (!n && !is_name(q.nextWord())) throw syntax_error("segment name expected");
 			goto kzop;
@@ -1274,7 +1274,7 @@ label:	if (casefold) w = lowerstr(w);
 			}
 			if (!l)	// => ACTION: Label als referenziert & nicht definiert eintragen
 			{
-				l = new Label(w,NULL,0,0,invalid,local_labels_index==0,no,yes);
+				l = new Label(w,nullptr,0,0,invalid,local_labels_index==0,no,yes);
 				local_labels().add(l);
 				n.validity = invalid;
 			}
@@ -2206,7 +2206,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 	else if (lceq(w,"none"))						// reset mapping to no mapping at all
 	{
 		delete charset;
-		charset = NULL;
+		charset = nullptr;
 	}
 	else											// select charset
 	{
@@ -2295,11 +2295,11 @@ void Z80Assembler::asmCFlags (SourceLine& q) throws
 		{
 			assert(old_cflags.count() && eq(old_cflags[0],"--nostdinc"));
 			c_flags.append(old_cflags[0]);
-			old_cflags.remove(0); old_c_qi--; old_c_zi--;
+			old_cflags.removeat(0); old_c_qi--; old_c_zi--;
 		}
 		assert(old_cflags.count() && eq(catstr("-I",c_includes),old_cflags[0]));
 		c_flags.append(old_cflags[0]);
-		old_cflags.remove(0); old_c_qi--; old_c_zi--;
+		old_cflags.removeat(0); old_c_qi--; old_c_zi--;
 	}
 
 	while (!q.testEol())
@@ -2721,7 +2721,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 		else			 { c_flags.append(fqn_q); }
 
 		c_flags.insertat(0,c_compiler);			// argv[0] = command
-		c_flags.append(NULL);					// list end marker
+		c_flags.append(nullptr);				// list end marker
 
 		// add standard options:
 		if (is_sdcc)
@@ -3322,20 +3322,20 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 
 		Label* l = global_labels().find(name);
 		if (l && l->is_defined) setError("label %s redefined",name);
-		q.label = new Label(name,segment,q.sourcelinenumber,0/*address*/,invalid,yes/*global*/,yes/*defined*/,l!=NULL);
+		q.label = new Label(name,segment,q.sourcelinenumber,0/*address*/,invalid,yes/*global*/,yes/*defined*/,l!=nullptr);
 		global_labels().add(q.label);
 
 		cstr lname = catstr(name,"_end");
 		l = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, segment, q.sourcelinenumber,
-							 0/*address+size*/, invalid, yes/*global*/, yes/*defined*/, l!=NULL/*used*/) );
+							 0/*address+size*/, invalid, yes/*global*/, yes/*defined*/, l!=nullptr/*used*/) );
 
 		lname = catstr(name,"_size");
 		l = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined",lname);
 		global_labels().add( new Label(lname, segment, q.sourcelinenumber,
-							 0/*size*/, invalid, yes/*global*/, yes/*defined*/, l!=NULL/*used*/) );
+							 0/*size*/, invalid, yes/*global*/, yes/*defined*/, l!=nullptr/*used*/) );
 	}
 
 	if (q.label) reusable_label_basename = name;
@@ -3523,25 +3523,25 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 
 		Label* l = global_labels().find(name);
 		if (l && l->is_defined) setError("label %s redefined",name);
-		l = new Label(name,s,current_sourceline_index,0,invalid,yes,yes,l!=NULL);
+		l = new Label(name,s,current_sourceline_index,0,invalid,yes,yes,l!=nullptr);
 		global_labels().add(l);
 		q.label = l;
 
 		cstr lname = catstr(name,"_end");
 		l = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined",lname);
-		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=NULL) );
+		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=nullptr) );
 
 		lname = catstr(name,"_size");
 		l = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined",lname);
-		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=NULL) );
+		global_labels().add( new Label(lname, s, q.sourcelinenumber,0,invalid,yes,yes,l!=nullptr) );
 	}
 	else
 	{
 		assert(segments.count() && dynamic_cast<CodeSegment*>(segments[0].ptr()));
 		s = static_cast<CodeSegment*>(segments[0].ptr());
-		assert(q.label!=NULL);
+		assert(q.label!=nullptr);
 	}
 
 	asmInstr = syntax_8080 ? &Z80Assembler::asm8080Instr : &Z80Assembler::asmZ80Instr;
@@ -3607,7 +3607,7 @@ void Z80Assembler::asmEndLocal (SourceLine&) throws
 			Label* ql = undef_labels_array[uli];		assert(!ql->is_global);
 			Label* zl = outer_labels.find(ql->name);
 
-			if (zl==NULL) { zl = new Label(*ql); outer_labels.add(zl); zl->is_global = is_global; }
+			if (zl==nullptr) { zl = new Label(*ql); outer_labels.add(zl); zl->is_global = is_global; }
 			else zl->is_used = yes;
 			local_labels.remove(ql->name);
 		}
@@ -3878,7 +3878,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		target_z180 = yes;
 		if (ixcbr2_enabled) throw fatal_error("incompatible option --ixcbr2 is set: the Z180 traps illegal opcodes");
 		if (ixcbxh_enabled) throw fatal_error("incompatible option --ixcbxh is set: the Z180 traps illegal opcodes");
-		global_labels().add(new Label("_z180_",NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_z180_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".8080"))
@@ -3904,8 +3904,8 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 		target_z180 = target_z80 = no;
 		target_8080 = syntax_8080 = casefold = yes;
-		global_labels().add(new Label("_8080_",NULL,current_sourceline_index,1,valid,yes,yes,no));
-		global_labels().add(new Label("_asm8080_",NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".asm8080"))
@@ -3924,8 +3924,8 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 		syntax_8080 = casefold = yes;
 
-		if (target_z80) global_labels().add(new Label("_z80_",NULL,current_sourceline_index,1,valid,yes,yes,no));
-		global_labels().add(new Label("_asm8080_",NULL,current_sourceline_index,1,valid,yes,yes,no));
+		if (target_z80) global_labels().add(new Label("_z80_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".ixcbr2"))
@@ -3935,7 +3935,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (ixcbxh_enabled)		 throw fatal_error("incompatible option --ixcbxh is set");
 
 		ixcbr2_enabled = yes;
-		global_labels().add(new Label("_ixcbr2_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_ixcbr2_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".ixcbxh"))
@@ -3945,7 +3945,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (ixcbr2_enabled)		throw fatal_error("incompatible option --ixcbr2 is set");
 
 		ixcbxh_enabled = yes;
-		global_labels().add(new Label("_ixcbxh_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_ixcbxh_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".dotnames"))	// wenn das zu spät steht, kann es schon Fehler gegeben haben
@@ -3953,7 +3953,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (allow_dotnames) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 		allow_dotnames = yes;
-		global_labels().add(new Label("_dotnames_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_dotnames_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".reqcolon"))	// wenn das zu spät steht, kann es schon Fehler gegeben haben
@@ -3961,7 +3961,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (require_colon) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 		require_colon = yes;
-		global_labels().add(new Label("_reqcolon_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_reqcolon_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".casefold"))	// wenn das nach Label-Definitionen steht, kann es zu spät sein
@@ -3969,7 +3969,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (casefold) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 		casefold = yes;
-		global_labels().add(new Label("_casefold_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_casefold_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".flatops"))		// wenn das nach Expressions z.B. in Label-Definitionen steht, kann es zu spät sein
@@ -3977,7 +3977,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		if (flat_operators) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 		flat_operators = yes;
-		global_labels().add(new Label("_flatops_",  NULL,current_sourceline_index,1,valid,yes,yes,no));
+		global_labels().add(new Label("_flatops_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,"*"))
@@ -4376,14 +4376,14 @@ longer:
 			if (l && !l->is_global) throw syntax_error("label already defined local");
 			assert(!g||!l||g==l);
 
-			Label* label = l ? l : g ? g : new Label(w,NULL,current_sourceline_index,0,invalid,yes,no,no);
+			Label* label = l ? l : g ? g : new Label(w,nullptr,current_sourceline_index,0,invalid,yes,no,no);
 			if (!l) local_labels().add(label);
 			if (!g) global_labels().add(label);
 		}
 		else						// global context
 		{
 			Label* g = global_labels().find(w);
-			Label* label = g ? g : new Label(w,NULL,current_sourceline_index,0,invalid,yes,no,no);
+			Label* label = g ? g : new Label(w,nullptr,current_sourceline_index,0,invalid,yes,no,no);
 			if (!g) global_labels().add(label);
 		}
 		return;
