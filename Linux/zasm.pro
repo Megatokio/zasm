@@ -44,7 +44,7 @@ SOURCES += \
 	Libraries/kio/exceptions.cpp \
 	Libraries/kio/kio.cpp \
 	Libraries/unix/FD.cpp \
-	Libraries/unix/tempmem.cpp \
+	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_major_opcode.cpp \
@@ -80,7 +80,7 @@ HEADERS += \
 	Libraries/kio/detect_configuration.h \
 	Libraries/unix/log.h \
 	Libraries/unix/FD.h \
-	Libraries/unix/tempmem.h \
+	Libraries/cstrings/tempmem.h \
 	Libraries/unix/files.h \
 	Libraries/kio/standard_types.h \
 	Libraries/kio/peekpoke.h \

@@ -26,7 +26,6 @@
 
 #include "Z80Assembler.h"
 #include "unix/files.h"
-#include "unix/tempmem.h"
 #include "helpers.h"
 #include "Z80/goodies/z80_clock_cycles.h"
 #include "Z80/goodies/z80_opcode_length.h"
