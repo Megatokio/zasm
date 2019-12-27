@@ -183,6 +183,8 @@ cstr SourceLine::nextWord ()
 	case ')':	return ")";
 	case ',':	return ",";
 	case '=':	return "=";
+	case '{':	return "{";
+	case '}':	return "}";
 
 	case '\'':							// 'abcd' ''' or ''
 		if (*p==c) { p++; if (*p!=c) return "''"; p++; return "'''"; }	// special test for '''
