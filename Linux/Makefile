@@ -73,7 +73,7 @@ FD.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o FD.o ../Libraries/unix/FD.cpp
 
 tempmem.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tempmem.o ../Libraries/unix/tempmem.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tempmem.o ../Libraries/cstrings/tempmem.cpp
 
 files.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o files.o ../Libraries/unix/files.cpp
