@@ -1022,12 +1022,8 @@ w:	cstr w = q.nextWord();			// get next word
 		case '-':	n = -value(q,pUna); goto op;			// minus sign
 		case '~':	n = ~value(q,pUna); goto op;			// complement
 		case '!':	n = !value(q,pUna); goto op;			// negation
-		case '(':	n =  value(q,pAny); q.expect(')'); goto op;	// brackets
-		case '@':	q.expect('{');				// Force interpretation
-					n = value(q,pAny);
-					assert(n.is_valid());
-					q.expect('}');
-					goto op;
+		case '@':	q.expect('('); n = value(q,pAny); q.expect(')'); goto op;// content interpretation
+		case '(':	n = value(q,pAny); q.expect(')'); goto op;	// brackets
 		case '.':
 		case '$':	n = dollar();  goto op;
 		case '<':	q.expect('('); goto lo;		// SDASZ80: low byte of word
@@ -2180,9 +2176,9 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 		// will be interpreted and its value will be returned.
 		for (int32 j=0;;j++)                    // loop over occurrences of '{'
 		{
-			cptr p = strchr(s.text+j,'{');      // at next '{'
-			if (!p) break;						// no more '{'
-			s.p = p;                            // set the parser position
+			cptr p = strchr(s.text+j,'@');      // at next '@'
+			if (!p) break;						// no more '@'
+			s.p = p+1;                          // set the parser position
 			Value v = value(s, pAny);           // get the value
 			j = s.p - p;
 			s.text = catstr(substr(s.text,p), usingstr("%i ", v.value), s.p);

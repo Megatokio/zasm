@@ -7,7 +7,7 @@ _PARAM_COUNT_0  DEFL    0               ;Redefinable labels initialization
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT_0 label.
                 MACRO _ADD_PARAM &reg
                 PUSH &reg
-_PARAM_COUNT_0  DEFL    @{_PARAM_COUNT_0+1}
+_PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
                 ENDM
 
 ;Adds a litteral 16 bits parameter to the stack then increment the
@@ -16,7 +16,7 @@ _PARAM_COUNT_0  DEFL    @{_PARAM_COUNT_0+1}
                 PUSH	HL
                 LD      HL,&lit
                 EX		(SP),HL
-_PARAM_COUNT_0  DEFL    @{_PARAM_COUNT_0+1}
+_PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
                 ENDM
 
 ;Macro that calls a procedure &proc. This macro cleans the stack from the
@@ -26,26 +26,25 @@ _PARAM_COUNT_0  DEFL    @{_PARAM_COUNT_0+1}
                 _PUSH_STACK
                 CALL    &proc
                 _POP_STACK
-                _CLEAN_PARAMS @{_PARAM_COUNT_0}
+                _CLEAN_PARAMS @(_PARAM_COUNT_0)
 _PARAM_COUNT_0  DEFL    0
-                ;<END _CALL>
                 ENDM
 
 ;Increments the _STACK_SIZE label and shift _PARAM_COUNT_# labels value to
-;_PARAM_COUNT_#+1, up to _PARAM_COUNT_@{STACK_SIZE}, then save all the Z80
+;_PARAM_COUNT_#+1, up to _PARAM_COUNT_@(STACK_SIZE), then save all the Z80
 ;registers on the stack.
                 MACRO   _PUSH_STACK
-_STACK_SIZE     DEFL    @{_STACK_SIZE+1}
-                _SHIFT_STACK @{_STACK_SIZE}
+_STACK_SIZE     DEFL    @(_STACK_SIZE+1)
+                _SHIFT_STACK @(_STACK_SIZE+1)
                 CALL    _PUSH
                 ENDM
 
 ;Shift _PARAM_COUNT_# values up the stack.
                 MACRO   _SHIFT_STACK &cnt
-                IF @{&cnt} > 0
-_PARAM_COUNT_@{&cnt} DEFL _PARAM_COUNT_@{&cnt-1}
-_PARAM_COUNT_@{&cnt-1} DEFL 0
-                _SHIFT_STACK @{&cnt-1}
+                IF &cnt > 0
+_PARAM_COUNT_@(&cnt) DEFL _PARAM_COUNT_@(&cnt-1)
+_PARAM_COUNT_@(&cnt-1) DEFL 0
+                _SHIFT_STACK @(&cnt-1)
                 ENDIF 
                 ENDM
 
@@ -53,26 +52,26 @@ _PARAM_COUNT_@{&cnt-1} DEFL 0
 ;decrement _STACK_SIZE label.
                 MACRO   _POP_STACK
                 _UNSHIFT_STACK _STACK_SIZE
-_STACK_SIZE     DEFL    @{_STACK_SIZE-1}
+_STACK_SIZE     DEFL    @(_STACK_SIZE-1)
                 CALL    _POP
                 ENDM
 
 ;Shift _PARAM_COUNT_# values down the stack.
                 MACRO   _UNSHIFT_STACK &cnt
-                IF      @{&cnt} > 0
-_PARAM_COUNT_@{&cnt-1} DEFL _PARAM_COUNT_@{&cnt}
-_PARAM_COUNT_@{&cnt}   DEFL 0
-                _UNSHIFT_STACK @{&cnt-1}
+                IF      &cnt > 0
+_PARAM_COUNT_@(&cnt-1) DEFL _PARAM_COUNT_@(&cnt)
+_PARAM_COUNT_@(&cnt)   DEFL 0
+                _UNSHIFT_STACK @(&cnt-1)
                 ENDIF 
                 ENDM
 
 
-                ;Macro that cleans &count parameters from the stack.
+;Macro that cleans &count parameters from the stack.
                 MACRO   _CLEAN_PARAMS &cnt
-                IF @{&cnt} > 0
-                EX      (SP),HL         ;<_CLEAN $count>
-                POP     HL            ;<END _CLEAN>
-                _CLEAN_PARAMS @{&cnt-1}
+                IF 		&cnt > 0
+                EX      (SP),HL
+                POP     HL
+                _CLEAN_PARAMS @(&cnt-1)
                 ENDIF
                 ENDM
 
@@ -81,19 +80,19 @@ _PARAM_COUNT_@{&cnt}   DEFL 0
 ;Since IY is used to get at parameters, its not possible to load
 ;a parameter into IY using this macro.
                 MACRO   _GET_PARAM &reg, &idx
-                LD      IY,14         ;<_GET_PARAM &reg, &idx>
+                LD      IY,14
                 ADD     IY,SP
-                LD      &reg, (IY+@{&idx*2}) ;<END _GET_PARAM>
+                LD      &reg, (IY+@(&idx*2))
                 ENDM
 
 
 ;Return the content of &reg1 at the stack position of HL. The content of IY
 ;can not be returned using this macro.
                 MACRO   _RET_HL &reg1
-                LD      IY,0          ;<_RET_HL &reg1>
+                LD      IY,0
                 ADD     IY,SP
                 LD      (IY+12),&reg1
-                RET                   ;<END _RET_HL>
+                RET
                 ENDM
 
 
@@ -102,11 +101,11 @@ _PARAM_COUNT_@{&cnt}   DEFL 0
 ;content of &reg2 at the DE stack position. The content of IY canot
 ;be returned by this macro.
                 MACRO   _RET_HLDE &reg1, &reg2
-                LD      IY,0          ;<_RET_HLDE &reg1 &reg2>
+                LD      IY,0
                 ADD     IY,SP
                 LD      (IY+12),&reg1
                 LD      (IY+10),&reg2
-                RET                   ;<END _RET_HLDE>
+                RET
                 ENDM
 
 
@@ -134,11 +133,6 @@ _POP:           POP     HL
 
 ; *** Actual test starts here ***
 
-
-        _ADD_LPARAM 5		;param 2
-        _ADD_LPARAM 279		;param 1
-        _CALL   MUL
-
         _ADD_LPARAM 6		;param 2
         _ADD_LPARAM 5		;param 1
         _CALL	EXP
@@ -146,17 +140,8 @@ _POP:           POP     HL
 LOOP:   JR      LOOP
 
 
-; Multiply parameter 1 with parameter 2. Returns result in HL.
-MUL:    _GET_PARAM DE,1
-        _GET_PARAM BC,2
-        LD      HL,0
-MUL_1:  ADD     HL,DE
-        DEC     BC
-        JR      NZ,MUL_1
-        _RET_HL HL
-
-; Make parameter 1 exponent parameter 2. I.E. Param1 is the base and param2
-; is the exponent. Returns value in HL.
+;Make parameter 1 exponent parameter 2. I.E. Param1 is the base and param2
+;is the exponent. Returns value in HL.
 EXP:	_GET_PARAM DE,1	;base
 		_GET_PARAM HL,1 ;initialize HL with base
 		_GET_PARAM BC,2	;exponent
@@ -166,3 +151,13 @@ EXP_1:	_ADD_PARAM DE
 		DEC		BC
 		JR		NZ,EXP_1
 		_RET_HL HL
+
+
+;Multiply parameter 1 with parameter 2. Returns result in HL.
+MUL:    _GET_PARAM DE,1
+        _GET_PARAM BC,2
+        LD      HL,0
+MUL_1:  ADD     HL,DE
+        DEC     BC
+        JR      NZ,MUL_1
+        _RET_HL HL
