@@ -183,6 +183,7 @@ cstr SourceLine::nextWord ()
 	case ')':	return ")";
 	case ',':	return ",";
 	case '=':	return "=";
+	case '@':	return "@";
 	case '{':	return "{";
 	case '}':	return "}";
 
