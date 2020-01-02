@@ -11,3 +11,7 @@ Linux/*.o
 Linux/zasm
 OSX/zasm
 
+#eclipse files and folders
+.cproject
+.project
+.settings
