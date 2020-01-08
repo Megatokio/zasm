@@ -46,5 +46,5 @@ pre	1.0.0  1996: First version for private use. Mac OS 7.0. No public release.
 	4.2.2  2018: Fixed bug where the binary file was appended to the hex or s19 file
 	4.2.3  2018: Fixed bug where error messages were garbled
 	4.2.4  2019: Fixed bug in .rept/.endm or .dup/.edup sanity check
-	4.2.5  2020: added text replacement in macros for values between '{' and '}'.
+	4.2.6  2020: added text replacement in macros for values between '{' and '}'.
 

@@ -8,7 +8,7 @@ p	There are quite numerous formats used by different assemblers and zasm tries t
 
 p	Frequently you need some kind of label in a macro, but you cannot redefine ordinary labels. Frequently this can be solved with redefinable labels which are defined with 'defl' or 'set'.
 
-p	Since version 4.2.5 expressions between '{' and '}' are evaluated and replaced with the resulting text. This can be used to generate label names. The expression must be evaluatable in pass 1 because macro replacement is done in pass 1.
+p	Since version 4.2.6 expressions between '{' and '}' are evaluated and replaced with the resulting text. This can be used to generate label names. The expression must be evaluatable in pass 1 because macro replacement is done in pass 1.
 
 p	It is possible to conditionally exclude portions of the macro by use of the pseudo instructions 'if' and 'endif'. (<u>not</u> '#if' and '#endif'!)
 
@@ -133,7 +133,7 @@ p	There are still some impossible combinations, e.g. it is not possible to pass 
 
 
 h5	Evaluation and literal text replacement of expresions
-p.i	since versio 4.2.5
+p.i	since versio 4.2.6
 
 pre	L:      .equ  0         ; initialize redefinable label 'L'
 
