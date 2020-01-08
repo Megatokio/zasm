@@ -1,4 +1,4 @@
-/*	Copyright  (c)	Günter Woigk 1994 - 2019
+/*	Copyright  (c)	Günter Woigk 1994 - 2020
 					mailto:kio@little-bat.de
 
 	This file is free software
@@ -44,14 +44,14 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.2.5";
+static const char version[] = "4.2.6";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
 //
 static const char help[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-"  zasm - z80/8080 assembler (c) 1994 - 2019 Günter Woigk.\n"
+"  zasm - z80/8080 assembler (c) 1994 - 2020 Günter Woigk.\n"
 "  version %s, %s, for %s.\n"										// version, date, platform
 "  homepage: https://k1.spdns.de/Develop/Projects/zasm/\n"
 "  send bug reports to: kio@little-bat.de\n\n"
