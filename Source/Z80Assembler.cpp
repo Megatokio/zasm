@@ -2151,7 +2151,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 	{
 		SourceLine& s = zsource[i];
 
-		for (int32 j=0;;j++)			// loop over occurance of '&'
+		for (ssize_t j=0;;j++)			// loop over occurance of '&'
 		{
 			cptr p = strchr(s.text+j,m.tag);	// at next '&'
 			if (!p) break;						// no more '&'
@@ -2166,9 +2166,25 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			// w is the name of argument #a
 			// it was found starting at p+1 in s.text  (p points to the '&')
 
-			j = p + strlen(rpl[a]) - s.text;
-			s.text = catstr(substr(s.text,p), rpl[a], s.p);
+			j = p + strlen(rpl[a]) - s.text;				// calculate index j after text replacement
+			s.text = catstr(substr(s.text,p), rpl[a], s.p);	// … because this reallocates s.text!
 		}
+
+		// calculate and replace values between '{' and '}' with plain text:
+		// e.g. for calculated label names in macros.
+		for (ssize_t j=0;;j++)			// loop over occurrences of '{'
+		{
+			cptr p = strchr(s.text+j,'{');	    // at next '{'
+			if (!p) break;						// no more '{'
+			s.p = p+1;							// set the parser position behind '{'
+			Value v = value(s, pAny);			// get the value
+			s.expect('}');
+			if (!v.is_valid()) throw syntax_error("value must be valid in pass 1"); // because replacement is done in pass 1
+			cstr rpl = numstr(v.value);			// textual replacement
+			j = p + strlen(rpl) - s.text;					// calculate index j after text replacement
+			s.text = catstr(substr(s.text,p), rpl, s.p);	// … because this reallocates s.text!
+		}
+
 		s.rewind();	// superflux. but makes s.p valid
 	}
 

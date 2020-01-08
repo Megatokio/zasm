@@ -63,6 +63,7 @@ HEADERS += \
 	Source/Segment.h \
 	Source/settings.h \
 	Source/Source.h \
+	Source/Value.h \
 	Source/zx7.h \
 	Source/SyntaxError.h \
 	Source/Z80Assembler.h \
