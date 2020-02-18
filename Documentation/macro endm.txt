@@ -1,12 +1,14 @@
 
 h3	macro, .macro, endm and .endm
 	macro, endm
-	
-p	'macro' starts a macro definition and 'endm' terminates it. Macros are assigned a name by which they can later be used at the place of an ordinary instruction.	
 
-p	There are quite numerous formats used by different assemblers and zasm tries to support at least some of them out of the box. In the following code examples the instruction names with or without a dor can be used interchangeable.
+p	'macro' starts a macro definition and 'endm' terminates it. Macros are assigned a name by which they can later be used at the place of an ordinary instruction.
+
+p	There are quite numerous formats used by different assemblers and zasm tries to support at least some of them out of the box. In the following code examples the instruction names with or without a dot can be used interchangeably.
 
 p	Frequently you need some kind of label in a macro, but you cannot redefine ordinary labels. Frequently this can be solved with redefinable labels which are defined with 'defl' or 'set'.
+
+p	Since version 4.2.6 expressions between '{' and '}' are evaluated and replaced with the resulting text. This can be used to generate label names. The expression must be evaluatable in pass 1 because macro replacement is done in pass 1.
 
 p	It is possible to conditionally exclude portions of the macro by use of the pseudo instructions 'if' and 'endif'. (<u>not</u> '#if' and '#endif'!)
 
@@ -15,14 +17,14 @@ p	Assembler directives (starting with '#') are not allowed inside macros.
 
 h5	Define a simple macro without arguments
 
-pre	<name> 	macro 
+pre	<name> 	macro
 			<instr>
 			...
 			endm
-			
+
 p	Alternate syntax:
 
-pre			macro <name> 	
+pre			macro <name>
 			<instr>
 			...
 			endm
@@ -33,7 +35,7 @@ pre	counter	defl	0
 	COUNT	.macro
 	counter	defl counter + 1
 			.endm
-	 		
+	 
 			...
 	 
 			COUNT
@@ -50,9 +52,9 @@ pre	<name> 	macro <name1> [ , <name2> … ]
 			<instr>
 			...
 			endm
-			
+
 p 	Alternate syntax:
-				
+
 pre			macro <name> <name1> [ , <name2> … ]
 			<instr>
 			...
@@ -61,7 +63,7 @@ pre			macro <name> <name1> [ , <name2> … ]
 p	Invocation:
 
 pre			<name> <some text> [ , <some text> … ]
-			
+
 p	This defines a macro with some arguments. Either of both definition styles are possible. Additionally there are different methods for defining and referencing the symbol arguments:
 
 pre	foo:	macro A, B
@@ -104,7 +106,7 @@ pre	foo:	macro &A
 			foo	20
 			...
 			foo 8
-			
+
 p	In this example the argument is used as the second argument for 'ld b,N' and to construct a unique label name for each invocation. Obviously the passed argument must be a number literal else the label name thing won't work. A better solution would have been to use a redefinable label.
 
 
@@ -126,9 +128,29 @@ p	Complex arguments start with an opening '<' and run up to the next '>' which i
 pre		foo	<,>, <;>, <">			; 3 arguments: , ; and "
 		foo <<>, < >, <ld a,b>		; 3 arguments: < space and ld a,b
 		foo	>, ><, 					; 3 arguments: > >< and nothing
-		
+
 p	There are still some impossible combinations, e.g. it is not possible to pass <b class=blue><>,</b> (3 characters) as an argument.
 
+
+h5	Evaluation and literal text replacement of expresions
+p.i	since versio 4.2.6
+
+pre	L:      .equ  0         ; initialize redefinable label 'L'
+
+	; calculate unsigned max
+	; &A = umax(&A,&B)
+	; usable for a and hl.
+
+	umax:   .macro &A, &B
+			and   a
+			sbc   &A,&B
+			jr    nc,L{L}	; e.g. L0 in first call
+			ld    &A,&B
+			jr    L{L+1}	; e.g. L1 in first call
+	L{L}:	add   &A,&B
+	L{L+1}:
+	L		.equ  L+2		; next macro call will use L2 and L3
+	        .endm
 
 
 h5	Not implemented in macros:
@@ -142,7 +164,7 @@ li	keyword 'local': try to use 'defl' instead. (not possible in all cases)
 
 
 
-			
+
 
 
 

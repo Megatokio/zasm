@@ -1,3 +1,5 @@
+#!/usr/local/bin/zasm -o original/
+
         ORG $0000
 
 _STACK_SIZE     DEFL    0
@@ -5,9 +7,9 @@ _PARAM_COUNT_0  DEFL    0               ;Redefinable labels initialization
 
 
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT_0 label.
-                MACRO _ADD_PARAM &reg
-                PUSH &reg
-_PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
+                MACRO	_ADD_PARAM &reg
+                PUSH	&reg
+_PARAM_COUNT_0  DEFL	{_PARAM_COUNT_0+1}
                 ENDM
 
 ;Adds a litteral 16 bits parameter to the stack then increment the
@@ -16,7 +18,7 @@ _PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
                 PUSH	HL
                 LD      HL,&lit
                 EX		(SP),HL
-_PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
+_PARAM_COUNT_0  DEFL    {_PARAM_COUNT_0+1}
                 ENDM
 
 ;Macro that calls a procedure &proc. This macro cleans the stack from the
@@ -26,43 +28,43 @@ _PARAM_COUNT_0  DEFL    @(_PARAM_COUNT_0+1)
                 _PUSH_STACK
                 CALL    &proc
                 _POP_STACK
-                _CLEAN_PARAMS @(_PARAM_COUNT_0)
+                _CLEAN_PARAMS {_PARAM_COUNT_0}
 _PARAM_COUNT_0  DEFL    0
                 ENDM
 
 ;Increments the _STACK_SIZE label and shift _PARAM_COUNT_# labels value to
-;_PARAM_COUNT_#+1, up to _PARAM_COUNT_@(STACK_SIZE), then save all the Z80
+;_PARAM_COUNT_#+1, up to _PARAM_COUNT_{STACK_SIZE}, then save all the Z80
 ;registers on the stack.
                 MACRO   _PUSH_STACK
-_STACK_SIZE     DEFL    @(_STACK_SIZE+1)
-                _SHIFT_STACK @(_STACK_SIZE+1)
+_STACK_SIZE     DEFL    {_STACK_SIZE+1}
+                _SHIFT_STACK {_STACK_SIZE+1}
                 CALL    _PUSH
                 ENDM
 
 ;Shift _PARAM_COUNT_# values up the stack.
                 MACRO   _SHIFT_STACK &cnt
                 IF &cnt > 0
-_PARAM_COUNT_@(&cnt) DEFL _PARAM_COUNT_@(&cnt-1)
-_PARAM_COUNT_@(&cnt-1) DEFL 0
-                _SHIFT_STACK @(&cnt-1)
-                ENDIF 
+_PARAM_COUNT_{&cnt} DEFL _PARAM_COUNT_{&cnt-1}
+_PARAM_COUNT_{&cnt-1} DEFL 0
+                _SHIFT_STACK {&cnt-1}
+                ENDIF
                 ENDM
 
 ;Shift _PARAM_COUNT_# down the stack and then restores Z80 registers. Then
 ;decrement _STACK_SIZE label.
                 MACRO   _POP_STACK
                 _UNSHIFT_STACK _STACK_SIZE
-_STACK_SIZE     DEFL    @(_STACK_SIZE-1)
+_STACK_SIZE     DEFL    {_STACK_SIZE-1}
                 CALL    _POP
                 ENDM
 
 ;Shift _PARAM_COUNT_# values down the stack.
                 MACRO   _UNSHIFT_STACK &cnt
                 IF      &cnt > 0
-_PARAM_COUNT_@(&cnt-1) DEFL _PARAM_COUNT_@(&cnt)
-_PARAM_COUNT_@(&cnt)   DEFL 0
-                _UNSHIFT_STACK @(&cnt-1)
-                ENDIF 
+_PARAM_COUNT_{&cnt-1} DEFL _PARAM_COUNT_{&cnt}
+_PARAM_COUNT_{&cnt}   DEFL 0
+                _UNSHIFT_STACK {&cnt-1}
+                ENDIF
                 ENDM
 
 
@@ -71,7 +73,7 @@ _PARAM_COUNT_@(&cnt)   DEFL 0
                 IF 		&cnt > 0
                 EX      (SP),HL
                 POP     HL
-                _CLEAN_PARAMS @(&cnt-1)
+                _CLEAN_PARAMS {&cnt-1}
                 ENDIF
                 ENDM
 
@@ -82,7 +84,7 @@ _PARAM_COUNT_@(&cnt)   DEFL 0
                 MACRO   _GET_PARAM &reg, &idx
                 LD      IY,14
                 ADD     IY,SP
-                LD      &reg, (IY+@(&idx*2))
+                LD      &reg, (IY+{&idx*2})
                 ENDM
 
 
@@ -111,15 +113,14 @@ _PARAM_COUNT_@(&cnt)   DEFL 0
 
 ;Save all registers
 _PUSH:          EX      (SP),HL
-		PUSH    DE
-		PUSH    BC
+                PUSH    DE
+                PUSH    BC
                 PUSH    AF
                 PUSH    IY
                 PUSH    IX
                 PUSH    HL
                 RET
-                        
-                        
+
 ;restore all registers
 _POP:           POP     HL
                 POP     IX

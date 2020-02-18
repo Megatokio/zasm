@@ -24,7 +24,7 @@
  */
 
 /*	data types modified to integrate with zasm source
-	kio 2017 - 2018
+	kio 2017 - 2019
 */
 
 #ifndef ZX7_H
