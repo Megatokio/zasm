@@ -108,7 +108,7 @@ _PC             DEFL    0
 ; *******************************
 
 MAIN:   _ADDLP  6                   ;add litteral param 2
-        _ADDLP  5                   ;add litteral param 1
+        _ADDLP  5                   ;add literal param 1
         _CALL   EXP
 
 LOOP:   JR      LOOP
