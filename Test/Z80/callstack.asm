@@ -107,7 +107,7 @@ _PC             DEFL    0
 ; *** Actual test starts here ***
 ; *******************************
 
-MAIN:   _ADDLP  6                   ;add litteral param 2
+MAIN:   _ADDLP  6                   ;add literal param 2
         _ADDLP  5                   ;add literal param 1
         _CALL   EXP
 
