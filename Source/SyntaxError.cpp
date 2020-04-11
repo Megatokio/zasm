@@ -1,4 +1,4 @@
-/*	Copyright  (c)	Günter Woigk 2017 - 2019
+/*	Copyright  (c)	Günter Woigk 2017 - 2020
 					mailto:kio@little-bat.de
 
 	This program is distributed in the hope that it will be useful,
