@@ -46,10 +46,16 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 {
 	assert(errors.count()==0);
 	assert(dname != nullptr);
+	assert(style=='b' || style=='x' || style=='s'); // bin/hex/s19
 
-	if (!target) { target = ROM; target_ext = "rom"; }
-	if (style=='x' && (target==ROM || target==BIN)) target_ext = "hex";
-	if (style=='s' && (target==ROM || target==BIN)) target_ext = "s19";
+	if (target == TARGET_UNSET)
+	{
+		target = ROM;
+		target_ext = "rom";
+	}
+
+	if (style == 'x' && (target==ROM || target==RAM || target==BIN)) target_ext = "hex";
+	if (style == 's' && (target==ROM || target==RAM || target==BIN)) target_ext = "s19";
 
 	if (endswith(dname,".$")) dname = catstr(leftstr(dname,int(strlen(dname))-1),target_ext);
 	target_filepath = dname;
@@ -59,6 +65,7 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 	{
 	case TARGET_UNSET:
 	case ROM:
+	case RAM:
 	case BIN:	if (style=='x') { writeHexFile(fd); return; }
 				if (style=='s') { writeS19File(fd); return; }
 				return writeBinFile(fd);
@@ -113,28 +120,32 @@ void Z80Assembler::writeZX81File (FD& fd) throws
 
 void Z80Assembler::writeHexFile (FD& fd) throws
 {
+	// store data from segments into hex file
 	// no error checking!
 
-	// store data from segments into hex file starting at address 0 with no gaps
-	//	 ignoring segment addresses!
-	// trailing fillbytes in each segment are omitted from the file
+	// RAM: start each segment at it's own start address.
+
+	// ROM, BIN: ignore segment addresses.
+	//	 start file at address 0 and concatenate all segments with no gaps.
+	//	 trailing fillbytes in each segment are omitted from the file
 	//	 but accounted for the address of the following segment
 	//	 this is just to save space in the file and may be used
 	//	 to skip over areas of not yet erased contents in eproms
 
-	CodeSegments segments(this->segments);
+	CodeSegments segments(this->segments); // extract code segments
 
 	uint32 address = 0;
 	for (uint i=0; i<segments.count(); i++)
 	{
 		CodeSegment& s = segments[i];
+		if (target == RAM) address = uint(s.address);
 
 		uint8  fillbyte = s.fillbyte;
 		uint8 const* data = s.outputData();
 		uint32 size = s.outputSize();
 		while (size>0 && data[size-1]==fillbyte) { size--; }
 		write_intel_hex(fd, address, data, size);
-		address += s.outputSize();
+		address += s.outputSize(); // ROM,BIN only
 	}
 
 	// eof marker:
@@ -143,31 +154,34 @@ void Z80Assembler::writeHexFile (FD& fd) throws
 
 void Z80Assembler::writeS19File (FD& fd) throws
 {
+	// store data from segments into hex file
 	// no error checking!
 
+	// RAM: start each segment at it's own start address.
+
+	// ROM, BIN: ignore segment addresses.
+	//	 start file at address 0 and concatenate all segments with no gaps.
+	//	 trailing fillbytes in each segment are omitted from the file
+	//	 but accounted for the address of the following segment.
+
 	cstr info = catstr(basename_from_path(source_filename)," ",datestr(timestamp));
-	write_srecord(fd,S19_InfoHeader,0,(uchar*)info,min((uint)strlen(info),64u));
+	write_srecord(fd,S19_InfoHeader,0,(const uchar*)info,min((uint)strlen(info),64u));
 
-	CodeSegments segments(this->segments);
+	CodeSegments segments(this->segments); // extract code segments
 
-	// store data from segments into S-Record file starting at address 0 with no gaps
-	//	 ignoring segment addresses!
-	// trailing fillbytes in each segment are omitted from the file
-	//	 but accounted for the address of the following segment
-	//	 this is just to save space in the file and may be used
-	//	 to skip over areas of not yet erased contents in eproms
 	uint32 address = 0;
 	uint   srcount = 0;
 	for (uint i=0; i<segments.count(); i++)
 	{
 		CodeSegment& s = segments[i];
+		if (target == RAM) address = uint(s.address);
 
 		uint8  fillbyte = s.fillbyte;
 		uint8 const* data = s.outputData();
 		uint32 size = s.outputSize();
 		while (size>0 && data[size-1]==fillbyte) { size--; }
 		srcount += write_motorola_s19(fd, address, data, size);
-		address += s.outputSize();
+		address += s.outputSize(); // ROM,BIN only
 	}
 
 	// eof marker:
@@ -719,6 +733,7 @@ void Z80Assembler::checkTargetfile () throws
 	{
 	case TARGET_UNSET:
 	case ROM:
+	case RAM:
 	case BIN: return checkBinFile();
 	case SNA: return checkSnaFile();
 	case Z80: return checkZ80File();

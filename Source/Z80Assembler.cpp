@@ -2508,15 +2508,16 @@ void Z80Assembler::asmEndif (SourceLine&) throws
 
 void Z80Assembler::asmTarget (SourceLine& q) throws
 {
-	if (pass>1) { q.skip_to_eol(); return; }
-	if (target) throw fatal_error("#target redefined");
+	if (pass > 1) { q.skip_to_eol(); return; }
+	if (target != TARGET_UNSET) throw fatal_error("#target redefined");
 	assert(!current_segment_ptr);
 
 	static HashMap<cstr,Target> targets;
 	if (targets.count() == 0)
 	{
-		targets.add("rom",ROM);
-		targets.add("bin",BIN);
+		targets.add("rom",ROM);	// for eprom burner: hex files start addresses at 0
+		targets.add("ram",RAM);	// for ram loaders:  hex files start addresses at .org
+		targets.add("bin",BIN);	// same as ROM but binary file has file name extension ".bin"
 		targets.add("z80",Z80);
 		targets.add("sna",SNA);
 		targets.add("tap",TAP);
@@ -2532,7 +2533,7 @@ void Z80Assembler::asmTarget (SourceLine& q) throws
 
 	target_ext = q.nextWord();
 	target = targets.get(lowerstr(target_ext), TARGET_UNSET);
-	if (!target) throw syntax_error("target name expected");
+	if (target == TARGET_UNSET) throw syntax_error("target name expected");
 }
 
 void Z80Assembler::asmInclude (SourceLine& q) throws
@@ -3331,7 +3332,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		else
 		{
 			assert(isCode(segment_type));
-			uint8 fillbyte = target==ROM ? 0xFF : 0x00;
+			uint8 fillbyte = target==ROM || target==TARGET_UNSET ? 0xFF : 0x00;
 			segment = new CodeSegment(name,segment_type,fillbyte,1/*relocatable*/,1/*resizable*/);
 		}
 		segments.append(segment);

@@ -44,7 +44,7 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.2.6";
+static const char version[] = "4.2.7";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
