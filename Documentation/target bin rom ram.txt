@@ -1,14 +1,17 @@
 
-h3	#target BIN and ROM
-	bin, rom
+h3	#target BIN, ROM and RAM
+	bin, rom, ram
 
-p	These are the simplest and most common targets. ROM is intended for creating rom files while BIN is intended to be downloaded somehow into the ram of a target system. The only difference between ROM and BIN is, that for ROMs zasm uses 0xFF as the default fill byte for gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment.
+p	These are the simplest and most common targets. ROM is intended for creating rom files while BIN and RAM are intended to be downloaded somehow into the ram of a target system. The only difference between ROM and BIN is, that for ROMs zasm uses 0xFF as the default fill byte for gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment. RAM stores actual addresses for each segment while ROM and BIN store consecutive addresses starting at $0000 for the rom / binary file start.
 
 h5	#target ROM
 
+p	This is the default target if no target was set, e.g. in legacy source.
 p	This file is a plain rom or eprom image.
 p	Segments are padded with $FF to the defined size, if the size wasn't omitted.
 p	The address should be the address at which it is visible to the CPU, the so-called 'physical' address.
+p	Multiple code segments are simply concatenated to create the binary output file.
+p	Addresses in Intel hex or Motorola S19 files start at $0000 and increment to match the binary file. So these addresses define the location of the following bytes in the rom or binary file, they do not reflect the origin set for the stored code segments (or the whole file, if there is only one segment).
 
 pre	#target	rom
 	#code	<name>,<start>,<size>
@@ -27,10 +30,21 @@ h5	#target BIN
 
 p	Pretty the same as a rom file, but rather expected to be loaded somewhere into ram.
 p	Segments are padded with $00, if the size wasn't omitted.
+p	Target BIN is intended to be written to a binary file. As for target ROM, segments are simply concatenated.
+p	Target BIN is not intended to be written as hex file and loaded by a ram loader on a target system, because the ram loader probably stores the data into the addresses read from the hex file, but these define the address inside a rom or bin file, not the final position in the CPU address space.
 
 pre	#target	bin
 	#code	<name>,<start>,<size>
 			...
+
+h5	#target RAM
+
+p.i	Since version 4.2.7
+p	Target RAM is intended to be written as an Intel hex or Motorola S19 file and loaded by a ram loader on a target system which actually stores the data at the addresses read from the hex file.
+p	The addresses in the hex files are based on the origins of the #code segments which are defined as CPU addresses.
+p	Multiple segments may be in arbitrary start address order.
+p	A target RAM binary file is written in the same way as a target BIN or target ROM file and the effective addresses are ignored.
+
 
 h5	Writing Intel Hex files
 

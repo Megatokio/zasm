@@ -136,7 +136,7 @@ H1 		Expressions
 H1 Targets
 //H3:
 +		Target files - Overview.txt
-+		target bin rom.txt
++		target bin rom ram.txt
 +		target sna.txt
 +		target z80.txt
 +		target tap.txt
