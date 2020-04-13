@@ -1,4 +1,4 @@
-#!/usr/local/bin/zasm -v2 -o original/
+#!/usr/local/bin/zasm -v0 -o original/
 
 #target tzx
 
@@ -89,7 +89,7 @@ variables_end:
 		inc		hl
 		rst		2
 		jr		1$
-		
+
 msg:	dm		13, "Hello World!", 13, 0
 
 code_end:

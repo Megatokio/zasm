@@ -45,13 +45,23 @@ class CharMap;
 enum Target
 {
 	TARGET_UNSET,
-	ROM, BIN, Z80, SNA, TAP, ZX80, ZX81, ZX81P, ACE, TZX
+	ROM,	// generic binary, for eprom burner, hex file addresses start at 0
+	BIN,	// generic binary, for ram loader, hex file addresses are based to .org
+	Z80,	// ZX Spectrum snapshot
+	SNA,	// ZX Spectrum snapshot
+	TAP,	// ZX Spectrum tape file
+	ZX80,	// ZX 80 snapshot / tape file
+	ZX81,	// ZX 81 snapshot / tape file
+	ZX81P,	// ZX 81 snapshot / tape file
+	ACE,	// Jupiter Ace snapshot
+	TZX		// universal ZX Spectrum etc. tape file
 };
 
 class Z80Assembler
 {
 public:
-	double		timestamp;			// of assembly
+	double		timestamp;			// for __date__ and __time__
+	double		starttime;			// of assembly
 
 	cstr		source_directory;	// top-level source
 	cstr		source_filename;
@@ -216,7 +226,7 @@ private:
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
 	void	init_c_flags	();
 	void	init_c_tempdir	()							THF;
-	void	init_c_compiler	(cstr cc = NULL)			throws;
+	void	init_c_compiler	(cstr cc = nullptr)			throws;
 
 	bool	is_name			(cstr w)					{ return is_letter(*w)||*w=='_'||(allow_dotnames&&*w=='.'); }
 	cstr	unquotedstr		(cstr);
@@ -228,9 +238,9 @@ public:
 			~Z80Assembler	();
 
 	void	assembleFile	(cstr sourcepath,			// source file must exist
-							 cstr destpath=NULL,		// dflt = source directory, may be dir or filename
-							 cstr listpath=NULL,		// dflt = dest direcory, may be dir or filename
-							 cstr temppath=NULL,		// dflt = dest dir, must be dir
+							 cstr destpath=nullptr,		// dflt = source directory, may be dir or filename
+							 cstr listpath=nullptr,		// dflt = dest direcory, may be dir or filename
+							 cstr temppath=nullptr,		// dflt = dest dir, must be dir
 							 int  liststyle=1,			// 0=none, 1=plain, 2=w/ocode, 4=w/labels, 8=w/clkcycles
 							 int  deststyle='b',		// 0=none, 'b'=bin, 'x'=intel hex, 's'=motorola s19
 							 bool clean=no)			noexcept;

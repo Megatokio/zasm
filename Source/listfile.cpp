@@ -615,7 +615,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 	}
 
 	// list elapsed time and errors:
-	fd.write_fmt("\n\ntotal time: %3.4f sec.\n",now()-timestamp);
+	fd.write_fmt("\n\ntotal time: %3.4f sec.\n", now()-starttime);
 	fd.write_fmt("%s error%s\n", errors.count()?tostr(errors.count()):"no", errors.count()==1?"":"s");
 	fd.close_file();
 }
