@@ -44,7 +44,7 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.2.6";
+static const char version[] = "4.2.8";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
@@ -78,6 +78,7 @@ static const char help[] =
 "  -T  --test      run self test (requires test directory with test sources)\n"
 "  -g  --cgi       prevent access to files outside the source dir\n"
 "  --maxerrors=NN  set maximum for reported errors (default=30, max=999)\n"
+"  --date=DATETIME for reproducible __date__ and __time__ (1999-12-31,0:00)\n"
 "  -o0             don't write output file\n"
 "  -l0             don't write list file\n"
 "  --z80           target Zilog Z80 (default except if --asm8080)\n"
@@ -242,6 +243,8 @@ static int doit( Array<cstr> argv )
 	bool selftest    = no;
 	bool cgi_mode	 = no;
 	uint maxerrors   = 30;
+	double timestamp = start; // __date__ and __time__ and S0 record
+
 // filepaths:
 	cstr inputfile  = nullptr;
 	cstr outputfile = nullptr;	// or dir
@@ -292,6 +295,11 @@ static int doit( Array<cstr> argv )
 					char* ep; ulong n = strtoul(s+12,&ep,10);
 					if (*ep||n==0||n>999) goto h;
 					maxerrors = uint(n); continue;
+				}
+			if (startswith(s,"--date="))
+				{
+					timestamp = dateval(s);
+					continue;
 				}
 			goto h;
 		}
@@ -543,6 +551,7 @@ static int doit( Array<cstr> argv )
 
 // DO IT!
 	Z80Assembler ass;
+	ass.timestamp      = timestamp;
 	ass.verbose		   = verbose;
 	ass.ixcbr2_enabled = ixcbr2;
 	ass.ixcbxh_enabled = ixcbxh;
