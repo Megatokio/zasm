@@ -27,6 +27,7 @@ pre	-u  --opcodes   include object code in list file
 	-T  --test      run self test (requires developer source tree)
 	-g  --cgi       prevent access to files outside the source dir
 	--maxerrors=NN  set maximum for reported errors (default=30, max=999)
+	--date=DATETIME for reproducible __date__ and __time__ (default=now)
 	-o0             don't write output file
 	-l0             don't write list file
 	--z80           target Zilog Z80 (default except if --asm8080)
@@ -47,7 +48,7 @@ pre	-u  --opcodes   include object code in list file
 
 p	Options can be packed, e.g. '-uwy' is the same as giving 3 separate options.
 	Also, due to the way zasm parses it's arguments, you can even include options which require an additional argument in this way:
-	
+
 pre $> zasm -cuwy /bin/sdcc emuf.asm
 
 p	Here the 'c' will eat the '/bin/sdcc'.
@@ -77,7 +78,7 @@ pre	0215:         	;/pub/Develop/Projects/zasm-4.0/Test/main.c:11: int mult(int 
 	0232: C9      		ret
 
 
-H5	-w  --labels    
+H5	-w  --labels
 p	Request a labels summary at end of the list file. Also lists the defined code and data segments.
 
 pre	; +++ segments +++
@@ -85,11 +86,11 @@ pre	; +++ segments +++
 	#CODE PROG_HEADER:  start=0     len=17    flag=0
 	#CODE PROG_DATA:    start=0     len=55    flag=255
 	...
-	#CODE _CABS:        start=36246 len=0    
-	#CODE _GSFINAL:     start=36246 len=0    
-	#CODE _INITIALIZER: start=36246 len=12   
-	#DATA _DATA:        start=23296 len=53   
-	#DATA _INITIALIZED: start=23349 len=203  
+	#CODE _CABS:        start=36246 len=0
+	#CODE _GSFINAL:     start=36246 len=0
+	#CODE _INITIALIZER: start=36246 len=12
+	#DATA _DATA:        start=23296 len=53
+	#DATA _INITIALIZED: start=23349 len=203
 	 
 	; +++ global symbols +++
 	 
@@ -101,12 +102,12 @@ pre	; +++ segments +++
 	_DATA               = $5B00 =  23296  _DATA        test-tap.asm:135
 	_GSFINAL            = $8D96 =  36246  _GSFINAL     test-tap.asm:121 (unused)
 	...
-	
 
-H5	-y  --cycles    
-p	Requests to include accumulated cpu cycles in the list file. 
+
+H5	-y  --cycles
+p	Requests to include accumulated cpu cycles in the list file.
 p	'accumulated' means that zasm does not print the individual execution time for each instruction but sums it up for a thread of code. Program labels are supposed to be entry points from arbitrary positions in code and therefore the sum is reset at every program label. Instructions with varying execution time are given with their run-through time in first place and the branching or repeating time as a second value.
-	
+
 pre	                        ; initialize initialized data:
 	 
 	5DC0: 010C00   [10]     		ld	bc,_INITIALIZER_len	; length of segment _INITIALIZER
@@ -117,18 +118,18 @@ pre	                        ; initialize initialized data:
 	5DCB: 2802     [45|50]  		jr	z,$+4
 	5DCD: EDB0     [61|21]  		ldir
 
-	
-H5	-b  --bin       
+
+H5	-b  --bin
 p	Request to write the output file in binary format. This is the default.
 
-H5	-x  --hex       
+H5	-x  --hex
 p	Request to write the output file in Intel Hex format. This is only allowed for target ROM (the default) or target BIN.
 
 pre	:200000003E00ED79ED79ED793E40ED793EDAED793E37ED79ED780F30FB3A1027D370ED787B
 	:090020000F0F30FADB70321027DB
 	:00000001FF
 
-H5	-s  --s19       
+H5	-s  --s19
 p	Request to write the output file in Motorola S-Record format. This is only allowed for target ROM (the default) or target BIN.
 p	This format supports a header and zasm uses it to store the source file name and assembly date. Since it is encoded as hex data, it is not directly readable in the example below:
 
@@ -137,10 +138,10 @@ pre	S00F00007320323031352D30312D313178
 	S5030001FB
 	S9030000FC
 
-H5	-z  --clean     
+H5	-z  --clean
 p	This requests zasm to erase all cached files from the c compiler. These files are stored in subdirectory 's/' in the selected temp directory, which is by default the source file's directory.
 
-H5	-e  --compare   
+H5	-e  --compare
 p	This allows to check whether the output for a certain source file has changed: The output file of the assembly is not written but compared to the already existing output file of an older assembly. The main purpose for this option is to support zasm's self test, but you may use it to check your source for code-effective modifications without the need to supply a different output file name and to run cmp against the two files.
 
 pre	$> zasm -e zx82.asm "ROMs/zx82 standard rom for ram/zxsp rom for ram.rom"
@@ -160,44 +161,55 @@ p	An output file is actually written to the /tmp/ directory.
 
 
 H5	-g  --cgi
-p	Assemble potentially malicious sources, e.g. in a CGI script for a web site. 
+p	Assemble potentially malicious sources, e.g. in a CGI script for a web site.
 p	This option prevents #insert and #include to include files or directories from outside the source file's directory. Additionally option -I is rejected in #cflags. Traversal via symlinks to any location are possible, also paths in the command line arguments are not affected. #cpath can only be used to select the compiler (without directory path) but only <tt>sdcc</tt> and <tt>vcc</tt> are recognized.
 
-H5	--maxerrors  
+H5	--maxerrors
 pre	--maxerrors=NN
 
 p	Set the maximum amount of errors after which zasm will bail out. Default value is 30 errors. Some errors, especially after assembler directives starting with '#', are 'fatal' and will always immediately terminate assembly regardless of this setting.
-	
-H5	-o0             
+
+H5	--date
+pre	--date=DATESTRING
+
+p	Set date and optionally time for the __date__ and __time__ macros. This can be used to create reproducible binaries, e.g. for test and verify. The date is also used in the S0 record of Motorola S19 hex files.
+
+p	Examples:
+pre	--date=20201231
+	--date=2020-04-12,12:00:00
+	--date='2020-4-12 12:00'
+
+
+H5	-o0
 p	Use this if you don't want the output file to be created, e.g. if you just want to recreate the list file. This will save you some milli seconds…
 
-H5	-l0             
+H5	-l0
 p	Use this option if you don't want a list file to be created. Normally, if no list file specific option is given, a 'plain' list file is genertaed which is mostly the same as the source file, plus any included files, plus markers for any occured error.
 
-H5	--z80           
+H5	--z80
 p	Set the target cpu to Z80. This is the default, except if --asm8080 is used to assemble source using 8080 assembler syntax.
 	The pseudo instruction '.z80' has a similar effect, but it can only verify that the target cpu is the Z80, and can't override a different target chosen on the command line.
 p	If the target cpu is a Z80 or Z180 and 8080 assembler syntax is selected, then the label _z80_ is defined and can be tested with 'defined(_z80_)' in expressions.
 
-H5	--z180          
+H5	--z180
 p	Set the target cpu to Z180 / HD64180. This enables additional instructions and disables all illegal instructions, because the Z180 traps them.
 	Similar effect as with pseudo instruction '.z180' at the start of the source file.
-p	If the target cpu is a Z180, then the label _z180_ is defined and can be tested with 'defined(_z180_)' in expressions.	
+p	If the target cpu is a Z180, then the label _z180_ is defined and can be tested with 'defined(_z180_)' in expressions.
 
-H5	--8080          
+H5	--8080
 	i8080
 p	Set the target cpu to the Intel 8080. This disables all additional Z80 instructions. The source must still be in Z80 syntax unless you also use --asm8080, in which case you don't need --8080 because it is implied. Use this option if you want to verify that your program will also run on the 8080 cpu, e.g. for CP/M.
 p	Note: the pseudo instruction '.8080' has an additional effect: '.8080' also selects 8080 assembler syntax!
-p	If the target cpu is a 8080 and Z80 assembler syntax is selected, then the label _8080_ is defined and can be tested with 'defined(_8080_)' in expressions.	
+p	If the target cpu is a 8080 and Z80 assembler syntax is selected, then the label _8080_ is defined and can be tested with 'defined(_8080_)' in expressions.
 
-H5	--asm8080       
-p	Announce that this is an assembler source in the Intel 8080 assembler format with these 'weird mnemonics'. This option implies the option --casefold and set's the default cpu target to the Intel 8080. 
+H5	--asm8080
+p	Announce that this is an assembler source in the Intel 8080 assembler format with these 'weird mnemonics'. This option implies the option --casefold and set's the default cpu target to the Intel 8080.
 p	'--asm8080' can be used in combination with '--z80' to assemble source for a Z80 (including the Z80's additional opcodes) in 8080 assembler syntax. See section about 8080 assembler instructions.
 p	The pseudo instruction '.8080' has a similar effect but does not only set the i8080 as the default cpu targetbut actually uses it.
 
 
 
-H5	-v[0,1,2]       
+H5	-v[0,1,2]
 	v0,v1,v2
 p	Set verbosity of messages to stderr. Default is -v1.
 p	By default some warnings, all errors and a '123 errors' / 'no errors' message are printed.
@@ -214,7 +226,7 @@ p	By default some warnings, all errors and a '123 errors' / 'no errors' message 
 +	command line options for c compiler.txt
 
 
-                    
+
 
 
 

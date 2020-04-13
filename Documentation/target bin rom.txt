@@ -2,35 +2,58 @@
 h3	#target BIN and ROM
 	bin, rom
 
-p	These are the simplest and most common targets. ROM is intended for creating rom files while BIN is intended to be downloaded somehow into the ram of a target system. The only difference between ROM and BIN is, that for ROMs zasm uses 0xFF as the default fill byte for gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment.
+p	These are the simplest and most common targets. ROM is intended for creating rom files while BIN is intended to be downloaded somehow into the ram of a target system. One difference between ROM and BIN is the default fill byte used to fill gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment. The main difference (since version 4.2.8) are the addresses stored in hex files. Target RAM stores addresses based on the origin of each segment while ROM stores consecutive addresses starting at $0000.
 
 h5	#target ROM
 
-p	This file is a plain rom or eprom image.
-p	Segments are padded with $FF to the defined size, if the size wasn't omitted.
-p	The address should be the address at which it is visible to the CPU, the so-called 'physical' address.
+p	This is also the default target if no target is set, e.g. in legacy source.
+p	This file is a plain rom or eprom image intended to be used with an eprom burner.
+p	The default fill byte for .defs and for padding segments is $FF.
+p	Multiple code segments are simply concatenated to create the binary output file.
+p	Hex files are also created by simply concatenating all code segments.
+	The padding at the end of each segment (if any) is not stored.
+	<b>The addresses in the hex files start at $0000 and define the code storage position in the eprom or memory file, suitable for use by an eprom burner.</b>
+p	#target ROM files can include multiple segments mapping to the same cpu address. (paging)
 
 pre	#target	rom
 	#code	<name>,<start>,<size>
 			...
 
-p	Example for a rom which is paged into the Z80 address space in 2 pages:
+p	Example for a rom which is paged into the Z80 address space in 2 pages at address $C000:
 
 pre	#target	rom
-	#code	_PAGE1,0,0x4000
+	#code	PAGE1, $C000, $4000
 			...
-	#code	_PAGE2,0,0x4000
+	#code	PAGE2, $C000, $4000
 			...
 
 
 h5	#target BIN
 
-p	Pretty the same as a rom file, but rather expected to be loaded somewhere into ram.
-p	Segments are padded with $00, if the size wasn't omitted.
+p.i until version 4.2.7:
+
+p	Target BIN behaves identical to target ROM except for the default fill byte which is is $00.
+
+p.i	since version 4.2.8:
+
+p	This file is a plain memory dump intended to be loaded by a ram loader on the target system.
+p	The default fill byte for .defs and for padding segments is $00.
+p	Binary files for ROM and BIN are identical except for the default fill pattern:
+	multiple code segments are simply concatenated.
+p	Hex files are created by simply concatenating all code segments.
+	The padding at the end of each segment (if any) is not stored.
+	<b>Addresses in hex files are based on the origins of the #code segments, making it suitable for a ram loader.</b>
+
+p.b	Cave at: Multiple segments are loaded differently for binary and hex files!
+
+p	A binary file is just a concatenation of all segments in order of definition in the source file, disregarding the segment start addresses. Eventually the segments are copied to their final position by the reset code.
+
+p	A hex file will most likely be loaded to the final position by a ram loader using the addresses in the hex file, even if segments are defined in arbitrary order or with unused space between them.
 
 pre	#target	bin
 	#code	<name>,<start>,<size>
 			...
+
 
 h5	Writing Intel Hex files
 
