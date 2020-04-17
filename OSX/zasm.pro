@@ -17,8 +17,6 @@ CONFIG += precompiled_header
 CONFIG(release,debug|release) { DEFINES += NDEBUG } # ATTN: curly brace must start in same line!
 
 
-QMAKE_MAC_SDK = macosx10.9
-
 LIBS += -lz
 
 INCLUDEPATH +=          \
@@ -45,7 +43,7 @@ SOURCES += \
 	Libraries/cstrings/cstrings.cpp \
 	Libraries/kio/exceptions.cpp \
 	Libraries/unix/FD.cpp \
-	Libraries/unix/tempmem.cpp \
+	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_major_opcode.cpp \
@@ -55,11 +53,18 @@ SOURCES += \
 	Libraries/audio/audio.cpp
 
 HEADERS += \
+	Libraries/Templates/RCArray.h \
+	Libraries/Templates/RCObject.h \
+	Libraries/Templates/relational_operators.h \
+	Libraries/Templates/sort.h \
+	Libraries/Templates/template_helpers.h \
 	Source/Error.h \
 	Source/Label.h \
 	Source/Segment.h \
 	Source/settings.h \
 	Source/Source.h \
+	Source/Value.h \
+	Source/zx7.h \
 	Source/SyntaxError.h \
 	Source/Z80Assembler.h \
 	Source/settings.h \
@@ -67,19 +72,20 @@ HEADERS += \
 	Source/helpers.h \
 	Source/Z80Header.h \
 	Source/Macro.h \
-	Source/Value.h \
-	Source/zx7.h \
+	Source/SyntaxError.h \
 	config.h \
 	Libraries/cstrings/base85.h \
 	Libraries/cstrings/cstrings.h \
+	Libraries/kio/errors.h \
 	Libraries/kio/kio.h \
 	Libraries/kio/detect_configuration.h \
-	Libraries/kio/exceptions.h \
+	Libraries/unix/log.h \
+	Libraries/unix/FD.h \
+	Libraries/cstrings/tempmem.h \
+	Libraries/unix/files.h \
 	Libraries/kio/standard_types.h \
 	Libraries/kio/peekpoke.h \
-	Libraries/unix/FD.h \
-	Libraries/unix/tempmem.h \
-	Libraries/unix/files.h \
+	Libraries/kio/exceptions.h \
 	Libraries/Templates/Array.h \
 	Libraries/Templates/HashMap.h \
 	Libraries/Z80/goodies/z80_clock_cycles.h \
@@ -88,11 +94,8 @@ HEADERS += \
 	Libraries/Z80/goodies/z80_opcode_length.h \
 	Libraries/Z80/goodies/z80_opcodes.h \
 	Libraries/hash/sdbm_hash.h \
-	Libraries/Templates/template_helpers.h \
-	Libraries/Templates/RCObject.h \
-	Libraries/Templates/RCPtr.h \
-	Libraries/audio/WavFile.h \
-	Libraries/audio/audio.h
+	Libraries/audio/audio.h \
+	Libraries/audio/WavFile.h
 
 OTHER_FILES += \
 	../.gitignore \
