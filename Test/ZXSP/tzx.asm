@@ -1,4 +1,4 @@
-#!/usr/local/bin/zasm -v0 -o original/
+#!/usr/local/bin/zasm -o original/
 
 #target tzx
 
