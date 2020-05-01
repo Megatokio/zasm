@@ -27,8 +27,7 @@
 #include "Z80Assembler.h"
 #include "unix/files.h"
 #include "helpers.h"
-#include "Z80/goodies/z80_clock_cycles.h"
-#include "Z80/goodies/z80_opcode_length.h"
+#include "Z80/goodies/z80_goodies.h"
 #include "kio/peekpoke.h"
 
 static cstr oo_str(uint n)
@@ -80,7 +79,7 @@ static uint write_line_with_objcode
 	{
 		for (count=0;;)
 		{
-			uint n = z80_opcode_length(bytes+count,isaZ180);	// use Z180 in case Z180 opcodes are used
+			uint n = z80_opcode_length(bytes+count,CpuZ180);	// use Z180 in case Z180 opcodes are used
 			if (count+n>4) break;
 			count += n;
 		}
@@ -116,7 +115,7 @@ static uint write_line_with_objcode
 	}
 }
 
-static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data)
+static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data, CpuID variant)
 {
 	// calculate string with accumulated cpu clock cycles for z80 instruction
 	// the returned string has in most cases 9 characters.
@@ -138,12 +137,12 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data)
 	uint8 op1 = bytes[0];
 	uint8 op2 = count>=2 ? bytes[1] : 0;
 
-	bool can_branch = z80_opcode_can_branch(op1,op2);
+	bool can_branch = z80_opcode_can_branch(op1,op2,variant);
 	if (can_branch)
 	{
-		uint a = cc + z80_clock_cycles(op1,op2,0);			// print accumulated time after instruction
-		uint b = op1==0xed ? 21 :							// for ldir etc. print loop time (always 21)
-				 cc + z80_clock_cycles_on_branch(op1,op2);	// for other instructions print accum. time as for a
+		uint a = cc + z80_clock_cycles(op1,op2,0,variant);			// print accumulated time after instruction
+		uint b = op1==0xed ? 21 :											// for ldir etc. print loop time (always 21)
+				 cc + z80_clock_cycles_on_branch(op1,op2,variant);	// for other instructions print accum. time as for a
 		cc = a;
 
 		str s = usingstr("[%2u|%2u]  ", a, b);
@@ -153,7 +152,7 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data)
 	else
 	{
 		uint8 op4 = count>=4 ? bytes[3] : 0;
-		cc += z80_clock_cycles(op1,op2,op4);
+		cc += z80_clock_cycles(op1,op2,op4,variant);
 
 		str s = usingstr("[%2u]     ", cc);
 		s[9] = 0;
@@ -161,7 +160,7 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data)
 	}
 }
 
-static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc)
+static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc, CpuID variant)
 {
 	// calculate string with accumulated cpu clock cycles for compound instruction
 	// same as cc_str() but for compound instructions
@@ -173,7 +172,7 @@ static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc)
 		uint8 op2 = count>=2 ? bytes[1] : 0;
 		uint8 op4 = count>=4 ? bytes[3] : 0;
 
-		cc += z80_clock_cycles(op1,op2,op4);
+		cc += z80_clock_cycles(op1,op2,op4,variant);
 
 		uint len = z80_opcode_length(bytes);
 		assert(len<=count);
@@ -187,7 +186,7 @@ static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc)
 }
 
 static uint write_line_with_objcode_and_cycles
-			(FD& fd, uint address, uint8* bytes, uint count, uint offset, uint32& cc, bool is_data, cstr text)
+			(FD& fd, uint address, uint8* bytes, uint count, uint offset, uint32& cc, bool is_data, cstr text, CpuID variant)
 {
 	// format:
 	// 1234: 12345678 [234|235]sourceline
@@ -210,13 +209,13 @@ static uint write_line_with_objcode_and_cycles
 	count   -= offset;
 
 	// special handling for compound opcodes:
-	if (count>1 && !is_data && count>z80_opcode_length(bytes,isaZ180))	// use Z180
+	if (count>1 && !is_data && count>z80_opcode_length(bytes,variant))
 	{
 		if (count>4)	// limit number of accounted bytes to 4; break on opcode boundary:
 		{
 			for (count=0;;)
 			{
-				uint n = z80_opcode_length(bytes+count,isaZ180);	// use Z180 in case Z180 opcodes are used
+				uint n = z80_opcode_length(bytes+count,variant);
 				if (count+n>4) break;
 				count += n;
 				//if (n>=2 && z80_opcode_can_branch(bytes[0],bytes[1])) break;			denk...
@@ -226,13 +225,13 @@ static uint write_line_with_objcode_and_cycles
 		switch (count)
 		{
 		case 2:
-			fd.write_fmt("%04X: %04X     %s%s\n", address, peek2X(bytes), compound_cc_str(bytes,count,cc), text);
+			fd.write_fmt("%04X: %04X     %s%s\n", address, peek2X(bytes), compound_cc_str(bytes,count,cc,variant), text);
 			return 2;
 		case 3:
-			fd.write_fmt("%04X: %06X   %s%s\n",   address, peek3X(bytes), compound_cc_str(bytes,count,cc), text);
+			fd.write_fmt("%04X: %06X   %s%s\n",   address, peek3X(bytes), compound_cc_str(bytes,count,cc,variant), text);
 			return 3;
 		case 4:
-			fd.write_fmt("%04X: %08X %s%s\n",     address, peek4X(bytes), compound_cc_str(bytes,count,cc), text);
+			fd.write_fmt("%04X: %08X %s%s\n",     address, peek4X(bytes), compound_cc_str(bytes,count,cc,variant), text);
 			return 4;
 		}
 		IERR();
@@ -245,16 +244,16 @@ static uint write_line_with_objcode_and_cycles
 		fd.write_fmt("%04X:                   %s\n",  address&0xffff, text);
 		return 0;
 	case 1:
-		fd.write_fmt("%04X: %02X       %s%s\n", address, peek1X(bytes), cc_str(bytes,count,cc,is_data), text);
+		fd.write_fmt("%04X: %02X       %s%s\n", address, peek1X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
 		return 1;
 	case 2:
-		fd.write_fmt("%04X: %04X     %s%s\n",  address, peek2X(bytes), cc_str(bytes,count,cc,is_data), text);
+		fd.write_fmt("%04X: %04X     %s%s\n",  address, peek2X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
 		return 2;
 	case 3:
-		fd.write_fmt("%04X: %06X   %s%s\n",    address, peek3X(bytes), cc_str(bytes,count,cc,is_data), text);
+		fd.write_fmt("%04X: %06X   %s%s\n",    address, peek3X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
 		return 3;
 	case 4:
-		fd.write_fmt("%04X: %08X %s%s\n",    address, peek4X(bytes), cc_str(bytes,count,cc,is_data), text);
+		fd.write_fmt("%04X: %08X %s%s\n",    address, peek4X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
 		return 4;
 	default:
 		assert(is_data);
@@ -384,10 +383,10 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 			require_colon || ixcbr2_enabled || ixcbxh_enabled )
 		{
 			fd.write_fmt("%s; opts:%s%s%s%s%s%s%s%s%s%s\n", indentstr,
-				syntax_8080					? " --asm8080"  : "",
+				syntax_8080				? " --asm8080"  : "",
 				target_z180				? " --z180"     : "",
-				target_z80  &&  syntax_8080	? " --z80"      : "",
-				target_8080	&& !syntax_8080	? " --8080"     : "",
+				target_z80  &&  syntax_8080	? " --z80"  : "",
+				target_8080	&& !syntax_8080	? " --8080" : "",
 				flat_operators			? " --flatops"  : "",
 				casefold    && !syntax_8080	? " --casefold" : "",
 				allow_dotnames			? " --dotnames" : "",
@@ -405,6 +404,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 	if (style&2)	// with opcodes:
 	{
 		uint32 cc = 0;
+		CpuID variant = target_z180 ? CpuZ180 : target_8080 ? Cpu8080 : CpuZ80;
 
 		while (si<source.count())
 		{
@@ -448,7 +448,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 				// print line with address, up to 4 opcode bytes and source line:
 				// note: real z80 opcodes have max. 4 bytes
 				offset = style&8 ?
-					write_line_with_objcode_and_cycles(fd, address, bytes, count, 0, cc, is_data, sourceline.text)
+					write_line_with_objcode_and_cycles(fd, address, bytes, count, 0, cc, is_data, sourceline.text, variant)
 				  : write_line_with_objcode(fd, address, bytes, count, 0, is_data, sourceline.text);
 			}
 
@@ -469,7 +469,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 			while (offset<count)
 			{
 				offset += style&8 ?
-					write_line_with_objcode_and_cycles(fd, address, bytes, count, offset, cc, is_data, "")
+					write_line_with_objcode_and_cycles(fd, address, bytes, count, offset, cc, is_data, "", variant)
 				  : write_line_with_objcode(fd, address, bytes, count, offset, is_data, "");
 			}
 		}

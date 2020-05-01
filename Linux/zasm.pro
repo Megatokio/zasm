@@ -14,7 +14,8 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG += c++11
 CONFIG += precompiled_header
-CONFIG(release,debug|release) { DEFINES += NDEBUG }
+CONFIG(release,debug|release) { DEFINES += NDEBUG RELEASE } # ATTN: curly brace must start in same line!
+CONFIG(debug,debug|release) { DEFINES += DEBUG } # ATTN: curly brace must start in same line!
 QMAKE_CXXFLAGS += -Wno-four-char-constants
 QMAKE_CXXFLAGS += -Wno-multichar
 
@@ -46,6 +47,7 @@ SOURCES += \
 	Libraries/unix/FD.cpp \
 	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
+	Libraries/Z80/goodies/z180_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_major_opcode.cpp \
 	Libraries/Z80/goodies/z80_opcode_length.cpp \
@@ -89,11 +91,9 @@ HEADERS += \
 	Libraries/kio/exceptions.h \
 	Libraries/Templates/Array.h \
 	Libraries/Templates/HashMap.h \
-	Libraries/Z80/goodies/z80_clock_cycles.h \
-	Libraries/Z80/goodies/z80_major_opcode.h \
 	Libraries/Z80/goodies/z80_major_opcode_tables.h \
-	Libraries/Z80/goodies/z80_opcode_length.h \
 	Libraries/Z80/goodies/z80_opcodes.h \
+	Libraries/Z80/goodies/z80_goodies.h \
 	Libraries/hash/sdbm_hash.h \
 	Libraries/audio/audio.h \
 	Libraries/audio/WavFile.h

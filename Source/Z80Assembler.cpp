@@ -39,7 +39,7 @@
 #include "Templates/HashMap.h"
 #include "helpers.h"
 #include "CharMap.h"
-#include "Z80/goodies/z80_major_opcode.h"
+#include "Z80/goodies/z80_goodies.h"
 #include "zx7.h"
 #include "Templates/StrArray.h"
 #include "kio/peekpoke.h"
@@ -5247,8 +5247,9 @@ rr:		if (target_8080) goto ill_8080;
 		if (r<=RA) { storeEDopcode(0x04+8*(r-RB)); return; }
 		goto ill_source;
 
-	case 'mult':
-		// mult rr		bc de hl sp
+	case 'mult':		// <-- TODO: remove?
+	case ' mlt':		// Zilog manual: operation name = MULT, mnemonic = MLT
+		// mlt rr		bc de hl sp
 		if (!target_z180) goto ill_z180;
 		r = getRegister(q,n);
 		if (r>=BC && r<=SP) return store(PFX_ED,0x4c+16*(r-BC));

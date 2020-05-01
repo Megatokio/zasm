@@ -44,7 +44,7 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.2.8";
+static const char version[] = "4.2.9";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
@@ -53,7 +53,7 @@ static const char help[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
 "  zasm - z80/8080 assembler (c) 1994 - 2020 Günter Woigk.\n"
 "  version %s, %s, for %s.\n"										// version, date, platform
-"  homepage: https://k1.spdns.de/Develop/Projects/zasm/\n"
+"  homepage: https://k1.spdns.de/Develop/Projects/zasm/Distributions/\n"
 "  send bug reports to: kio@little-bat.de\n\n"
 
 "syntax:\n"

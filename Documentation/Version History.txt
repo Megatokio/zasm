@@ -49,5 +49,6 @@ pre	1.0.0  1996: First version for private use. Mac OS 7.0. No public release.
 	4.2.6  2020: added text replacement in macros for values between '{' and '}'.
 	4.2.7  2020: hexfile for #target BIN now uses cpu addresses for ram loaders
 	4.2.8  2020: cmd line option "--date" to set reproducible date and time
+	4.2.9  2020: fixed cpu cycle calculation for Z80180
 
 
