@@ -4473,8 +4473,10 @@ int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 
 	if (c2==0x20)	// strlen = 1
 	{
-		if (c1=='z') return Z;	if (c1=='c') return CY;
-		if (c1=='p') return P;	if (c1=='m') return M;
+		if (c1=='z') return Z;
+		if (c1=='c') return CY;
+		if (c1=='p') return P;
+		if (c1=='m') return M;
 		if (c1=='s') return M;	// source seen ...
 	}
 	else if (*w==0)	// strlen = 2
@@ -4738,13 +4740,13 @@ inc:
 		r2 = getRegister(q,n2);
 
 		if (r==AF) { if (target_8080) goto ill_8080; q.test_char('\'');
-					 if (r2==AF)  return store(EX_AF_AF); goto ill_source; }
+					 if (r2==AF)  return store(EX_AF_AF); else goto ill_source; }
 		if (r==HL) { if (r2==DE)  return store(EX_DE_HL); if (r2==XSP) return store(EX_HL_xSP); goto ill_source; }
 		if (r==DE) { if (r2==HL)  return store(EX_DE_HL); goto ill_source; }
 		if (r==IX) { if (r2==XSP) return store(PFX_IX, EX_HL_xSP); goto ill_source; }
 		if (r==IY) { if (r2==XSP) return store(PFX_IY, EX_HL_xSP); goto ill_source; }
 		if (r==XSP){ if (r2==HL)  return store(EX_HL_xSP); if (r2==IX) return store(PFX_IX, EX_HL_xSP);
-					 if (r2==IY)  return store(PFX_IY, EX_HL_xSP); goto ill_source; }
+					 if (r2==IY)  return store(PFX_IY, EX_HL_xSP); else goto ill_source; }
 		goto ill_target;
 
 	case ' add':
@@ -5170,7 +5172,7 @@ bit:	n = value(q);
 	case ' rrc':	instr = RRC_B;	goto rr;
 	case ' sla':	instr = SLA_B;	goto rr;
 	case ' sra':	instr = SRA_B;	goto rr;
-	case ' sll':	if(target_z180) goto ill_opcode;
+	case ' sll':	if(target_z180) {goto ill_opcode;}
 					instr = SLL_B;	goto rr;
 	case ' srl':	instr = SRL_B;	goto rr;
 	case '  rl':	instr = RL_B;	goto rr;
