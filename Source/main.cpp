@@ -30,7 +30,6 @@
 	2014-05-21	kio work on 4.0.0 started
 */
 
-#include "config.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>

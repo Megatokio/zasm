@@ -61,6 +61,7 @@ HEADERS += \
 	Libraries/Templates/relational_operators.h \
 	Libraries/Templates/sort.h \
 	Libraries/Templates/template_helpers.h \
+	Libraries/kio/auto_config.h \
 	Source/Error.h \
 	Source/Label.h \
 	Source/Segment.h \
