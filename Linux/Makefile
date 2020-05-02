@@ -8,13 +8,13 @@ MACHINE     = -m64     # -m32 or -m64 or empty
 
 CC          = gcc
 CXX         = g++
-DEFINES     = -DNDEBUG -DQT_NO_DEBUG -D_REENTRANT
+DEFINES     = -DNDEBUG -DRELEASE
 CFLAGS      = $(MACHINE) -pipe -Os -Wall $(DEFINES)
 CXXFLAGS    = $(CFLAGS) -std=c++11 -Wno-multichar
 INCPATH     = -I. -I.. -I../Source -I../Libraries
 LINK        = g++
 LFLAGS      = $(MACHINE)
-LIBS        = -lpthread -lz
+LIBS        = -lz
 STRIP       = strip
 
 OBJECTS     = \
@@ -38,6 +38,7 @@ OBJECTS     = \
 		FD.o \
 		tempmem.o \
 		files.o \
+		z180_clock_cycles.o \
 		z80_clock_cycles.o \
 		z80_major_opcode.o \
 		z80_opcode_length.o \
@@ -60,40 +61,43 @@ $(TARGET):  Makefile $(OBJECTS)
 
 ####### Compile
 
-%.o : ../Source/%.cpp
+%.o : Source/%.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $@ $<
 
 cstrings.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cstrings.o ../Libraries/cstrings/cstrings.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cstrings.o Libraries/cstrings/cstrings.cpp
 
 exceptions.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o exceptions.o ../Libraries/kio/exceptions.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o exceptions.o Libraries/kio/exceptions.cpp
 
 FD.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o FD.o ../Libraries/unix/FD.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o FD.o Libraries/unix/FD.cpp
 
 tempmem.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tempmem.o ../Libraries/cstrings/tempmem.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tempmem.o Libraries/cstrings/tempmem.cpp
 
 files.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o files.o ../Libraries/unix/files.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o files.o Libraries/unix/files.cpp
+
+z180_clock_cycles.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z180_clock_cycles.o Libraries/Z80/goodies/z180_clock_cycles.cpp
 
 z80_clock_cycles.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_clock_cycles.o ../Libraries/Z80/goodies/z80_clock_cycles.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_clock_cycles.o Libraries/Z80/goodies/z80_clock_cycles.cpp
 
 z80_major_opcode.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_major_opcode.o ../Libraries/Z80/goodies/z80_major_opcode.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_major_opcode.o Libraries/Z80/goodies/z80_major_opcode.cpp
 
 z80_opcode_length.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_opcode_length.o ../Libraries/Z80/goodies/z80_opcode_length.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o z80_opcode_length.o Libraries/Z80/goodies/z80_opcode_length.cpp
 
 kio.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o kio.o ../Libraries/kio/kio.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o kio.o Libraries/kio/kio.cpp
 
 WavFile.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o WavFile.o ../Libraries/audio/WavFile.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o WavFile.o Libraries/audio/WavFile.cpp
 
 audio.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o audio.o ../Libraries/audio/audio.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o audio.o Libraries/audio/audio.cpp
 
 
