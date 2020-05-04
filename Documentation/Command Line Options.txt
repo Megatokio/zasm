@@ -34,6 +34,7 @@ pre	-u  --opcodes   include object code in list file
 	--z180          enable Z180 / HD64180 instructions
 	--8080          restrict to Intel 8080 (default if --asm8080)
 	--asm8080       use 8080 assembler syntax
+    --convert8080   convert source from 8080 to Z80 mnemonics
 	-v0 -v1 -v2     verbosity of messages to stderr (0=off, 1=default, 2=more)
 	--ixcbr2 | …xh  enable ill. instructions like 'set b,(ix+d),r' or 'set b,xh'
 	--dotnames      allow label names starting with a dot '.'
@@ -207,6 +208,9 @@ p	Announce that this is an assembler source in the Intel 8080 assembler format w
 p	'--asm8080' can be used in combination with '--z80' to assemble source for a Z80 (including the Z80's additional opcodes) in 8080 assembler syntax. See section about 8080 assembler instructions.
 p	The pseudo instruction '.8080' has a similar effect but does not only set the i8080 as the default cpu targetbut actually uses it.
 
+H5	--convert8080
+p	Since version 4.3.0: Convert 8080 assembler source file to Z80 style.
+p	zasm converts the source and writes it to the output file or a file with a derived name. Then it assembles the original source and the converted source and compares the outputs. The Z80 source is assembled with option '--casefold'. Flags required to assemble the 8080 source – e.g. '--reqcolon' – must also be used for the conversion. The source is converted independently of any successive errors.
 
 
 H5	-v[0,1,2]

@@ -50,5 +50,6 @@ pre	1.0.0  1996: First version for private use. Mac OS 7.0. No public release.
 	4.2.7  2020: hexfile for #target BIN now uses cpu addresses for ram loaders
 	4.2.8  2020: cmd line option "--date" to set reproducible date and time
 	4.2.9  2020: fixed cpu cycle calculation for Z80180
+	4.3.0  2020: new option --convert8080
 
 

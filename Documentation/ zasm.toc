@@ -2,7 +2,7 @@
 //	zasm documentation
 
 
-H0	zasm - Z80 Assembler – Version 4.2
+H0	zasm - Z80 Assembler – Version 4.3
 toc	Table of Contents
 
 p.c	<i>Last updated: %%DATE%%.</i>
@@ -12,9 +12,9 @@ p	<b class=red>zasm</b> is a multiple pass assembler for the historic 8-bit CPU 
 p	<b class=red>zasm</b> is available for Unix-like operating systems like OSX, Linux, BSD.
 
 p.b	Download page and Git archive:
-p	<http://k1.spdns.de/Develop/projects/zasm/Distributions/>
-	<http://k1.spdns.de/Git/zasm-4.0.git>
-	<http://k1.spdns.de/Git/Libraries.git>
+p	<https://k1.spdns.de/Develop/projects/zasm/Distributions/>
+	<https://github.com/Megatokio/zasm>
+	<https://github.com/Megatokio/Libraries>
 
 p.b	Online Assembler
 p	A cgi script is running on my mac which allows to assemble Z80 sources online.

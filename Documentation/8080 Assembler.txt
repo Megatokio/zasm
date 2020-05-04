@@ -3,8 +3,8 @@ h1	8080 Assembler
 
 pre	$> zasm --asm8080 mysource.asm
 
-p	zasm can assemble source which is in the historic 8080 assembler format if it is started with command line option '--asm8080'. 
-	
+p	zasm can assemble source which is in the historic 8080 assembler format if it is started with command line option '--asm8080'.
+
 p	zasm supports most of a typical 8080 assembler source files, but only as an addition to it's standard Z80 source handling. It expects one instruction per line, comments start with a semicolon ";" and label definitions should start in column 1 except if you also define '--reqcolon'.
 
 p	All identifiers (mnenonics, register names and directives) and label names are <u>not</u> case sensitive!
@@ -16,19 +16,19 @@ h5	8080 code example
 pre	inpl2:  LXI     H,IBUFF         ;Input buffer addr
 	        SHLD    IBUFP
 	        MVI     C,0             ;Init count to zero
-	
+
 	inpli:  CALL    intt            ;Get char from console
-	
+
 	        CPI     ' '             ;Control char?
 	        JC      inplc           ;Yes
-	
+
 	        CPI     DEL             ;Delete char?
 	        JZ      inplb           ;Yes
-	
+
 	        CPI     'Z'+1           ;Upper case?
 	        JC      inpl3           ;Yes
 	        ANI     5Fh             ;No - so make upper case
-	
+
 	inpl3:  MOV     M,A             ;Into buffer
 	        MVI     A,IBL           ;Buffer size
 	        CMP     C               ;Full?
@@ -46,7 +46,7 @@ h4	8080 pseudo instructions
 p	8080 pseudo instructions occure at the position of a real 8080 opcode and must normally be preceded with some spaces, except if command line option '--reqcolon' is used.
 
 p	zasm knows the following 8080 assembler pseudo instructions:
-	
+
 h5	ORG <nnnn>
 p	Set the logical origin (code address) for the following code.
 pre		ORG 0C000h
@@ -55,14 +55,14 @@ h5	END
 p	Define the logical end of your source. END is optional.
 
 h5	IF .. ENDIF
-p	Conditionally include a range of source source lines. 
+p	Conditionally include a range of source source lines.
 	IF and ENDIF are just an alias to #IF and #ENDIF and therefore may be used interchangeable with #IF, #ELIF, #ELSE and #ENDIF. <i class=magenta>This may change.</i>
-pre		IF option_foo=1		
+pre		IF option_foo=1
 		  IF option_bar
 			; <-- some code -->
 		  ENDIF
 		endif
-	
+
 h5	DB
 p	Insert bytes. DB is handled like 'defb' or 'defm' in Z80 assembler: You can put in strings here which may be enclosed in ' or ".
 pre		DB	lf,cr,'Hello You: ',0
@@ -85,11 +85,11 @@ pre	foo		MACRO	ARG1, ARG2
 			foo	42,$0008		; use macro
 
 h5	REPT
-p	Define a range of source lines which shall be repeated multiple time. 
+p	Define a range of source lines which shall be repeated multiple time.
 pre			REPT $2000 - $
 			DB	 0
 			ENDM
-			
+
 
 // –––––––––––––––––––––––––––––––––
 h4	Labels
@@ -101,7 +101,7 @@ pre	foobar	equ	5
 	  bar	equ foobar - FOO
 
 p	In contrast to the Z80 assembler, label names are <u>not</u> case sensitive!
-p	Register names can be used as label names. (but, really really, shouldn't.) 
+p	Register names can be used as label names. (but, really really, shouldn't.)
 	The names for the 8080 assembler directives are not allowed for label names.
 p	Program labels must start in column 1 and may be followed by a colon ':' (optional), except if option '--reqcolon' was used. Then they may start in any column and the colon is required. (sic!)
 
@@ -125,9 +125,21 @@ h4	Expressions
 p	Basically all possibilities of the Z80 assembler are allowed, because the expression parser of the Z80 assembler is used.
 
 
+// -----------------------------------
+h4	Convert 8080 to Z80 assembler syntax
+	convert
 
+p	Since version 4.3.0: If <i>zasm</i> is started with command line option '--convert8080', it will convert the supplied source file to Z80 syntax, which is much better readable. <i>zasm</i> converts the source and writes it to the output file or a file with a derived name. Then it assembles the original source and the converted source and compares the outputs. The Z80 source is assembled with option '--casefold'. Flags required to assemble the 8080 source – e.g. '--reqcolon' – must also be used for the conversion. The source is converted independently of any successive errors.
 
+p	Output file: if no output is specified, the output file is written to the same folder as the input file. If no output filename is given, then zasm derives the filename for the Z80 source by appending "_z80" to the file's basename.
 
+p	After creating the Z80 source file, zasm assembles both files. The binary file goes to the temp folder which is, by default, the same as the output folder. Only one binary file for the 8080 source is created in this directory, the second binary is compared to this file directly. (actually, a temp file is created in <tt>/tmp/zasm/</tt>.) If list files are enabled (the default), then list files are created for both assemblies. You can disable listfiles with option '-l0'.
+
+p	Only source files for the i8080 can be converted. The 8080 mnemonics for the additional Z80 opcodes are not supported.
+
+p	The generated source should be assembled with command line option '--casefold', because label names for 8080 assemblers were typically case-insensitive. Additionally, any other options like '--reqcolon', which were required for the 8080 source, are also required for the Z80 source.
+
+p	If the source starts with a shebang, zasm also modifies assembler options found in the first line. Specifically, it removes '--asm8080', '--convert8080' and adds '--casefold'.
 
 
 
