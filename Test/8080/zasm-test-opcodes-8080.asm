@@ -1,4 +1,4 @@
-#!/usr/local/bin/zasm -o original/
+#!/usr/local/bin/zasm --convert8080 --asm8080 -o original/
 ; –––––––––––––––––––––––––––––––––––––––––––––––––
 ; 				zasm test file
 ; –––––––––––––––––––––––––––––––––––––––––––––––––
@@ -10,9 +10,6 @@
 
 test_expressions 		equ 1
 test_fails 				equ 1	; include the "must fail" tests
-
-
-	.8080
 
 	org 0
 

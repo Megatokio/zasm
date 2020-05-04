@@ -1,4 +1,4 @@
-#!/usr/local/bin/zasm --asm8080 --reqcolon -o original/
+#!/usr/local/bin/zasm --convert8080 --asm8080 --reqcolon -o original/
 ;================================================
 ;MONITOR 8.4 (2K version)
 ; Upgraded Monitor/Executive program for ALTAIR 8800
@@ -113,53 +113,53 @@ DMABUF			EQU		80H		; DMA Buffer location
 
 cldst:                          ; COLD START
 
-        LXI     SP,STACK        ; Initialize stack for welcome msg
+		LXI     SP,STACK        ; Initialize stack for welcome msg
 
-        CALL    ilprt           ;Display welcome message
-        db      lf,cr,'Altair 8800 Monitor 8.4',00h
-        CALL    ilprt           ;Display welcome message
-        db      lf,cr,'(C) 2009 John Garza',lf,cr,00h
+		CALL    ilprt           ;Display welcome message
+		db      lf,cr,'Altair 8800 Monitor 8.4',00h
+		CALL    ilprt           ;Display welcome message
+		db      lf,cr,'(C) 2009 John Garza',lf,cr,00h
 
 wrmst:
-        LXI     SP,STACK        ;Re-Initialize stack
+		LXI     SP,STACK        ;Re-Initialize stack
 
-        LXI     H,wrmst         ;Put return addr on stack
-        PUSH    H               ; so command routines can do a RET
+		LXI     H,wrmst         ;Put return addr on stack
+		PUSH    H               ; so command routines can do a RET
 
-        CALL    inpln           ;Get command string
-        CALL    getch           ;Get first char from command
+		CALL    inpln           ;Get command string
+		CALL    getch           ;Get first char from command
 
-        ; Process the command
+		; Process the command
 
-        CPI     'D'     ; Deposit data into memory
-        JZ      enter   ;
+		CPI     'D'     ; Deposit data into memory
+		JZ      enter   ;
 
-        CPI     'E'     ; Examine memory to console
-        JZ      dump    ;
+		CPI     'E'     ; Examine memory to console
+		JZ      dump    ;
 
-        CPI     'B'     ; Block Move
-        JZ      block   ;
+		CPI     'B'     ; Block Move
+		JZ      block   ;
 
-        CPI     'J'     ; Jump - execute external code (no return)
-        JZ      go      ;
+		CPI     'J'     ; Jump - execute external code (no return)
+		JZ      go      ;
 
-        CPI     'L'     ; MBL - Microsoft Boot Loader for BASIC
-        JZ      mbl     ;
+		CPI     'L'     ; MBL - Microsoft Boot Loader for BASIC
+		JZ      mbl     ;
 
-        CPI     'M'     ; Memory Test
-        JZ      mem     ;
+		CPI     'M'     ; Memory Test
+		JZ      mem     ;
 
-        CPI     'X'     ; Xmodem receive
-        JZ      xmdm
+		CPI     'X'     ; Xmodem receive
+		JZ      xmdm
 
-        CPI     'Z'     ; Block Move to Zero & RUN
-        JZ      bmzr    ;
+		CPI     'Z'     ; Block Move to Zero & RUN
+		JZ      bmzr    ;
 
-        CPI     '?'     ; Help screen
-        JZ      help    ;
+		CPI     '?'     ; Help screen
+		JZ      help    ;
 
 
-        JMP     wrmst   ; Go back for another command
+		JMP     wrmst   ; Go back for another command
 
 ;--------------------------------------
 ;Command Main Routines
@@ -172,42 +172,42 @@ wrmst:
 ; CR passes over a location
 
 enter:
-        CALL	ilprt
-        db		lf,cr,'Memory Load: apostrophe for ASCII, CR skips addr, Ctrl-X exits',lf,cr,00h
+		CALL	ilprt
+		db		lf,cr,'Memory Load: apostrophe for ASCII, CR skips addr, Ctrl-X exits',lf,cr,00h
 
 load:   CALL    readhl  ;Addr
 load2:  CALL    outhl   ;Print it
-        CALL    pasci   ;Ascii
-        CALL    outsp
-        MOV     C,M     ;Orig byte
-        CALL    outhex  ;Hex
-        PUSH    H       ;Save pointer
-        CALL    inpl2   ;Input
-        CALL    readhl  ; Byte
-        MOV     B,L     ; To B
-        POP     H
-        CPI     APOS
-        JZ      load6   ;Ascii input
-        MOV     A,C     ;How many?
-        ORA     A       ;None?
-        JZ      load3   ;Yes
+		CALL    pasci   ;Ascii
+		CALL    outsp
+		MOV     C,M     ;Orig byte
+		CALL    outhex  ;Hex
+		PUSH    H       ;Save pointer
+		CALL    inpl2   ;Input
+		CALL    readhl  ; Byte
+		MOV     B,L     ; To B
+		POP     H
+		CPI     APOS
+		JZ      load6   ;Ascii input
+		MOV     A,C     ;How many?
+		ORA     A       ;None?
+		JZ      load3   ;Yes
 load4:  CALL    chekm   ;Into mem
 load3:  INX     H       ;Pointer
-        JMP     load2
+		JMP     load2
 
-        ;load ascii char
+		;load ascii char
 
 load6:  CALL    getch
-        MOV     B,A
-        JMP     load4
+		MOV     B,A
+		JMP     load4
 
-        ;copy byte from B to memory
-        ; and see that it got there
+		;copy byte from B to memory
+		; and see that it got there
 
 chekm:  MOV     M,B     ;Put in mem
-        MOV     A,M     ;Read back into A
-        CMP     B       ;Same?
-        RZ              ;Yes
+		MOV     A,M     ;Read back into A
+		CMP     B       ;Same?
+		RZ              ;Yes
 errp:
 		POP		PSW		;RAISE STACK
 errb:
@@ -225,142 +225,142 @@ err2:
 
 dump:
 
-        CALL    rdhlde  ;Range
+		CALL    rdhlde  ;Range
 dump2:  CALL    crhl    ;New line
 dump3:  MOV     C,M     ;Get byte
-        CALL    outhx   ;Print
-        INX     H       ;Pointer
-        MOV     A,L
-        ANI     0FH     ;Line end?
-        JZ      dump4   ;Yes, ascii
-        ANI     3       ;Space
-        CZ      outsp   ; 4 bytes
-        JMP     dump3   ;Next hex
+		CALL    outhx   ;Print
+		INX     H       ;Pointer
+		MOV     A,L
+		ANI     0FH     ;Line end?
+		JZ      dump4   ;Yes, ascii
+		ANI     3       ;Space
+		CZ      outsp   ; 4 bytes
+		JMP     dump3   ;Next hex
 dump4:  CALL    outsp
-        PUSH    D
-        LXI     D,-10H  ;Reset line
-        DAD     D
-        POP     D
+		PUSH    D
+		LXI     D,-10H  ;Reset line
+		DAD     D
+		POP     D
 dump5:  CALL    pasci   ;ascii dump
-        CALL    tstop   ;Done?
-        MOV     A,L     ;No
-        ANI     0FH     ;line end?
-        JNZ     dump5   ;No
-        JMP     dump2
+		CALL    tstop   ;Done?
+		MOV     A,L     ;No
+		ANI     0FH     ;line end?
+		JNZ     dump5   ;No
+		JMP     dump2
 
-        ;display byte in ascii if possible, otherwise dot
+		;display byte in ascii if possible, otherwise dot
 
 pasci:  MOV     A,M     ;Get byte
-        CPI     DEL     ;High bit on?
-        JNC     pasc2   ;Yes
-        CPI     ' '     ;Control char?
-        JNC     pasc3   ;No
+		CPI     DEL     ;High bit on?
+		JNC     pasc2   ;Yes
+		CPI     ' '     ;Control char?
+		JNC     pasc3   ;No
 pasc2:  MVI     A,'.'   ;Change to dot
 pasc3:  JMP     outt    ;Send
 
-        ;get HL and DE from console, check that DE is larger
+		;get HL and DE from console, check that DE is larger
 
 rdhlde: CALL    hhlde
 rdhld2: MOV     A,E
-        SUB     L       ;E - L
-        MOV     A,D
-        SBB     H       ;D - H
-        JC      error   ;HL is bigger
-        RET
+		SUB     L       ;E - L
+		MOV     A,D
+		SBB     H       ;D - H
+		JC      error   ;HL is bigger
+		RET
 
-        ;input HL and DE, check that 2 addr are entered
+		;input HL and DE, check that 2 addr are entered
 
 hhlde:  CALL    readhl  ;HL
-        JC      error   ;Only 1 addr
-        XCHG            ;Save in DE
-        CALL    readhl  ;DE
-        XCHG            ;Put back
-        RET
+		JC      error   ;Only 1 addr
+		XCHG            ;Save in DE
+		CALL    readhl  ;DE
+		XCHG            ;Put back
+		RET
 
-        ;input HL from console
+		;input HL from console
 
 readhl: PUSH    D
-        PUSH    B       ;Save regs
-        LXI     H,0     ;Clear
+		PUSH    B       ;Save regs
+		LXI     H,0     ;Clear
 rdhl2:  CALL    getch   ;Get char
-        JC      rdhl5   ;Line end
-        CALL    nib     ;To binary
-        JC      rdhl4   ;Not hex
-        DAD     H       ;Times 2
-        DAD     H       ;Times 4
-        DAD     H       ;Times 8
-        DAD     H       ;Times 16
-        ORA     L       ;Add new char
-        MOV     L,A
-        JMP     rdhl2   ;Next
+		JC      rdhl5   ;Line end
+		CALL    nib     ;To binary
+		JC      rdhl4   ;Not hex
+		DAD     H       ;Times 2
+		DAD     H       ;Times 4
+		DAD     H       ;Times 8
+		DAD     H       ;Times 16
+		ORA     L       ;Add new char
+		MOV     L,A
+		JMP     rdhl2   ;Next
 
-        ;check for blank at end
+		;check for blank at end
 
 rdhl4:  CPI     APOS    ;Apostrophe
-        JZ      rdhl5   ;Ascii input
-        CPI     (' '-'0') AND 0FFH
-        JNZ     error   ;N0
+		JZ      rdhl5   ;Ascii input
+		CPI     (' '-'0') AND 0FFH
+		JNZ     error   ;N0
 rdhl5:  POP     B
-        POP     D       ;Restore
-        RET
+		POP     D       ;Restore
+		RET
 
-        ;convert ascii chars to binary
+		;convert ascii chars to binary
 
 nib:    SUI     '0'     ;Ascii bias
-        RC              ;<0
-        CPI     'F'-'0'+1
-        CMC             ;Invert
-        RC              ;Error, >F
-        CPI     10
-        CMC             ;Invert
-        RNC             ;Number 0-9
-        SUI     'A'-'9'-1
-        CPI     10      ;Skip : to
-        RET             ;Letter A-F
+		RC              ;<0
+		CPI     'F'-'0'+1
+		CMC             ;Invert
+		RC              ;Error, >F
+		CPI     10
+		CMC             ;Invert
+		RNC             ;Number 0-9
+		SUI     'A'-'9'-1
+		CPI     10      ;Skip : to
+		RET             ;Letter A-F
 
-        ;print ? on improper input
+		;print ? on improper input
 
 error:  MVI     A,'?'
-        CALL    outt
-        JMP     wrmst   ;Try again
+		CALL    outt
+		JMP     wrmst   ;Try again
 
-        ;start new line, give addr
+		;start new line, give addr
 
 crhl:   CALL    crlf    ;New line
 outhl:  MOV     C,H
-        CALL    outhx
+		CALL    outhx
 outll:  MOV     C,L
 outhex: CALL    outhx
 outsp:  MVI     A,' '
-        JMP     outt
+		JMP     outt
 
-        ;output a hex byte from C (ASCII to HEX converter)
+		;output a hex byte from C (ASCII to HEX converter)
 
 outhx:  MOV     A,C
-        RAR             ;Rotate
-        RAR             ; 4 bits
-        RAR             ; to
-        RAR             ; the right
-        CALL    hex1    ;Upper char
-        MOV     A,C     ;Lower char
+		RAR             ;Rotate
+		RAR             ; 4 bits
+		RAR             ; to
+		RAR             ; the right
+		CALL    hex1    ;Upper char
+		MOV     A,C     ;Lower char
 hex1:   ANI     0FH     ;Take 4 bits
-        ADI     90H
-        DAA             ;DAA trick
-        ACI     40H
-        DAA
-        JMP     OUTT
+		ADI     90H
+		DAA             ;DAA trick
+		ACI     40H
+		DAA
+		JMP     OUTT
 
-        ;check for end, HL minus DE, incr HL
+		;check for end, HL minus DE, incr HL
 
 tstop:  INX     H
-        MOV     A,E
-        SUB     L       ;E - L
-        MOV     A,D
-        SBB     H       ;D - H
-        RNC             ;Not done
+		MOV     A,E
+		SUB     L       ;E - L
+		MOV     A,D
+		SBB     H       ;D - H
+		RNC             ;Not done
 
-        POP     H       ;Raise stack
-        RET             ; -- Back
+		POP     H       ;Raise stack
+		RET             ; -- Back
 
 ;------------------
 ;Routine to go anywhere in memory
@@ -368,7 +368,7 @@ tstop:  INX     H
 
 go:     POP     H       ;Remove return addr for GO command
 calls:  CALL    readhl  ;Get addr
-        PCHL            ;Go there
+		PCHL            ;Go there
 
 ;------------------
 ; Block Move
@@ -489,7 +489,7 @@ mbl:
 ;------------------
 ; Block Move to Zero & Run
 bmzr:
-    CALL    rdhlde  ;Get Range (test mem from HL to DE)
+	CALL    rdhlde  ;Get Range (test mem from HL to DE)
 	MVI		B,0		; Zero BC (destination)
 	MVI		C,0		;
 
@@ -505,10 +505,10 @@ bmz:
 
 gdz:
 	INX     H		; test if done
-    MOV     A,E
-    SUB     L       ;E - L
-    MOV     A,D
-    SBB     H       ;D - H
+	MOV     A,E
+	SUB     L       ;E - L
+	MOV     A,D
+	SBB     H       ;D - H
 	JC		0		; If Done, jump to 0000h
 
 	INX		B		; Not done
@@ -519,55 +519,55 @@ gdz:
 ;Test block of memory
 
 mem:
-        CALL    rdhlde  ;Get Range (test mem from HL to DE)
+		CALL    rdhlde  ;Get Range (test mem from HL to DE)
 
-        CALL    ilprt
-        db      lf,cr,'Memory Test - Bad Bytes:',lf,cr,00h
+		CALL    ilprt
+		db      lf,cr,'Memory Test - Bad Bytes:',lf,cr,00h
 
 
-        DCX     H       ; adjust pointer for looping
+		DCX     H       ; adjust pointer for looping
 mloop:  INX     H       ;Point to next byte
-        MOV     A,M     ;Get byte
-        CMA             ;Complement
-        MOV     M,A     ;Put back complement
-        CMP     M       ;Same?
-        JNZ     badm    ;No - bad memory
-        CMA             ;Orig byte
-        MOV     M,A     ;Restore it
+		MOV     A,M     ;Get byte
+		CMA             ;Complement
+		MOV     M,A     ;Put back complement
+		CMP     M       ;Same?
+		JNZ     badm    ;No - bad memory
+		CMA             ;Orig byte
+		MOV     M,A     ;Restore it
 
-        MOV		C,M		; Save mem byte for bit test
+		MOV		C,M		; Save mem byte for bit test
 						;
-        MVI		M, 55H	; Bit test pattern 55H
-        MOV		B,M		;
-        MVI		A, 55H	;
-        CMP		B		;
-        JNZ		badm	;
+		MVI		M, 55H	; Bit test pattern 55H
+		MOV		B,M		;
+		MVI		A, 55H	;
+		CMP		B		;
+		JNZ		badm	;
 						;
-        MVI		M, 0AAH	; Bit test pattern 0AAH
-        MOV		B,M		;
-        MVI		A, 0AAH	;
-        CMP		B		;
-        JNZ		badm	;
+		MVI		M, 0AAH	; Bit test pattern 0AAH
+		MOV		B,M		;
+		MVI		A, 0AAH	;
+		CMP		B		;
+		JNZ		badm	;
 						;
 		MOV		M,C		; Restore mem byte
 
 
 mcont:  MOV     A,H     ; Compare HL to DE, at end?
-        CMP     D       ;
-        JNZ     mloop   ;
-        MOV     A,L     ;
-        CMP     E       ;
-        JNZ     mloop   ;
+		CMP     D       ;
+		JNZ     mloop   ;
+		MOV     A,L     ;
+		CMP     E       ;
+		JNZ     mloop   ;
 
 		CALL	ilprt
 		db		lf,cr,'Memory Test Completed',lf,cr,00h
 
-        JMP     wrmst   ; at end
+		JMP     wrmst   ; at end
 
 
 badm:   CALL    outhl   ; Display address of bad memory
 
-        JMP     mcont   ; continue
+		JMP     mcont   ; continue
 
 ;---------------------
 ; XMODEM receive routine
@@ -577,7 +577,7 @@ badm:   CALL    outhl   ; Display address of bad memory
 ; by Keith Petersen
 
 xmdm:
-        CALL    readhl  ;set load location via readhl input routine
+		CALL    readhl  ;set load location via readhl input routine
 		SHLD	dest	;save destination address
 
 		MVI		A,0		; Initialize sector number to zero
@@ -795,9 +795,9 @@ MSEC:
 ;
 MWTI:
 
-    IN      TTS		; IMSAI specific, check input status
-    ANI     TTYDA	; ""
-    JNZ		MCHAR	;got a char
+	IN      TTS		; IMSAI specific, check input status
+	ANI     TTYDA	; ""
+	JNZ		MCHAR	;got a char
 
 	DCR	E	;COUNT..
 	JNZ	MWTI	;..DOWN..
@@ -815,7 +815,7 @@ MWTI:
 ;GOT CHAR FROM MODEM
 ;
 MCHAR:
-    IN      TTI	; IMSAI specific, get input byte
+	IN      TTI	; IMSAI specific, get input byte
 	POP	D	;RESTORE DE
 ;
 ;CALC CHECKSUM
@@ -837,10 +837,10 @@ SEND:
 
 SENDW:
 	IN		TTS		; IMSAI specific, Check Console Output Status
-    ANI		TTYTR
+	ANI		TTYTR
 	JZ		SENDW	;..NO, WAIT
 	POP		PSW		;GET CHAR
-    OUT		TTO     ; IMSAI specific, Send Data
+	OUT		TTO     ; IMSAI specific, Send Data
 	RET				;FROM "SEND"
 
 ;
@@ -866,22 +866,22 @@ MOVE:
 ; HELP SCREEN
 ;-------------------------------------
 help:
-        CALL    ilprt
+		CALL    ilprt
 
-        db      lf,cr
-        db		'Altair 8800 Monitor Commands:',lf,cr
-        db		'------------------------------------------',lf,cr
-        db      ' Ex y   - Examine memory x to y',lf,cr
-        db      ' Dx     - Deposit data at address x',lf,cr
-        db		' Bx y z - Block move x-y to z',lf,cr
-        db      ' Jx     - Jump to x',lf,cr
-        db		' L      - MITS 4K BASIC Boot Loader',lf,cr
-        db      ' Mx y   - Memory Test x-y',lf,cr
- 		db		' Xx     - Xmodem File Receive to memory at x',lf,cr
-        db		' Zx y   - Block move x-y to 0000h & RUN',lf,cr
-        db      00h
+		db      lf,cr
+		db		'Altair 8800 Monitor Commands:',lf,cr
+		db		'------------------------------------------',lf,cr
+		db      ' Ex y   - Examine memory x to y',lf,cr
+		db      ' Dx     - Deposit data at address x',lf,cr
+		db		' Bx y z - Block move x-y to z',lf,cr
+		db      ' Jx     - Jump to x',lf,cr
+		db		' L      - MITS 4K BASIC Boot Loader',lf,cr
+		db      ' Mx y   - Memory Test x-y',lf,cr
+		db		' Xx     - Xmodem File Receive to memory at x',lf,cr
+		db		' Zx y   - Block move x-y to 0000h & RUN',lf,cr
+		db      00h
 
-        JMP     wrmst
+		JMP     wrmst
 
 ;--------------------------------------
 ;Monitor Command Subroutines
@@ -897,10 +897,10 @@ help:
 ilprt:  XTHL            ;SAVE HL, GET HL=MSG
 ilplp:  MOV     A,M     ;GET CHAR
 		ORA		A		;END OF MSG?
-        JZ      ilpret  ;..YES, RETURN
-        CALL    outt    ;TYPE THE MSG
+		JZ      ilpret  ;..YES, RETURN
+		CALL    outt    ;TYPE THE MSG
 		INX		H		;TO NEXT CHAR
-        JMP     ilplp   ;LOOP
+		JMP     ilplp   ;LOOP
 ilpret: XTHL            ;RESTORE HL
 	RET		;PAST MSG
 
@@ -910,94 +910,94 @@ ilpret: XTHL            ;RESTORE HL
 ;Ctl-X cancels line, ,BKSP erases last char, CR enters line
 
 inpln:                          ;Input line from console and
-        CALL    ilprt
-        db      lf,cr,'>',00h      ; * PROMPT CHARACTER *
+		CALL    ilprt
+		db      lf,cr,'>',00h      ; * PROMPT CHARACTER *
 
 inpl2:  LXI     H,IBUFF         ;Input buffer addr
-        SHLD    IBUFP
-        MVI     C,0             ;Init count to zero
+		SHLD    IBUFP
+		MVI     C,0             ;Init count to zero
 
 inpli:  CALL    intt            ;Get char from console
 
-        CPI     ' '             ;Control char?
-        JC      inplc           ;Yes
+		CPI     ' '             ;Control char?
+		JC      inplc           ;Yes
 
-        CPI     DEL             ;Delete char?
-        JZ      inplb           ;Yes
+		CPI     DEL             ;Delete char?
+		JZ      inplb           ;Yes
 
-        CPI     'Z'+1           ;Upper case?
-        JC      inpl3           ;Yes
-        ANI     5Fh             ;No - so make upper case
+		CPI     'Z'+1           ;Upper case?
+		JC      inpl3           ;Yes
+		ANI     5Fh             ;No - so make upper case
 
 
 inpl3:  MOV     M,A             ;Into buffer
-        MVI     A,IBL           ;Buffer size
-        CMP     C               ;Full?
-        JZ      inpli           ;Yes, loop
-        MOV     A,M             ;Get char from buffer
-        INX     H               ;Incr pointer
-        INR     C               ; and count
+		MVI     A,IBL           ;Buffer size
+		CMP     C               ;Full?
+		JZ      inpli           ;Yes, loop
+		MOV     A,M             ;Get char from buffer
+		INX     H               ;Incr pointer
+		INR     C               ; and count
 inple:  CALL    OUTT            ;Show char
-        JMP     inpli           ;Next char
+		JMP     inpli           ;Next char
 
-        ;Process control chars
+		;Process control chars
 
 inplc:  CPI     CTRH            ;Ctl H ?
-        JZ      inplb           ;Yes
-        CPI     CR              ;Return?
-        JNZ     inpli           ;No, ignore
+		JZ      inplb           ;Yes
+		CPI     CR              ;Return?
+		JNZ     inpli           ;No, ignore
 
-        ;End of input line
+		;End of input line
 
-        MOV     A,C             ;Count
-        STA     IBUFC           ;Save it
+		MOV     A,C             ;Count
+		STA     IBUFC           ;Save it
 
-        ;CR LF routine
+		;CR LF routine
 
 crlf:
-        MVI     A,CR
-        CALL    outt            ;Send CR
-        MVI     A,LF
-        JMP     outt            ;Send LF
+		MVI     A,CR
+		CALL    outt            ;Send CR
+		MVI     A,LF
+		JMP     outt            ;Send LF
 
 ;        MVI     A,CR
 ;        JMP     outt
 
-        ;Delete prior char, if any
+		;Delete prior char, if any
 
 inplb:  MOV     A,C             ;Char count
-        ORA     A               ;Zero?
-        JZ      inpli           ;Yes
-        DCX     H               ;Back pointer
-        DCR     C               ; and count
+		ORA     A               ;Zero?
+		JZ      inpli           ;Yes
+		DCX     H               ;Back pointer
+		DCR     C               ; and count
 
-        MVI     A,CTRH
-        ;;MVI     A,DEL
+		MVI     A,CTRH
+		;;MVI     A,DEL
 
-        JMP     inple           ;Send ctrl H
+		JMP     inple           ;Send ctrl H
 
 ;------------------
 ;Get Character from Console Buffer
 ; Set Carry Bit if empty
 
 getch:  PUSH    H               ;Save Regs
-        LHLD    IBUFP           ;Get Pointer
-        LDA     IBUFC           ; and Count
-        SUI     1               ;Decr with carry
-        JC      getc4           ;No more char
-        STA     IBUFC           ;Save new count
-        MOV     A,M             ;Get character
-        INX     H               ;Incr pointer
-        SHLD    IBUFP           ; and save
+		LHLD    IBUFP           ;Get Pointer
+		LDA     IBUFC           ; and Count
+		SUI     1               ;Decr with carry
+		JC      getc4           ;No more char
+		STA     IBUFC           ;Save new count
+		MOV     A,M             ;Get character
+		INX     H               ;Incr pointer
+		SHLD    IBUFP           ; and save
 getc4:  POP     H               ;Restore Regs
-        RET
+		RET
 
 ;-------------------
 ; Memory error message
 erm:
 
-        CALL    ilprt
-        db      lf,cr,'Memory Error at ',00h
+		CALL    ilprt
+		db      lf,cr,'Memory Error at ',00h
 		CALL	outhl
 
 		JMP		wrmst
@@ -1010,49 +1010,49 @@ erm:
 ;Console Input
 
 intt:
-        CALL    instat          ;Check status
-        IN      TTI             ;Get byte
-        ANI     DEL
-        CPI     CTRX            ;Abort?
-        JZ      wrmst           ;
-        RET
+		CALL    instat          ;Check status
+		IN      TTI             ;Get byte
+		ANI     DEL
+		CPI     CTRX            ;Abort?
+		JZ      wrmst           ;
+		RET
 
 ;------------------
 ;Console Output
 
 outt:
-        PUSH    PSW
-        CALL    outstat
-        POP     PSW
-        OUT     TTO             ;Send Data
-        RET
+		PUSH    PSW
+		CALL    outstat
+		POP     PSW
+		OUT     TTO             ;Send Data
+		RET
 
 
 ;------------------
 ;Check Console Input Status
 
 instat:
-        IN      TTS
-        ANI     TTYDA
-        JZ      instat
-        RET
+		IN      TTS
+		ANI     TTYDA
+		JZ      instat
+		RET
 
 ;------------------
 ;Check Console Output Status
 
 outstat:
-        IN      TTS             ;CHECK FOR USER INPUT CTRL-X
-        ANI     TTYDA           ;
-        JZ      out2            ;
-        IN      TTI             ;
-        ANI     DEL             ;
-        CPI     CTRX            ;
-        JZ      wrmst           ;
+		IN      TTS             ;CHECK FOR USER INPUT CTRL-X
+		ANI     TTYDA           ;
+		JZ      out2            ;
+		IN      TTI             ;
+		ANI     DEL             ;
+		CPI     CTRX            ;
+		JZ      wrmst           ;
 
 out2:   IN      TTS             ;Check Console Output Statuas
-        ANI     TTYTR           ;
-        JZ      outstat         ;
-        RET
+		ANI     TTYTR           ;
+		JZ      outstat         ;
+		RET
 
 
 ;==================
