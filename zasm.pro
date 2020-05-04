@@ -28,6 +28,7 @@ INCLUDEPATH +=          \
 SOURCES += \
 	Source/Error.cpp \
 	Source/Label.cpp \
+	Source/convert8080.cpp \
 	Source/main.cpp \
 	Source/Segment.cpp \
 	Source/Source.cpp \

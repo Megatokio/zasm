@@ -330,6 +330,7 @@ Z80Assembler::Z80Assembler ()
 	flat_operators(no),
 	compare_to_old(no),
 	cgi_mode(no),
+	convert_8080(no),
 	asmInstr(&Z80Assembler::asmPseudoInstr)
 {}
 
@@ -364,6 +365,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 
 	starttime = now();
 
+	if (convert_8080) { syntax_8080 = yes; }				// implied
 	if (target_z180) { target_z80 = yes; }					// implied
 	if (target_z80)  { target_8080 = no; }					// sanity
 
@@ -404,6 +406,26 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	assert(is_dir(temp_directory));
 	if (clean && is_dir(catstr(temp_directory,"s/"))) delete_dir(catstr(temp_directory,"s/"),yes);
 
+	if (convert_8080)
+	{
+		cstr z80_file = destpath;
+		if(endswith(z80_file,"/")) z80_file = catstr(destpath, basename, "_z80", extension_from_path(sourcefile));
+
+		// convert:
+		convert8080toZ80(sourcefile,z80_file);
+
+		// assemble original source:
+		convert_8080 = false;
+		assembleFile(sourcefile, temppath/*output*/, listpath, temppath, liststyle, deststyle, clean);
+		if (errors.count()) return;
+
+		// assemble and compare converted source:
+		syntax_8080 = false;
+		compare_to_old = true;
+		assembleFile(z80_file, target_filepath/*prev.output*/, listpath, temppath, liststyle, deststyle, clean);
+		return;
+	}
+
 	try
 	{
 		if (c_compiler) init_c_compiler(c_compiler);
@@ -431,14 +453,15 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 
 				if (ofsz!=nfsz) setError("file size mismatch: old=%li, new=%li", ofsz, nfsz);
 				uint32 bsize = uint32(min(ofsz,nfsz));
-				uint8 obu[bsize]; old.read_data(obu,bsize);
-				uint8 nbu[bsize]; nju.read_data(nbu,bsize);
+				std::unique_ptr<uint8[]> obu(new uint8[bsize]);
+				std::unique_ptr<uint8[]> nbu(new uint8[bsize]);
+				old.read_data(&obu[0],bsize);
+				nju.read_data(&nbu[0],bsize);
 				for (uint32 i=0; i<bsize && errors.count()<max_errors; i++)
 				{
 					if (obu[i]==nbu[i]) continue;
 					setError("mismatch at $%04lX: old=$%02X, new=$%02X",ulong(i),obu[i],nbu[i]);
 				}
-				if (errors.count()) liststyle |= 2; else liststyle = 0;
 			}
 			else
 			{
@@ -447,8 +470,6 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 		}
 	}
 	catch (any_error& e) { setError("%s",e.what()); }
-
-	if (errors.count() && compare_to_old) liststyle |= 6;	// opcodes, labels
 
 	if (liststyle)
 	{
@@ -5751,8 +5772,6 @@ rlcr:	if (target_8080) goto ill_8080;
 // try macro expansion and pseudo instructions:
 misc:	return asmPseudoInstr(q,w);
 }
-
-
 
 
 

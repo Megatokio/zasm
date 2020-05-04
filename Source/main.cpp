@@ -43,7 +43,7 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.2.9";
+static const char version[] = "4.3.0";
 
 // Hilfstext:
 // Anzeige optimiert für 80-Zeichen-Terminal
@@ -84,6 +84,7 @@ static const char help[] =
 "  --z180          enable Z180 / HD64180 instructions\n"
 "  --8080          restrict to Intel 8080 (default if --asm8080)\n"
 "  --asm8080       use 8080 assembler syntax\n"
+"  --convert8080   convert source from 8080 to Z80 mnemonics\n"
 "  -v[0,1,2]       verbosity of messages to stderr (0=off, 1=default, 2=more)\n"
 "  --ixcbr2        enable illegal instructions like 'set b,(ix+d),r'\n"
 "  --ixcbxh        enable illegal instructions like 'set b,xh'\n"
@@ -241,6 +242,7 @@ static int doit( Array<cstr> argv )
 	bool compare     = no;
 	bool selftest    = no;
 	bool cgi_mode	 = no;
+	bool convert8080 = no;
 	uint maxerrors   = 30;
 	double timestamp = start; // __date__ and __time__ and S0 record
 
@@ -289,6 +291,7 @@ static int doit( Array<cstr> argv )
 			if (eq(s,"--compare"))  { compare = 1;     continue; }
 			if (eq(s,"--test"))     { selftest = 1;    continue; }
 			if (eq(s,"--cgi"))      { cgi_mode = 1;    continue; }
+			if (eq(s,"--convert8080")) { convert8080 = 1; continue; }
 			if (startswith(s,"--maxerrors="))
 				{
 					char* ep; ulong n = strtoul(s+12,&ep,10);
@@ -383,6 +386,7 @@ static int doit( Array<cstr> argv )
 			split_command_line(bu,args);
 			assert(args.count()>0);
 			args[0] = argv[0];							// path/to/zasm
+			args.append("-l0");
 			args.append("-i");
 			args.append(testfile);
 			args.append("--compare");
@@ -403,6 +407,7 @@ static int doit( Array<cstr> argv )
 	}
 
 // check options:
+	if (convert8080)			  syntax8080 = yes;
 	if (targetZ180)				  targetZ80  = yes;	// implied
 	if (syntax8080 && !targetZ80) target8080 = yes;	// only implied   if not --Z80 set
 	if (!target8080)			  targetZ80  = yes;	// default to Z80 if not --8080 or --asm8080 set
@@ -472,6 +477,16 @@ static int doit( Array<cstr> argv )
 	{
 		if (verbose) log( "--> %s: %s\nzasm: 1 error\n", outputfile, strerror(errno));
 		return 1;
+	}
+	if (convert8080 && lastchar(outputfile)!='/')
+	{
+		// output file must be a text file. reject at least the most common binary files:
+		cstr ext = lowerstr(extension_from_path(outputfile));
+		if (eq(ext,".bin") || eq(ext,".rom") || eq(ext,".hex") || eq(ext,".s19"))
+		{
+			if (verbose) log( "--> output file must specify a z80 source file name\nzasm: 1 error\n");
+			return 1;
+		}
 	}
 
 // check list file or dir:
@@ -558,6 +573,7 @@ static int doit( Array<cstr> argv )
 	ass.target_z80     = targetZ80;
 	ass.target_z180    = targetZ180;
 	ass.syntax_8080	   = syntax8080;
+	ass.convert_8080  = convert8080;
 	ass.require_colon  = reqcolon;
 	ass.allow_dotnames = dotnames;
 	ass.casefold	   = casefold;
@@ -600,7 +616,7 @@ static int doit( Array<cstr> argv )
 		}
 
 		log( "assembled file: %s\n    %u lines, %u pass%s, %3.4f sec.\n",
-			filename_from_path(inputfile), ass.source.count(), ass.pass, ass.pass==1?"":"es", now()-start);
+			filename_from_path(ass.source_filename), ass.source.count(), ass.pass, ass.pass==1?"":"es", now()-start);
 		if (errors>1) log( "    %u errors\n\n", errors);
 		else		  log( errors ? "    1 error\n\n" : "    no errors\n\n");
 	}

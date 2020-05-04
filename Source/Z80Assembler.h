@@ -142,6 +142,7 @@ public:
 	bool		flat_operators;	// no operator precedence: evaluate strictly from left to right
 	bool		compare_to_old;	// compare own output file to existing reference file
 	bool		cgi_mode;		// disallow escaping from sourcefile's directory
+	bool		convert_8080;	// convert 8080 mnemonics to Z80 style
 
 private:
 	Value	value			(SourceLine&, int prio=0)	throws;
@@ -248,6 +249,7 @@ public:
 	void	assembleOnePass	(uint pass) noexcept;
 	void	assembleLine	(SourceLine&)			throws;
 	uint	assembleSingleLine(uint address, cstr z80_instruction, char buffer[]);
+	void	convert8080toZ80(cstr source, cstr dest);
 
 	void	checkTargetfile	()		throws;
 	void	writeListfile	(cstr filepath, int style) throws;
