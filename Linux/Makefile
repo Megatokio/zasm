@@ -44,7 +44,8 @@ OBJECTS     = \
 		z80_opcode_length.o \
 		kio.o \
 		WavFile.o \
-		audio.o
+		audio.o \
+		convert8080.o
 
 
 .PHONY:	all clean
