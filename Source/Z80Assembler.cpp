@@ -2063,7 +2063,8 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 			if (tag) q.testChar(tag);
 			cstr w = q.nextWord();
 			if (!is_name(w)) throw syntax_error("argument name expected");
-			else args.append(w);
+			if (casefold) w = lowerstr(w);
+			args.append(w);
 		}
 		while (q.testChar(','));
 		q.expectEol();
@@ -2073,7 +2074,6 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 	uint a = e;
 
 	// skip over contained instructions:
-	// does not check for interleaved macro def or similar.
 	while (++e<source.count())
 	{
 		SourceLine& s = source[e];
@@ -2082,6 +2082,10 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 		{
 			if (tag=='#' && is_name(++s.p) && args.contains(s.nextWord())) continue;
 			throw fatal_error("unexpected assembler directive inside macro");
+		}
+		if (s.testDotWord("macro"))
+		{
+			throw fatal_error("macro definition inside macro");
 		}
 		if (s.testDotWord("endm"))
 		{

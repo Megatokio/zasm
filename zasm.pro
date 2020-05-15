@@ -297,6 +297,7 @@ DISTFILES += \
 	Test/8080/Altair8800_Monitor.asm \
 	Test/8080/Z_ZAPPLEASM.asm \
 	Test/8080/Z_ZAPPLEASM.original.asm \
+	Test/8080/test_macros.asm \
 	Test/SDCC/sdcc \
 	Test/SDCC/sdcpp \
 	Test/SDCC/test-tap.asm \

@@ -43,10 +43,10 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.3.0";
+static const char version[] = "4.3.1";
 
-// Hilfstext:
-// Anzeige optimiert für 80-Zeichen-Terminal
+// Help text:
+// optimized for 80 characters / column
 //
 static const char help[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
