@@ -43,7 +43,7 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.3.1";
+static const char version[] = "4.3.2";
 
 // Help text:
 // optimized for 80 characters / column
@@ -84,7 +84,7 @@ static const char help[] =
 "  --z180          enable Z180 / HD64180 instructions\n"
 "  --8080          restrict to Intel 8080 (default if --asm8080)\n"
 "  --asm8080       use 8080 assembler syntax\n"
-"  --convert8080   convert source from 8080 to Z80 mnemonics\n"
+"  --convert8080   convert 8080 assembler source to Z80\n"
 "  -v[0,1,2]       verbosity of messages to stderr (0=off, 1=default, 2=more)\n"
 "  --ixcbr2        enable illegal instructions like 'set b,(ix+d),r'\n"
 "  --ixcbxh        enable illegal instructions like 'set b,xh'\n"
@@ -573,7 +573,7 @@ static int doit( Array<cstr> argv )
 	ass.target_z80     = targetZ80;
 	ass.target_z180    = targetZ180;
 	ass.syntax_8080	   = syntax8080;
-	ass.convert_8080  = convert8080;
+	ass.convert_8080   = convert8080;
 	ass.require_colon  = reqcolon;
 	ass.allow_dotnames = dotnames;
 	ass.casefold	   = casefold;

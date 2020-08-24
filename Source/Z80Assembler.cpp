@@ -409,7 +409,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	if (convert_8080)
 	{
 		cstr z80_file = destpath;
-		if(endswith(z80_file,"/")) z80_file = catstr(destpath, basename, "_z80", extension_from_path(sourcefile));
+		if(endswith(z80_file,"/")) z80_file = catstr(destpath, basename, ".z80"); // modifying the extension only simplifies usage in zasm.cgi
 
 		// convert:
 		convert8080toZ80(sourcefile,z80_file);
@@ -441,8 +441,9 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			destpath = endswith(destpath,"/") ? catstr(destpath, basename, ".$") : destpath;
 			if (compare_to_old)
 			{
-				cstr zpath = catstr("/tmp/zasm/test/",basename,".$");
-				create_dir("/tmp/zasm/test/",0700,yes);
+				cstr zdir = catstr(tempdirpath(), "/", tostr(getuid()), "/zasm/test/");
+				create_dir(zdir,0770,yes);
+				cstr zpath = catstr(zdir,basename,".$");
 				writeTargetfile(zpath,deststyle);
 				if (endswith(destpath,".$"))
 					destpath = catstr(leftstr(destpath,strlen(destpath)-2), extension_from_path(zpath));

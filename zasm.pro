@@ -17,6 +17,7 @@ CONFIG(release,debug|release) { DEFINES += NDEBUG RELEASE } # ATTN: curly brace 
 CONFIG(debug,debug|release) { DEFINES += DEBUG } # ATTN: curly brace must start in same line!
 #QMAKE_CXXFLAGS += -Wno-four-char-constants
 QMAKE_CXXFLAGS += -Wno-multichar
+QMAKE_CXXFLAGS_RELEASE += -Os
 
 LIBS += -lz
 
