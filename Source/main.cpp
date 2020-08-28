@@ -43,28 +43,32 @@
 
 
 //static const char appl_name[] = "zasm";
-static const char version[] = "4.3.2";
+#define VERSION "4.3.3"
 
 // Help text:
 // optimized for 80 characters / column
 //
-static const char help[] =
+static const char version[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-"  zasm - z80/8080 assembler (c) 1994 - 2020 Günter Woigk.\n"
-"  version %s, %s, for %s.\n"										// version, date, platform
-"  homepage: https://k1.spdns.de/Develop/Projects/zasm/Distributions/\n"
-"  send bug reports to: kio@little-bat.de\n\n"
+"  zasm - 8080/z80/z180 assembler (c) 1994 - 2020 Günter Woigk.\n"
+"  version " VERSION ", %s, for " _PLATFORM ".\n"						// version, date, platform
+"  homepage: https://k1.spdns.de/zasm/\n"
+"  git repo: https://github.com/Megatokio/zasm\n\n";
 
+static const char syntax[] =
 "syntax:\n"
-"  zasm [options] [-i] inputfile [[-l] listfile|dir] [[-o] outfile|dir]\n\n"
+"  zasm [options] [-i] inputfile [[-l] listfile|dir] [[-o] outfile|dir]\n"
+"  zasm [--version|--help]\n\n"
 
 "  default output dir = source dir\n"
-"  default list dir   = output dir\n\n"
+"  default list dir   = output dir\n\n";
 
+static const char examples[] =
 "examples:\n"
 "  zasm speccirom.asm\n"
-"  zasm -uwy emuf_rom.asm rom_v2.0.1.rom\n\n"
+"  zasm -uwy emuf_rom.asm rom_v2.0.1.rom\n\n";
 
+static const char options[] =
 "options:\n"
 "  -u  --opcodes   include object code in list file\n"
 "  -w  --labels    append label listing to list file\n"
@@ -77,12 +81,12 @@ static const char help[] =
 "  -T  --test      run self test (requires test directory with test sources)\n"
 "  -g  --cgi       prevent access to files outside the source dir\n"
 "  --maxerrors=NN  set maximum for reported errors (default=30, max=999)\n"
-"  --date=DATETIME for reproducible __date__ and __time__ (1999-12-31,0:00)\n"
+"  --date=DATETIME for reproducible __date__ and __time__\n"
 "  -o0             don't write output file\n"
 "  -l0             don't write list file\n"
-"  --z80           target Zilog Z80 (default except if --asm8080)\n"
-"  --z180          enable Z180 / HD64180 instructions\n"
-"  --8080          restrict to Intel 8080 (default if --asm8080)\n"
+"  --8080          target Intel 8080 (default if --asm8080)\n"
+"  --z80           target Zilog Z80  (default except if --asm8080)\n"
+"  --z180          target Zilog Z180 / Hitachi HD64180\n"
 "  --asm8080       use 8080 assembler syntax\n"
 "  --convert8080   convert 8080 assembler source to Z80\n"
 "  -v[0,1,2]       verbosity of messages to stderr (0=off, 1=default, 2=more)\n"
@@ -96,9 +100,8 @@ static const char help[] =
 "  -c [path/to/]cc declare or set path to c compiler (search in $PATH)\n"
 "  -t path/to/dir  set path to temp dir for c compiler (default: output dir)\n"
 "  -I path/to/dir  set path to c system header dir (default: compiler default)\n"
-"  -L path/to/dir  set path to standard library dir (default: none)\n\n"
-
-"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
+"  -L path/to/dir  set path to standard library dir (default: none)\n"
+"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n\n"
 "";
 
 static cstr compiledatestr ()
@@ -112,6 +115,11 @@ static cstr compiledatestr ()
 	uint d = uint(strtol(ansidate+4,nullptr,10));
 	cptr y = ansidate+7;
 	return usingstr("%s-%02u-%02u",y,m,d);
+}
+
+static cstr help()
+{
+	return catstr(usingstr(version,compiledatestr()),syntax,examples,options);
 }
 
 static void read_testdir (cstr path, Array<cstr>& filepaths)
@@ -455,7 +463,7 @@ static int doit( Array<cstr> argv )
 // check source file:
 	if (!inputfile)
 	{
-		h: log(help, version, compiledatestr(), _PLATFORM);
+		h: log("%s",help());
 		return 1;
 	}
 	inputfile = fullpath(inputfile,no);
@@ -626,6 +634,11 @@ static int doit( Array<cstr> argv )
 
 int main (int argc, cstr argv[])
 {
+	if (argc==2)
+	{
+		if (eq(argv[1], "--version")) { printf(version,compiledatestr()); return 0; }
+		if (eq(argv[1], "--help"))    { printf("%s", help()); return 0; }
+	}
 	return doit(Array<cstr>(argv,uint(argc)));
 }
 

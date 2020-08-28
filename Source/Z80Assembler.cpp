@@ -1569,7 +1569,13 @@ void Z80Assembler::asmLabel (SourceLine& q) throws
 
 		if (require_colon && !f) { q.p = p; return; }	// must be a [pseudo] instruction
 
-		if (!current_segment_ptr) throw syntax_error("org not yet set (use instruction 'org' or directive '#code')");
+		if (!current_segment_ptr)
+		{
+			if (lceq(name,"org"))
+				throw fatal_error("'org' in column 1: option '--reqcolon' may help");
+			else
+				throw syntax_error("org not yet set (use instruction 'org' or directive '#code')");
+		}
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
 		n = static_cast<DataSegment*>(current_segment_ptr)->lpos;
 		if (!is_reusable) reusable_label_basename = name;
