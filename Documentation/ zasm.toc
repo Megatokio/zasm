@@ -12,14 +12,14 @@ p	<b class=red>zasm</b> is a multiple pass assembler for the historic 8-bit CPU 
 p	<b class=red>zasm</b> is available for Unix-like operating systems like OSX, Linux, BSD.
 
 p.b	Download page and Git archive:
-p	<https://k1.spdns.de/Develop/projects/zasm/Distributions/>
+p	<https://k1.spdns.de/Develop/Projects/zasm/Distributions/>
 	<https://github.com/Megatokio/zasm>
 	<https://github.com/Megatokio/Libraries>
 
 p.b	Online Assembler
-p	A cgi script is running on my mac which allows to assemble Z80 sources online.
+p	A cgi script is running on my pc which allows to assemble Z80 sources online.
 	It supports mostly everything, you can even include c sources. <b>:-)</b>
-	<http://k1.spdns.de/cgi-bin/zasm.cgi>
+	<https://k1.spdns.de/cgi-bin/zasm.cgi>
 
 p	Please send bug reports to <a href="mailto:kio@little-bat.de">Kio</a>.
 

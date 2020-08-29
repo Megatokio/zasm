@@ -1,0 +1,18 @@
+
+
+zasm - 8080/z80/z180 assembler (c) 1994 - 2020 Günter Woigk.
+homepage: https://k1.spdns.de/zasm/
+git repo: https://github.com/Megatokio/zasm
+
+
+Building zasm:
+
+1) .pro file: Qt Creator project
+
+2) Makefile
+
+To build zasm you also need to clone the "Libraries/" from
+"https://github.com/Megatokio/Libraries"
+
+
+
