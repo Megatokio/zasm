@@ -217,8 +217,8 @@ private:
 
 	int 	getCondition	(SourceLine&, bool expect_comma) throws ;
 	int 	getRegister		(SourceLine&, Value&)		throws;
-	uint	get8080Register	(SourceLine& q)				throws;
-	uint	get8080WordRegister	(SourceLine& q, uint)	throws;
+	int		get8080Register	(SourceLine& q)				throws;
+	int		get8080WordRegister	(SourceLine& q, uint)	throws;
 
 	void	setLabelValue(Label*, int32, Validity) throws ;
 	void	setLabelValue(Label*, Value const&) throws ;
