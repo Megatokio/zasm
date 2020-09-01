@@ -592,13 +592,13 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 	if (cpu==CpuZ80)	global_labels().add(new Label("_z80_",		nullptr,0,1,valid,yes,yes,no));
 	if (cpu==CpuZ180)	global_labels().add(new Label("_z180_",		nullptr,0,1,valid,yes,yes,no));
 	if (cpu==Cpu8080)	global_labels().add(new Label("_8080_",		nullptr,0,1,valid,yes,yes,no));
-	if (syntax_8080)	global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
+	//if (syntax_8080)	global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
 	if (ixcbr2_enabled)	global_labels().add(new Label("_ixcbr2_",	nullptr,0,1,valid,yes,yes,no));
 	if (ixcbxh_enabled)	global_labels().add(new Label("_ixcbxh_",	nullptr,0,1,valid,yes,yes,no));
-	if (allow_dotnames)	global_labels().add(new Label("_dotnames_",	nullptr,0,1,valid,yes,yes,no));
-	if (require_colon)	global_labels().add(new Label("_reqcolon_",	nullptr,0,1,valid,yes,yes,no));
-	if (casefold) 		global_labels().add(new Label("_casefold_",	nullptr,0,1,valid,yes,yes,no));
-	if (flat_operators)	global_labels().add(new Label("_flatops_",	nullptr,0,1,valid,yes,yes,no));
+	//if (allow_dotnames)	global_labels().add(new Label("_dotnames_",	nullptr,0,1,valid,yes,yes,no));
+	//if (require_colon)	global_labels().add(new Label("_reqcolon_",	nullptr,0,1,valid,yes,yes,no));
+	//if (casefold) 		global_labels().add(new Label("_casefold_",	nullptr,0,1,valid,yes,yes,no));
+	//if (flat_operators)	global_labels().add(new Label("_flatops_",	nullptr,0,1,valid,yes,yes,no));
 
 	// setup errors:
 	errors.purge();
@@ -3953,12 +3953,15 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// MACRO80: selects target cpu and 8080 syntax
 
 		if (cpu == Cpu8080 && syntax_8080) return;
-		if (cpu != CpuDefault && cpu != Cpu8080) throw fatal_error("can't redefine target cpu: already set");
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 
-		if (cpu != Cpu8080) global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
-		if (!syntax_8080)   global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
-		cpu = Cpu8080;
+		if (cpu == CpuDefault)
+		{
+			cpu = Cpu8080;
+			global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		}
+		else if (cpu != Cpu8080) throw fatal_error("can't redefine target cpu: already set");
+
 		syntax_8080 = yes;
 		checkCpuOptions();
 		return;
@@ -3966,13 +3969,13 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".asm8080"))
 	{
 		// select 8080 assembler syntax
+		// this will also change the default cpu.
 
 		if (syntax_8080) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 
 		syntax_8080 = yes;
-		global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
-		checkCpuOptions();	// TODO: casefold may be added: add _casefold_ ?
+		checkCpuOptions();
 		return;
 	}
 	if (lceq(w,".ixcbr2"))
@@ -4003,7 +4006,6 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// if .dotnames is set too late then there may be already errors
 
 		allow_dotnames = yes;
-		global_labels().add(new Label("_dotnames_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".reqcolon"))	// wenn das zu spät steht, kann es schon Fehler gegeben haben
@@ -4014,7 +4016,6 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// if .reqcolon is set too late then there may be already errors
 
 		require_colon = yes;
-		global_labels().add(new Label("_reqcolon_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".casefold"))	// wenn das nach Label-Definitionen steht, kann es zu spät sein
@@ -4025,7 +4026,6 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// if .casefold is set after some first label definitions then these may be not found later
 
 		casefold = yes;
-		global_labels().add(new Label("_casefold_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,".flatops"))
@@ -4036,7 +4036,6 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// if .flatops is set after some first equations have been evaluated, then these may differ in pass 2++
 
 		flat_operators = yes;
-		global_labels().add(new Label("_flatops_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
 	if (lceq(w,"*"))
