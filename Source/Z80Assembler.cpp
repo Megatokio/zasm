@@ -326,14 +326,17 @@ void Z80Assembler::checkCpuOptions() throws
 
 Z80Assembler::Z80Assembler ()
 :
-	timestamp(now()),
+	target_z180(no),
+	target_8080(no),
+	target_z80(yes),
+	target_z80_or_z180(yes),
 	starttime(0.0),
 	source_directory(nullptr),
 	source_filename(nullptr),
 	temp_directory(nullptr),
-	target(TARGET_UNSET),
 	target_ext(nullptr),
 	target_filepath(nullptr),
+	target(TARGET_UNSET),
 	current_sourceline_index(0),
 	current_segment_ptr(nullptr),
 	local_labels_index(0),
@@ -344,36 +347,16 @@ Z80Assembler::Z80Assembler ()
 	if_values_idx(0),
 	charset(nullptr),
 	cmd_dpos(),			// := invalid
-	max_errors(30),
 	pass(0),
 	end(0),
-	verbose(1),
 	validity(invalid),
 	labels_changed(0),
 	labels_resolved(0),
-	c_compiler(nullptr),
 	is_sdcc(no),
 	is_vcc(no),
-	c_includes(nullptr),
-	stdlib_dir(nullptr),
 	c_tempdir(nullptr),
 	c_qi(-1),
 	c_zi(-1),
-	ixcbr2_enabled(no),	// 	e.g. set b,(ix+d),r2
-	ixcbxh_enabled(no),	// 	e.g. set b,xh
-	cpu(CpuID::CpuDefault),
-	target_z180(no),
-	target_8080(no),
-	target_z80(yes),
-	target_z80_or_z180(yes),
-	syntax_8080(no),
-	allow_dotnames(no),
-	require_colon(no),
-	casefold(no),
-	flat_operators(no),
-	compare_to_old(no),
-	cgi_mode(no),
-	convert_8080(no),
 	asmInstr(&Z80Assembler::asmPseudoInstr)
 {}
 

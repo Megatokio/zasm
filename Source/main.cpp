@@ -586,7 +586,7 @@ static int doit( Array<cstr> argv )
 		}
 
 		log( "assembled file: %s\n    %u lines, %u pass%s, %3.4f sec.\n",
-			filename_from_path(ass.source_filename), ass.source.count(), ass.pass, ass.pass==1?"":"es", now()-start);
+			filename_from_path(inputfile), ass.numSourcelines(), ass.numPasses(), ass.numPasses()==1?"":"es", now()-start);
 		if (errors>1) log( "    %u errors\n\n", errors);
 		else		  log( errors ? "    1 error\n\n" : "    no errors\n\n");
 	}

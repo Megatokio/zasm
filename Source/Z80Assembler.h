@@ -60,15 +60,42 @@ enum Target
 class Z80Assembler
 {
 public:
-	double		timestamp;			// for __date__ and __time__
-	double		starttime;			// of assembly
+	int		verbose			= 1;
+	uint	max_errors		= 30;
+	double	timestamp		= now();// for __date__ and __time__
+	CpuID	cpu				= CpuDefault;
+	bool	ixcbr2_enabled	= no;	// enable ixcb illegals: e.g. set b,(ix+d),r2
+	bool	ixcbxh_enabled	= no;	// enable ixcb illegals: e.g. bit b,xh
+	bool	syntax_8080		= no;	// use 8080 assembler syntax
+	bool	convert_8080	= no;	// convert 8080 mnemonics to Z80 style
+	bool	allow_dotnames	= no;	// allow label names starting with a dot '.'
+	bool	require_colon	= no;	// program labels must be followed by a colon ':'
+	bool	casefold		= no;	// label names are not case sensitive
+	bool	flat_operators	= no;	// no operator precedence: evaluate strictly from left to right
+	bool	cgi_mode		= no;	// disallow escaping from sourcefile's directory
+	bool	compare_to_old	= no;	// compare own output file to existing reference file
+	cstr	c_compiler		= nullptr; // -c: fqn to sdcc or vcc or NULL
+	cstr	c_includes		= nullptr; // -I: fqn to custom include dir or NULL
+	cstr	stdlib_dir		= nullptr; // -L: fqn to custom library dir or NULL (not only c but any .globl)
+	Errors	errors;
 
-	cstr		source_directory;	// top-level source
-	cstr		source_filename;
-	cstr		temp_directory;
-	Target		target;
-	cstr		target_ext;
-	cstr		target_filepath;
+private:
+	// set by checkCpuOptions():
+	bool	target_z180;	// Z180 / HD64180
+	bool	target_8080;	// I8080
+	bool	target_z80;		// Z80
+	bool	target_z80_or_z180;
+
+// performance:
+	double	starttime;		// of assembly
+
+// files and paths:
+	cstr	source_directory;	// top-level source
+	cstr	source_filename;
+	cstr	temp_directory;
+	cstr	target_ext;
+	cstr	target_filepath;
+	Target	target = TARGET_UNSET;	// target file format as set by #target directive
 
 // source:
 	Source		source;						// SourceLine[] accumulating total source
@@ -109,42 +136,19 @@ public:
 	Value		cmd_dpos;		// start of current opcode in segment
 
 // Errors:
-	Errors		errors;
-	uint		max_errors;
 	uint		pass;
 	bool		end;
-	int			verbose;
 	Validity	validity;		// validity of generated code
 	int			labels_changed;	// count value changes of (preliminary) labels
 	int			labels_resolved;// count labels which became valid
 
 // c compiler:
-	cstr		c_compiler;		// -c: fqn to sdcc or vcc or NULL
 	bool		is_sdcc;
 	bool		is_vcc;
-	cstr		c_includes;		// -I: fqn to custom include dir or NULL
-	cstr		stdlib_dir;		// -L: fqn to custom library dir or NULL (not only c but any .globl)
 	cstr		c_tempdir;		// fqn of sub directory in temp_directory acc. to c_flags for .s files
 	Array<cstr>	c_flags;
 	int			c_qi;			// index for source file in c_flags[] or -1
 	int			c_zi;			// index for output file in c_flags[] or -1
-
-// options:
-	bool		ixcbr2_enabled;	// enable ixcb illegals: e.g. set b,(ix+d),r2
-	bool		ixcbxh_enabled;	// enable ixcb illegals: e.g. bit b,xh
-	CpuID		cpu				= CpuID::CpuDefault;
-	bool		target_z180;	// enable Z180/hd64180 opcodes
-	bool		target_8080;	// limit instruction set to 8080 opcodes
-	bool		target_z80;		// target_z80 == !target_8080  => at least a Zilog Z80
-	bool		target_z80_or_z180;
-	bool		syntax_8080;	// use 8080 assembler syntax
-	bool		allow_dotnames;	// allow label names starting with a dot '.'
-	bool		require_colon;	// program labels must be followed by a colon ':'
-	bool		casefold;		// label names are not case sensitive
-	bool		flat_operators;	// no operator precedence: evaluate strictly from left to right
-	bool		compare_to_old;	// compare own output file to existing reference file
-	bool		cgi_mode;		// disallow escaping from sourcefile's directory
-	bool		convert_8080;	// convert 8080 mnemonics to Z80 style
 
 private:
 	Value	value			(SourceLine&, int prio=0)	throws;
@@ -278,6 +282,8 @@ public:
 	void	checkCpuOptions	() throws;
 	uint	numErrors		() const noexcept { return errors.count(); }
 	cstr	targetFilepath	() const noexcept { return target_filepath; }
+	uint	numPasses		() const noexcept { return pass; }
+	uint	numSourcelines	() const noexcept { return source.count(); }
 };
 
 
