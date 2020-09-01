@@ -37,7 +37,7 @@ static bool lceq (cptr w, cptr s)
 
 void Z80Assembler::storeEDopcode (int n) throws
 {
-	if (target_z80) return store(PFX_ED,n);
+	if (target_z80_or_z180) return store(PFX_ED,n);
 	throw syntax_error(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
@@ -45,7 +45,7 @@ void Z80Assembler::storeEDopcode (int n) throws
 
 void Z80Assembler::storeIXopcode (int n) throws
 {
-	if (target_z80) return store(PFX_IX,n);
+	if (target_z80_or_z180) return store(PFX_IX,n);
 	throw syntax_error(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
@@ -53,7 +53,7 @@ void Z80Assembler::storeIXopcode (int n) throws
 
 void Z80Assembler::storeIYopcode (int n) throws
 {
-	if (target_z80) return store(PFX_IY,n);
+	if (target_z80_or_z180) return store(PFX_IY,n);
 	throw syntax_error(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
@@ -140,10 +140,8 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 		case 'e':	return RE;
 		case 'h':	return RH;
 		case 'l':	return RL;
-		case 'i':	if(target_z80) return RI; else goto no_8080;
-		case 'r':	if(target_z80) return RR;
-
-	no_8080:		throw syntax_error("no 8080 register");
+		case 'i':	if(target_z80_or_z180) return RI; else goto no_8080;
+		case 'r':	if(target_z80_or_z180) return RR; else goto no_8080;
 
 		case '(':
 			{
@@ -184,12 +182,12 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 		case 'd': if (c2=='e') return DE; else break;
 		case 'h': if (c2=='l') return HL; else break;
 		case 's': if (c2=='p') return SP; else break;
-		case 'i': if (c2=='x') { if (target_z80) return IX; else goto no_8080; }
-				  if (c2=='y') { if (target_z80) return IY; else goto no_8080; } else break;
-		case 'x': if (c2=='h') { if (target_z180) goto no_z180; if (target_z80) return XH; goto no_8080; }
-				  if (c2=='l') { if (target_z180) goto no_z180; if (target_z80) return XL; goto no_8080; } else break;
-		case 'y': if (c2=='h') { if (target_z180) goto no_z180; if (target_z80) return YH; goto no_8080; }
-				  if (c2=='l') { if (target_z180) goto no_z180; if (target_z80) return YL; goto no_8080; } else break;
+		case 'i': if (c2=='x') { if (target_z80_or_z180) return IX; else goto no_8080; }
+				  if (c2=='y') { if (target_z80_or_z180) return IY; else goto no_8080; } else break;
+		case 'x': if (c2=='h') { if (target_z80) return XH; else goto z80_only; }
+				  if (c2=='l') { if (target_z80) return XL; else goto z80_only; } else break;
+		case 'y': if (c2=='h') { if (target_z80) return YH; else goto z80_only; }
+				  if (c2=='l') { if (target_z80) return YL; else goto z80_only; } else break;
 		}
 	}
 	else	// ≥3 letters
@@ -197,14 +195,14 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 		// target_z80:  test for ixh, ixl, iyh, iyl:					2016-10-01
 		// target_8080: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
 		// target_z180: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
-		if (target_z80 && c1=='i' && !target_z180)
+		if (target_z80 && c1=='i')
 		{
 			char c3 = *w++ | 0x20;
 			if (*w==0)	// 3 letters
 			{
 				int rval = c2=='x' ? c3=='h'?XH:c3=='l'?XL:0 :
 						   c2=='y' ? c3=='h'?YH:c3=='l'?YL:0 : 0;
-				if (rval) { if (target_z180) goto no_z180; return rval; }
+				if (rval) return rval;
 			}
 		}
 	}
@@ -219,8 +217,11 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 	if (q.testWord("ix")) { q.expectClose(); return XIX; }
 	if (q.testWord("iy")) { q.expectClose(); return XIY; }
 	throw syntax_error("syntax error");
-no_z180:
-	throw syntax_error("illegal register: the Z180 traps illegal instructions");
+
+z80_only:
+	if (target_z180) throw syntax_error("illegal register: the Z180 traps illegal instructions");
+no_8080:
+	throw syntax_error("no 8080 register");
 }
 
 void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws

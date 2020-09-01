@@ -43,7 +43,7 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 		case 'm':	return 6; // XHL
 		case 'a':	return 7;
 		}
-		if (target_z80)	// n(X) or n(Y)
+		if (target_z80_or_z180)	// n(X) or n(Y)
 		{
 			Value n = value(q); if(n.is_valid() && n != int8(n)) throw syntax_error("offset out of range");
 			q.expect('(');
@@ -77,7 +77,7 @@ int Z80Assembler::get8080WordRegister (SourceLine& q, uint what) throws
 		if (what>BD)
 		{
 			if (c1=='h') return 32;			// HL
-			if (target_z80)
+			if (target_z80_or_z180)
 			{
 				if (c1=='x') return PFX_IX;	// IX
 				if (c1=='y') return PFX_IY;	// IY

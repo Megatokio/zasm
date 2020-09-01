@@ -276,10 +276,51 @@ static uint charcode_from_utf8 (cptr& s) throws
 	return n;
 }
 
+void Z80Assembler::checkCpuOptions() throws
+{
+	if (convert_8080) syntax_8080 = yes;	// implied
+	if (syntax_8080)  casefold = yes; 		// implied
+
+	if (cpu == CpuDefault)
+	{
+		target_8080 = syntax_8080;
+		target_z80  = !syntax_8080;			// default = Z80 except if asm8080 is set
+		target_z180 = no;
+	}
+	else
+	{
+		target_z80  = cpu == CpuZ80;
+		target_z180 = cpu == CpuZ180;
+		target_8080 = cpu == Cpu8080;
+	}
+
+	target_z80_or_z180 = target_z80 || target_z180;
+
+	if (target_z80)
+	{
+		if (ixcbr2_enabled && ixcbxh_enabled)
+			throw fatal_error("options ixcbr2 and ixcbxh are mutually exclusive.");
+	}
+
+	if (target_z180)
+	{
+		if (syntax_8080)
+			throw fatal_error("8080 syntax: Z180 opcodes not supported.");
+		if (ixcbr2_enabled || ixcbxh_enabled)
+			throw fatal_error("ixcbr2 and ixcbxh not allowed: the Z180 traps illegal instructions");
+	}
+
+	if (target_8080)
+	{
+		if (ixcbr2_enabled || ixcbxh_enabled)
+			throw fatal_error("ixcbr2 and ixcbxh not allowed: i8080 has no index registers.");
+	}
+}
+
 
 
 // --------------------------------------------------
-//					Creator
+//					c'tor & d'tor
 // --------------------------------------------------
 
 
@@ -320,10 +361,12 @@ Z80Assembler::Z80Assembler ()
 	c_zi(-1),
 	ixcbr2_enabled(no),	// 	e.g. set b,(ix+d),r2
 	ixcbxh_enabled(no),	// 	e.g. set b,xh
+	cpu(CpuID::CpuDefault),
 	target_z180(no),
 	target_8080(no),
-	syntax_8080(no),
 	target_z80(yes),
+	target_z80_or_z180(yes),
+	syntax_8080(no),
 	allow_dotnames(no),
 	require_colon(no),
 	casefold(no),
@@ -336,9 +379,6 @@ Z80Assembler::Z80Assembler ()
 
 Z80Assembler::~Z80Assembler ()
 {
-	//ALT: wg. Doppelreferenzierung auf .globl-Label müssen erst die lokalen Labels[] gelöscht werden:
-	//ALT: while(labels.count()>1) labels.drop();
-
 	delete charset;
 }
 
@@ -364,18 +404,6 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	//   errors[];
 
 	starttime = now();
-
-	if (convert_8080) { syntax_8080 = yes; }				// implied
-	if (target_z180) { target_z80 = yes; }					// implied
-	if (target_z80)  { target_8080 = no; }					// sanity
-
-	if (syntax_8080) { if (!target_z80)  target_8080 = yes; }	// default to 8080
-	else			 { if (!target_8080) target_z80  = yes; }	// default to Z80
-
-	if (syntax_8080) { casefold = yes; }
-	if (syntax_8080 || target_z180 || target_8080) { ixcbr2_enabled = ixcbxh_enabled = no; }
-
-	asmInstr = &Z80Assembler::asmPseudoInstr;
 
 	if (deststyle==0 && compare_to_old) deststyle = 'b';
 
@@ -432,6 +460,32 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 
 		StrArray source;
 		source.append( catstr("#include ", quotedstr(sourcefile)) );
+
+		// include options after shebang in line 1:
+		// note: this my come as a surprise to the user
+		if (source.count() && startswith(source[0],"#/"))
+		{
+			cstr s = source[0];
+			cstr m = nullptr;
+
+			// override cpu only if not set on command line:
+			if (cpu == CpuDefault && find(s,"--z80"))  { cpu = CpuZ80;  m = " --z80";  }
+			if (cpu == CpuDefault && find(s,"--8080")) { cpu = Cpu8080; m = " --8080"; }
+			if (cpu == CpuDefault && find(s,"--z180")) { cpu = CpuZ180; m = " --z180"; }
+
+			// add options not yet set:
+			if (!ixcbr2_enabled && find(s,"--ixcbr2"))	{ ixcbr2_enabled = yes; m = catstr(m," --ixcbr2");   }
+			if (!ixcbxh_enabled && find(s,"--ixcbxh"))	{ ixcbxh_enabled = yes; m = catstr(m," --ixcbxh");   }
+			if (!syntax_8080 && find(s,"--asm8080"))	{ syntax_8080 = yes;    m = catstr(m," --asm8080");  }
+			if (!allow_dotnames && find(s,"--dotnames")){ allow_dotnames = yes; m = catstr(m," --dotnames"); }
+			if (!require_colon && find(s,"--reqcolon")) { require_colon = yes;  m = catstr(m," --reqcolon"); }
+			if (!casefold && find(s,"--casefold"))		{ casefold = yes;	    m = catstr(m," --casefold"); }
+			if (!flat_operators && find(s,"--flatops")) { flat_operators = yes; m = catstr(m," --flatops");  }
+
+			if (m && verbose) log("options added from line 1:%s\n", m);
+		}
+
+		checkCpuOptions();
 		assemble(source);
 
 		if (errors.count()==0) checkTargetfile();
@@ -552,16 +606,16 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 	segments.purge();
 
 	// add labels for options:
-	if (syntax_8080)			global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
-	if (target_z80 && syntax_8080) global_labels().add(new Label("_z80_",	nullptr,0,1,valid,yes,yes,no));
-	if (target_z180)			global_labels().add(new Label("_z180_",		nullptr,0,1,valid,yes,yes,no));
-	if (target_8080)			global_labels().add(new Label("_8080_",		nullptr,0,1,valid,yes,yes,no));
-	if (ixcbr2_enabled)			global_labels().add(new Label("_ixcbr2_",	nullptr,0,1,valid,yes,yes,no));
-	if (ixcbxh_enabled)			global_labels().add(new Label("_ixcbxh_",	nullptr,0,1,valid,yes,yes,no));
-	if (allow_dotnames)			global_labels().add(new Label("_dotnames_",	nullptr,0,1,valid,yes,yes,no));
-	if (require_colon)			global_labels().add(new Label("_reqcolon_",	nullptr,0,1,valid,yes,yes,no));
-	if (casefold)				global_labels().add(new Label("_casefold_",	nullptr,0,1,valid,yes,yes,no));
-	if (flat_operators)			global_labels().add(new Label("_flatops_",	nullptr,0,1,valid,yes,yes,no));
+	if (cpu==CpuZ80)	global_labels().add(new Label("_z80_",		nullptr,0,1,valid,yes,yes,no));
+	if (cpu==CpuZ180)	global_labels().add(new Label("_z180_",		nullptr,0,1,valid,yes,yes,no));
+	if (cpu==Cpu8080)	global_labels().add(new Label("_8080_",		nullptr,0,1,valid,yes,yes,no));
+	if (syntax_8080)	global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
+	if (ixcbr2_enabled)	global_labels().add(new Label("_ixcbr2_",	nullptr,0,1,valid,yes,yes,no));
+	if (ixcbxh_enabled)	global_labels().add(new Label("_ixcbxh_",	nullptr,0,1,valid,yes,yes,no));
+	if (allow_dotnames)	global_labels().add(new Label("_dotnames_",	nullptr,0,1,valid,yes,yes,no));
+	if (require_colon)	global_labels().add(new Label("_reqcolon_",	nullptr,0,1,valid,yes,yes,no));
+	if (casefold) 		global_labels().add(new Label("_casefold_",	nullptr,0,1,valid,yes,yes,no));
+	if (flat_operators)	global_labels().add(new Label("_flatops_",	nullptr,0,1,valid,yes,yes,no));
 
 	// setup errors:
 	errors.purge();
@@ -3883,101 +3937,83 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (doteq(w,"edup"))	throw syntax_error("no DUP pending");
 	if (lceq(w,".z80"))
 	{
-		// MACRO80: selects Z80 syntax and target Z80 cpu
-		// only check cpu setting: changing cpu requires undef of label _8080_
-		// if asm8080 is selected, then the user has actively choosen --asm8080
-		// does not unset the Z180 option
+		// MACRO80: selects target cpu and Z80 syntax
+		// zasm: can't easily disable 8080 syntax, but this must have been actively enabled, so let it go.
 
-		if (target_z80) return;
+		if (cpu == CpuZ80) return;
+		if (cpu != CpuDefault)   throw fatal_error("can't redefine target cpu: already set");
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
-		else if(syntax_8080)	 throw fatal_error("wrong target cpu (use --z80 or remove --asm8080)");
-		else					 throw fatal_error("wrong target cpu (option --8080)");
+
+		cpu = CpuZ80;
+		global_labels().add(new Label("_z80_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		checkCpuOptions();
+		return;
 	}
 	if (lceq(w,".z180"))
 	{
-		// only upgrade from z80 to z180
-
-		if (target_z180) return;
+		if (cpu == CpuZ180) return;
+		if (cpu != CpuDefault)   throw fatal_error("can't redefine target cpu: already set");
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
-		if( !target_z80)		 throw fatal_error("wrong target cpu (%s)",
-											syntax_8080 ? "use --z80 or remove --asm8080" : "option --8080");
-		target_z180 = yes;
-		if (ixcbr2_enabled) throw fatal_error("incompatible option --ixcbr2 is set: the Z180 traps illegal opcodes");
-		if (ixcbxh_enabled) throw fatal_error("incompatible option --ixcbxh is set: the Z180 traps illegal opcodes");
+
+		cpu = CpuZ180;
 		global_labels().add(new Label("_z180_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		checkCpuOptions();
 		return;
 	}
 	if (lceq(w,".8080"))
 	{
-		// MACRO80: selects 8080 syntax and target 8080 cpu
-		// auf 8080 cpu umschalten
-		// auf 8080 assembler syntax umschalten
+		// MACRO80: selects target cpu and 8080 syntax
 
-		if (target_8080 && syntax_8080) return;
+		if (cpu == Cpu8080 && syntax_8080) return;
+		if (cpu != CpuDefault && cpu != Cpu8080) throw fatal_error("can't redefine target cpu: already set");
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 
-		// prüfe, ob --z80 beim Aufruf angegeben wurde:
-		if (target_z80 && syntax_8080) throw fatal_error("wrong target cpu (option --z80)");
-		assert(!global_labels().contains("_z80_"));
-
-		// prüfe, ob --z180 beim Aufruf angegeben wurde:
-		if (target_z180) throw fatal_error("wrong target cpu (option --z180)");
-		assert(!global_labels().contains("_z180_"));
-
-		// ixcb-optionen:
-		if (ixcbr2_enabled) throw fatal_error("incompatible option --ixcbr2 is set: the 8080 has no index registers");
-		if (ixcbxh_enabled) throw fatal_error("incompatible option --ixcbxh is set: the 8080 has no index registers");
-
-		target_z180 = target_z80 = no;
-		target_8080 = syntax_8080 = casefold = yes;
-		global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
-		global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		if (cpu != Cpu8080) global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		if (!syntax_8080)   global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		cpu = Cpu8080;
+		syntax_8080 = yes;
+		checkCpuOptions();
 		return;
 	}
 	if (lceq(w,".asm8080"))
 	{
-		// just select the 8080 assembler
-		// does not enforce 8080 cpu, keeps z80 cpu if set
-		// silently removes _ixcbr2_ and _ixcbxh_
-		// silently unsets _z180_
+		// select 8080 assembler syntax
 
 		if (syntax_8080) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
 
-		if (ixcbr2_enabled) { ixcbr2_enabled = no; global_labels().remove("_ixcbr2_"); }
-		if (ixcbxh_enabled) { ixcbxh_enabled = no; global_labels().remove("_ixcbxh_"); }
-		if (target_z180)    { target_z180    = no; global_labels().remove("_z180_");   }
-
-		syntax_8080 = casefold = yes;
-
-		if (target_z80) global_labels().add(new Label("_z80_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		syntax_8080 = yes;
 		global_labels().add(new Label("_asm8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		checkCpuOptions();	// TODO: casefold may be added: add _casefold_ ?
 		return;
 	}
 	if (lceq(w,".ixcbr2"))
 	{
 		if (ixcbr2_enabled) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
-		if (ixcbxh_enabled)		 throw fatal_error("incompatible option --ixcbxh is set");
 
 		ixcbr2_enabled = yes;
 		global_labels().add(new Label("_ixcbr2_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		checkCpuOptions();
 		return;
 	}
 	if (lceq(w,".ixcbxh"))
 	{
 		if (ixcbxh_enabled) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
-		if (ixcbr2_enabled)		throw fatal_error("incompatible option --ixcbr2 is set");
 
 		ixcbxh_enabled = yes;
 		global_labels().add(new Label("_ixcbxh_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
+		checkCpuOptions();
 		return;
 	}
-	if (lceq(w,".dotnames"))	// wenn das zu spät steht, kann es schon Fehler gegeben haben
+	if (lceq(w,".dotnames"))
 	{
 		if (allow_dotnames) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+
+		// if .dotnames is set too late then there may be already errors
+
 		allow_dotnames = yes;
 		global_labels().add(new Label("_dotnames_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
@@ -3986,6 +4022,9 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	{
 		if (require_colon) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+
+		// if .reqcolon is set too late then there may be already errors
+
 		require_colon = yes;
 		global_labels().add(new Label("_reqcolon_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
@@ -3994,14 +4033,20 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	{
 		if (casefold) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+
+		// if .casefold is set after some first label definitions then these may be not found later
+
 		casefold = yes;
 		global_labels().add(new Label("_casefold_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;
 	}
-	if (lceq(w,".flatops"))		// wenn das nach Expressions z.B. in Label-Definitionen steht, kann es zu spät sein
+	if (lceq(w,".flatops"))
 	{
 		if (flat_operators) return;
 		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+
+		// if .flatops is set after some first equations have been evaluated, then these may differ in pass 2++
+
 		flat_operators = yes;
 		global_labels().add(new Label("_flatops_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		return;

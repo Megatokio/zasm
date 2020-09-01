@@ -25,7 +25,7 @@
 #include "Error.h"
 #include "SyntaxError.h"
 #include "Macro.h"
-
+#include "Z80/goodies/z80_goodies.h"
 
 
 // hints may be set by caller:
@@ -132,10 +132,12 @@ public:
 // options:
 	bool		ixcbr2_enabled;	// enable ixcb illegals: e.g. set b,(ix+d),r2
 	bool		ixcbxh_enabled;	// enable ixcb illegals: e.g. bit b,xh
+	CpuID		cpu				= CpuID::CpuDefault;
 	bool		target_z180;	// enable Z180/hd64180 opcodes
 	bool		target_8080;	// limit instruction set to 8080 opcodes
-	bool		syntax_8080;	// use 8080 assembler syntax
 	bool		target_z80;		// target_z80 == !target_8080  => at least a Zilog Z80
+	bool		target_z80_or_z180;
+	bool		syntax_8080;	// use 8080 assembler syntax
 	bool		allow_dotnames;	// allow label names starting with a dot '.'
 	bool		require_colon;	// program labels must be followed by a colon ':'
 	bool		casefold;		// label names are not case sensitive
@@ -226,7 +228,7 @@ private:
 	void	setError		(const any_error&);					  // set error for current file, line & column
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
 	void	init_c_flags	();
-	void	init_c_tempdir	()							THF;
+	void	init_c_tempdir	()							throws;
 	void	init_c_compiler	(cstr cc = nullptr)			throws;
 
 	bool	is_name			(cstr w)					{ return is_letter(*w)||*w=='_'||(allow_dotnames&&*w=='.'); }
@@ -273,8 +275,9 @@ public:
 	void	checkZX80File	()		throws;
 	void	checkZX81File	()		throws;
 
-	uint	numErrors		()							{ return errors.count(); }
-	cstr	targetFilepath	()							{ return target_filepath; }
+	void	checkCpuOptions	() throws;
+	uint	numErrors		() const noexcept { return errors.count(); }
+	cstr	targetFilepath	() const noexcept { return target_filepath; }
 };
 
 

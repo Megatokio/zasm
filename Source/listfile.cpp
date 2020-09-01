@@ -383,16 +383,16 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
 			require_colon || ixcbr2_enabled || ixcbxh_enabled )
 		{
 			fd.write_fmt("%s; opts:%s%s%s%s%s%s%s%s%s%s\n", indentstr,
-				syntax_8080				? " --asm8080"  : "",
-				target_z180				? " --z180"     : "",
-				target_z80  &&  syntax_8080	? " --z80"  : "",
-				target_8080	&& !syntax_8080	? " --8080" : "",
-				flat_operators			? " --flatops"  : "",
-				casefold    && !syntax_8080	? " --casefold" : "",
-				allow_dotnames			? " --dotnames" : "",
-				require_colon			? " --reqcolon" : "",
-				ixcbr2_enabled			? " --ixcbr2"   : "",
-				ixcbxh_enabled			? " --ixcbxh"   : "" );
+				syntax_8080					? " --asm8080"  : "",
+				cpu==CpuZ180				? " --z180"     : "",
+				cpu==CpuZ80 && syntax_8080  ? " --z80"		: "",
+				cpu==Cpu8080 && !syntax_8080 ? " --8080"	: "",
+				flat_operators				? " --flatops"  : "",
+				casefold && !syntax_8080	? " --casefold" : "",
+				allow_dotnames				? " --dotnames" : "",
+				require_colon				? " --reqcolon" : "",
+				ixcbr2_enabled				? " --ixcbr2"   : "",
+				ixcbxh_enabled				? " --ixcbxh"   : "" );
 		}
 
 		fd.write_fmt("%s; date: %s\n",									indentstr, datetimestr(timestamp));

@@ -40,10 +40,11 @@
 #include "kio/kio.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
+#include "Z80/goodies/z80_goodies.h"
 
 
 //static const char appl_name[] = "zasm";
-#define VERSION "4.3.3"
+#define VERSION "4.3.4"
 
 // Help text:
 // optimized for 80 characters / column
@@ -280,9 +281,9 @@ static int doit( Array<cstr> argv )
 		if (s[1]=='-')
 		{
 			if (eq(s,"--clean"))    { clean = yes;     continue; }
-			if (eq(s,"--bin"))	   { outputstyle='b'; continue; }
-			if (eq(s,"--hex"))	   { outputstyle='x'; continue; }
-			if (eq(s,"--s19"))	   { outputstyle='s'; continue; }
+			if (eq(s,"--bin"))	    { outputstyle='b'; continue; }
+			if (eq(s,"--hex"))	    { outputstyle='x'; continue; }
+			if (eq(s,"--s19"))	    { outputstyle='s'; continue; }
 			if (eq(s,"--opcodes"))  { liststyle |= 2;  continue; }
 			if (eq(s,"--labels"))   { liststyle |= 4;  continue; }
 			if (eq(s,"--cycles"))   { liststyle |= 8;  continue; }
@@ -415,50 +416,11 @@ static int doit( Array<cstr> argv )
 	}
 
 // check options:
-	if (convert8080)			  syntax8080 = yes;
-	if (targetZ180)				  targetZ80  = yes;	// implied
-	if (syntax8080 && !targetZ80) target8080 = yes;	// only implied   if not --Z80 set
-	if (!target8080)			  targetZ80  = yes;	// default to Z80 if not --8080 or --asm8080 set
-
-	if (syntax8080 && targetZ180)
+	if ((targetZ80 + target8080 + targetZ180) > 1)
 	{
-		log("--> %s\nzasm: 1 error\n", "the 8080 assembler does not support Z180 opcodes.");
+		log("--> %s\nzasm: 1 error\n", "multiple cpu targets selected.");
 		return 1;
 	}
-
-	if (target8080 && targetZ80)
-	{
-		log("--> %s\nzasm: 1 error\n", "--8080 and --z80|--z180 are mutually exclusive.");
-		return 1;
-	}
-
-	if (ixcbr2 || ixcbxh)
-	{
-		if (target8080)
-		{
-			log("--> %s\nzasm: 1 error\n", "i8080 has no index registers and no prefix 0xCB instructions.");
-			return 1;
-		}
-
-		if (targetZ180)
-		{
-			log("--> %s\nzasm: 1 error\n", "no --ixcb… allowed: the Z180 traps illegal instructions");
-			return 1;
-		}
-
-		if (syntax8080)
-		{
-			log("--> %s\nzasm: 1 error\n", "the 8080 assembler does not support illegal opcodes.");
-			return 1;
-		}
-
-		if (ixcbr2 && ixcbxh)
-		{
-			log("--> %s\nzasm: 1 error\n", "--ixcbr2 and --ixcbxh are mutually exclusive.");
-			return 1;
-		}
-	}
-
 
 // check source file:
 	if (!inputfile)
@@ -573,13 +535,13 @@ static int doit( Array<cstr> argv )
 
 // DO IT!
 	Z80Assembler ass;
+	if (targetZ180) ass.cpu = CpuZ180;
+	if (target8080) ass.cpu = Cpu8080;
+	if (targetZ80)  ass.cpu = CpuZ80;
 	ass.timestamp      = timestamp;
 	ass.verbose		   = verbose;
 	ass.ixcbr2_enabled = ixcbr2;
 	ass.ixcbxh_enabled = ixcbxh;
-	ass.target_8080    = target8080;
-	ass.target_z80     = targetZ80;
-	ass.target_z180    = targetZ180;
 	ass.syntax_8080	   = syntax8080;
 	ass.convert_8080   = convert8080;
 	ass.require_colon  = reqcolon;
