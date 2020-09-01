@@ -163,6 +163,7 @@ cstr SourceLine::nextWord ()
 	// get next word from source line
 	// returns word is const or temp
 	// returns "" at eol
+	// this function is not used for operators!
 
 	skip_spaces();
 	if (*p==';') return "";
@@ -173,18 +174,21 @@ cstr SourceLine::nextWord ()
 
 	switch (c)
 	{
+	case '!':	return "!";
+	case '~':	return "~";
 	case '+':	return "+";
 	case '-':	return "-";
 	case '*':	return "*";
 	case '/':	return "/";
 	case '\\':	return "\\";
-	case '~':	return "~";
 	case '(':	return "(";
 	case ')':	return ")";
 	case ',':	return ",";
 	case '=':	return "=";
 	case '{':	return "{";
 	case '}':	return "}";
+	case '<':	return "<";
+	case '>':	return ">";
 
 	case '\'':							// 'abcd' ''' or ''
 		if (*p==c) { p++; if (*p!=c) return "''"; p++; return "'''"; }	// special test for '''
@@ -200,37 +204,13 @@ cstr SourceLine::nextWord ()
 		else while (is_hex_digit(*p)) p++;
 		break;
 
+	case '&':							// hex number
+		while (is_hex_digit(*p)) p++;
+		break;
+
 	case '%':							// binary number
 		while (is_bin_digit(*p)) p++;
 		break;
-
-	case '!':
-		c = *p++;
-		if (c=='=') return "!=";
-		p--; 	    return "!";
-
-	case '<':
-		c = *p++;
-		if (c=='>') return "<>";
-		if (c=='=') return "<=";
-		if (c=='<') return "<<";
-		p--;	    return "<";
-
-	case '>':
-		c = *p++;
-		if (c=='>') return ">>";
-		if (c=='=') return ">=";
-		p--;		return ">";
-
-	case '&':
-		c = *p++;
-		if (c=='&')	return "&&";
-		p--;		return "&";
-
-	case '|':
-		c = *p++;
-		if (c=='&')	return "||";
-		p--;		return "|";
 
 	default:						// name, decimal number, garbage
 		if (is_idf(c) || c=='.')

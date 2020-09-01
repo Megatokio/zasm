@@ -168,6 +168,24 @@ n20	equ 	20
 #assert	opcode(jr c,dis) == 38h
 #assert	opcode(rst 8) == 0CFh
 
+#assert &1234 == 0x1234
+#assert 1234h == 0x1234
+#assert $1234 == 0x1234
+#assert &A234 == 0xA234
+#assert 0A234h == 0xA234
+#assert $A234 == 0xA234
+#assert &AF00 + &FE == $AFFE
+#assert (0 ? &AF00 + &FE : 123) == 123
+#assert (1 ? &AF00 + &FE : 123) == &AFFE
+#assert $AF00 + $FE == 0xAFFE
+#assert (0 ? $AF00 + $FE : 123) == 123
+#assert (1 ? $AF00 + $FE : 123) == 0AFFEh
+#assert 0xAF00 + 0xFE == 0xAFFE
+#assert (0 ? 0xAF00 + 0xFE : 123) == 123
+#assert (1 ? 0xAF00 + 0xFE : 123) == 0AFFEh
+#assert 0AF00h + 0FEh == 0xAFFE
+#assert (0 ? 0AF00h + 0FEh : 123) == 123
+#assert (1 ? 0AF00h + 0FEh : 123) == $AFFE
 #endlocal
 
 
@@ -1099,7 +1117,7 @@ loop2:
 	srl  yl
 	sll  xh
 	sll  yl
-	
+
 	rl   xh
 	rl   yl
 	rlc  xh
@@ -1338,7 +1356,7 @@ n16	equ	16
 !	ld   (iy+1),(hl)
 !	ld   (iy+1),(ix+1)
 !	ld   (iy+1),(iy+1)
-             
+
 !	ld   XH,(hl)
 !	ld   xh,(ix+1)
 !	ld   xh,(iy+1)
@@ -1893,22 +1911,22 @@ loop3:
 ; –––––––––––––––––––––––––––––––––––––––––––––––––
 ; 	test_compound_opcodes:
 ; –––––––––––––––––––––––––––––––––––––––––––––––––
-	
+
 	jr $	\ jr $
 	jp $	\ jp $-3
 	ld hl,$	\ ld hl,$-3
-	
+
 	ld	bc,de
 	ld b,d\ld c,e
 	ld	bc,hl
 	ld b,h\ld c,l
 	ld	de,bc
 	ld d,b\ld e,c
-	ld	de,hl		
+	ld	de,hl
 	ld d,h\ld e,l
-	ld	hl,bc		
+	ld	hl,bc
 	ld h,b\ld l,c
-	ld	hl,de		
+	ld	hl,de
 	ld h,d\ld l,e
 
 	ld	bc,(hl)
@@ -2011,7 +2029,7 @@ loop3:
 	ld d,xh\ld e,xl
 	ld	de,iy		; ...
 	ld d,yh\ld e,yl
-	ld	ix,bc		; ...	
+	ld	ix,bc		; ...
 	ld xh,b\ld xl,c
 	ld	ix,de		; ...
 	ld xh,d\ld xl,e
@@ -2020,19 +2038,19 @@ loop3:
 	ld	iy,de		; ...
 	ld yh,d\ld yl,e
 
-	ld	bc,(ix+1)	
-	ld c,(ix+1)\ld b,(ix+2)	
-	ld	de,(iy+4)		
-	ld e,(iy+4)\ld d,(iy+5)	
+	ld	bc,(ix+1)
+	ld c,(ix+1)\ld b,(ix+2)
+	ld	de,(iy+4)
+	ld e,(iy+4)\ld d,(iy+5)
 	ld	hl,(ix+5)
-	ld l,(ix+5)\ld h,(ix+6)	
+	ld l,(ix+5)\ld h,(ix+6)
 	ld	hl,(iy+6)
-	ld l,(iy+6)\ld h,(iy+7)	
+	ld l,(iy+6)\ld h,(iy+7)
 
 	ld	(ix+3),bc
 	ld(ix+3),c\ld(ix+4),b
 	ld	(iy+6),de
-	ld(iy+6),e\ld(iy+7),d	
+	ld(iy+6),e\ld(iy+7),d
 	ld	(ix+7),hl
 	ld(ix+7),l\ld(ix+8),h
 	ld	(iy+8),hl

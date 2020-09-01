@@ -999,7 +999,7 @@ eol:	throw syntax_error("unexpected end of line");
 	else
 	{
 		// multi-char word:
-		if (w[0]=='$' || w[0]=='%' || w[0]=='\'') goto op;	// hex number or $$, binary number or ascii number
+		if (w[0]=='$' || w[0]=='%' || w[0]=='\'' || w[0]=='&') goto op;	// hex number or $$, binary, hex, or ascii number
 	}
 
 	if (is_dec_digit(w[0])) { q.test_char('$'); goto op; }	// decimal number or reusable label
@@ -1072,7 +1072,7 @@ Value Z80Assembler::value (SourceLine& q, int prio) throws
 w:	cstr w = q.nextWord();			// get next word
 	if (w[0]==0) goto syntax_error;	// empty word
 
-	if (w[1]==0)						// 1 char word
+	if (w[1]==0)					// 1 char word
 	{
 		switch (w[0])
 		{
@@ -1108,6 +1108,11 @@ w:	cstr w = q.nextWord();			// get next word
 hex_number:		while (is_hex_digit(*w)) { n.value = (n.value<<4)+(*w&0x0f); if (*w>'9') n.value+=9; w++; }
 				if (w[c!=0]==0) goto op; else goto syntax_error;
 			}
+		}
+		else if (w[0]=='&')			// hex number
+		{
+			w++;
+			goto hex_number;
 		}
 		else if (w[0]=='%')			// binary number
 		{

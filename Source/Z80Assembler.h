@@ -211,8 +211,8 @@ private:
 			{
 				if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
 					return seg->lpos - seg->dpos + cmd_dpos;
-					//return Value(seg->lpos.value - seg->dpos.value + cmd_dpos.value, seg->lpos.validity );
-				else throw syntax_error("current segment does not provide a '$' address");
+				else throw syntax_error(current_segment_ptr ? "current segment does not provide a '$' address" :
+															  "not in any segment -- org not yet set?");
 			}
 	Value	dollarDollar	()
 			{
