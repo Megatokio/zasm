@@ -10,6 +10,7 @@ p	Number literals are the 'number' in an expression. They can be written in a mu
 pre	12345    decimal number
 	12345d   decimal number
 	$1234    hexadecimal number
+	&1234    hexadecimal number  (since 4.3.4)
 	1234h    hexadecimal number
 	0x1234   hexadecimal number
 	%1010    binary number
@@ -23,30 +24,26 @@ p	A character literal must be either a 7-bit ascii character or it is converted 
 p	Character literals are translated to the target system's character set if the assembler directive '#charset' was used to define one. Else the character must be in range 0 to 255. If the character is not available in the target character set the assembler reports an error.
 p	If the values are stored with 'defb' or similar, all values must fit in a byte each. Then characters like '€' will raise an error. If they are stored with 'defw' then '€' will be ok.
 
-h4	Labels 
+h4	Labels
 p	Of course labels can be used in expressions. Labels may refer to local or global symbols, depending on whether they were defined inside the current #local context (if any) or outside any local context. See chapter '#local' for more information.
 
 h5	Predefined labels
-p	The assembler defines labels which can be tested with 'defined(NAME)' if certain command line options are set.
+p	The assembler defines labels which can be tested with 'defined(NAME)' to test if certain command line options are set.
+	The handling of these predefined labels changed slightly in version 4.3.4.
 
-p	<b>_z80_</b> This label is defined if you are using the 8080 assembler syntax and the target cpu is a Z80 or Z180.
-p	<b>_z180_</b> This label is defined if the target cpu is a Z180.
-p	<b>_8080_</b> This label is defined if you are using standard Z80 assembler syntax and the target cpu is a Intel 8080.
-p	<b>_reqcolon_</b> This label is defined if the option '--reqcolon' was set on the command line or with the pseudo instruction '.reqcolon'.
-p	<b>_dotnames_</b> This label is defined if the option '--dotnames' was set on the command line or with the pseudo instruction '.dotnames'.
-p	<b>_casefold_</b> This label is defined if the option '--casefold' was set on the command line or with the pseudo instruction '.casefold'. It is also defined if this option was set implicitely, e.g. with '--asm8080' or '.8080'.
-p	<b>_flatops_</b> This label is defined if the option '--flatops' was set on the command line or with the pseudo instruction '.flatops'.
-p	<b>_ixcbr2_</b> This label is defined if the option '--ixcbr2' was set on the command line or with the pseudo instruction '.ixcbr2'.
-p	<b>_ixcbxh_</b> This label is defined if the option '--ixcbxh' was set on the command line or with the pseudo instruction '.ixcbxh'.
-
-
+p	<b>_z80_</b> This label is defined if option --z80 is set on the command line or <u>after</u> the .z80 pseudo instruction. It is not set if target z80 is used by default.
+p	<b>_z180_</b> This label is defined if option --z180 is set on the command line or <u>after</u> the .z180 pseudo instruction.
+p	<b>_8080_</b> This label is defined if option --8080 is set on the command line or <u>after</u> the .8080 pseudo instruction. It is not set if target 8080 is used by default.
+p	<b>_ixcbr2_</b> This label is defined if the option '--ixcbr2' was set on the command line or <u>after</u> the pseudo instruction '.ixcbr2'.
+p	<b>_ixcbxh_</b> This label is defined if the option '--ixcbxh' was set on the command line or <u>after</u> the pseudo instruction '.ixcbxh'.
+p.b	Note, that source line 1 is also used to set command line options if it starts with a shebang "#!".
 
 h4	'$' and '.' (code address)
 p	<b>'$'</b> and <b>'.'</b> are used to get the value of the current logical code position. It always refers to the start of a statement, e.g. to the first byte of an instruction or the postition of the first byte in a 'defb' instruction:
 
 pre	foo:	djnz $		; jump to foo
 	bar:	defb $,$,$	; stores 3x the value of bar
-	
+
 p	'.' is recognized for old sources only, do not use it in new code.
 
 h4	'$$' (physical code address)
@@ -78,8 +75,8 @@ pre	scratch: ds	max(fp_scratch,txt_scratch,gfx_scratch)
 
 
 h4	sin() and cos()
-p	<b>sin(ANGLE,N2,N3)</b> calculate the sinus of an angle. 
-p	<b>cos(ANGLE,N2,N3)</b> calculate the cosinus of an angle. 
+p	<b>sin(ANGLE,N2,N3)</b> calculate the sinus of an angle.
+p	<b>cos(ANGLE,N2,N3)</b> calculate the cosinus of an angle.
 
 p	The angle is scaled according to argument N2, which defines the value for a full circle. The result is scaled with argument N3. E.g. to generate a sine table with 256 values scaled to range ±127 use it in conjuction with pseudo instruction .rept:
 
@@ -94,7 +91,7 @@ h4	opcode()
 p	Function 'opcode(…)' can be used to get the major byte of an opcode. This is useful if you want to poke an opcode byte into some self-modifying portions of code or to skip over the first 1-byte opcode of a second entry point to a subroutine with <tt>db opcode(cp a,N)</tt>, which is faster and shorter than <tt>jr $+3</tt>.
 
 p	The 'major byte' is the first byte for most opcodes, the byte after 0xCB, 0xED, 0xDD or 0xFD for most others or the 4th byte of a 0xDD 0xCB or 0xFD 0xCB instruction. (note: 0xDD and 0xFD are the index register prefixes.)
-	
+
 p	Currently only opcodes for the Z80 cpu are supported. The additional opcodes of the Z180 or 8080 assembler mnemonics are not recognized.
 
 p	Opcode names follow these rules:
@@ -103,7 +100,7 @@ p	• names should be in lower case
 	  • a register name: af, af', bc, de, hl, sp, ix, iy, pc, a, f, b, c, d, e, h, l, r, i, xh, xl, yh, yl or ixh, ixl, iyh, iyl
 	  • a flag name: z, nz, c, nc, po, pe, m, p
 	  • register indirect: (bc), (de), (hl), (sp), (c)
-	  • index register with offset: (ix+N), (iy+N) and variants: (ix+dis), (iy+dis), (ix+offs), (iy+offs) 
+	  • index register with offset: (ix+N), (iy+N) and variants: (ix+dis), (iy+dis), (ix+offs), (iy+offs)
 	  • immediate value and memory: N, NN, (N), (NN) and variants: dis, offs
 	  • fixed values: 0, 1, 2, 3, 4, 5, 6, 7, 8, 16, .. 56 and variants: $00, $08 .. $38, 0x00 … 0x38, 00h .. 38h
 
@@ -129,7 +126,7 @@ pre	; jump over an opcode:
 	; self modifying code:
 		ld	(opcode1), opcode(inc l)
 		ld	(opcode2), opcode(inc h)
-		
+
 
 h4	defined(LABEL)
 p	This results in 0 or 1 depending on whether the named label is already defined at this position in source.
@@ -147,7 +144,7 @@ p	This results in 0 or 1 depending on whether the named label was used but not y
 
 pre	#if required(mul_hl_de)
 	#include "lib/mul_hl_de.s"
-	#endif		
+	#endif
 
 h4	target(NAME)
 p	Test whether the named #target is selected. Use this if you made it selectable for some reason in your source. Result is 0 or 1.
@@ -173,7 +170,7 @@ pre	; don't include 'ret' opcode if this is in boot code:
 
 
 
-	
+
 h4	Operators
 	operator priority, priority
 
@@ -187,15 +184,15 @@ pre	brackets            ( ... )
 	mult/div            * / %     	    multiply, divide, remainder ('\' is no longer recognized)
 	add/sub             + -         	add, subtract
 	comparisions        > < >= <= = <>	greater than etc.; result is 0 or 1
-						== != eq ne 
+						== != eq ne
 						gt lt ge le
 	boolean				&& ||			pruning
 	selector			? :				pruning
 
 p	Since 4.0.21: The backslash '\' is no longer recognized as the remainder operation. The backslash is now used to separate multiple opcodes in one line.
-p	Up to 4.0.22: The first argument of a pruning operator must be valid in pass 1. 
+p	Up to 4.0.22: The first argument of a pruning operator must be valid in pass 1.
 
-p	Since 4.0.23: The first argument of a pruning operator should be valid in pass 1. 
+p	Since 4.0.23: The first argument of a pruning operator should be valid in pass 1.
 	If it isn't, then <u>both</u> sub expressions are evaluated in pass 1. If there is an undefined label referenced in a later pruned path it will be still required and the assembler will report it as undefined.
 
 p	If you used command line option '--flatops' then all operators are evaluated strictly from left to right.

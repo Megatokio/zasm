@@ -1,27 +1,28 @@
 
 h3	.z80, .z180 and .8080
 	z80, z180, 8080
-	
+
 pre		.z180
 		.org 0
 		...
-	
-p	These pseudo instructions declare the type of processor and <tt>.8080</tt> also the assembler syntax in use. They are related to the command line options --z80, --z180, --8080 and --asm8080. These instructions overload the command line options. They must occur befor the first 'org' instruction or segment definition.
+
+p	These pseudo instructions declare the type of processor and <tt>.8080</tt> also the assembler syntax in use. They are related to the command line options --z80, --z180, --8080 and --asm8080. These instructions can be used to replace the command line options. They must occur befor the first 'org' instruction or segment definition.
+
+p	These pseudo instructions will fail if another cpu was already selected on the command line.
+p	Note: the behavior slightly changed in version 4.3.4.
 
 h5	Target cpu z80
 pre		.z80
-p	Declare the source to be for a Z80. This is the default, so it is normally never required.
-p	<tt>.z80</tt> cannot override a '--8080' or '--asm8080' given on the command line but will fail with an error if the target is not a Z80 or Z180.
+p	Declare the source to be for a Z80. This is the default, so it is normally not required.
 
 h5	Target cpu z180
 pre		.z180
-p	Declare the source to be for a Z180 or HD64180. 
+p	Declare the source to be for a Z180 or HD64180.
 p	The additional instructions are enabled and all illegal instructions are disabled.
-p	<tt>.z180</tt> can upgrade from target cpu Z80 to Z180, but cannot override a '--8080' or '--asm8080' given on the command line. Basically it allows you to omit the '--z180' option on the command line.
 
 h5	Target Intel 8080
 pre		.8080
-p	Use 8080 assembler syntax and declare the source to be for a Intel 8080 cpu. 
+p	Use 8080 assembler syntax and declare the source to be for a Intel 8080 cpu.
 p	This is more like command line option '--asm8080' because it also selects 8080 assembler syntax.
 p	In 8080 assembler, label names are not case sensitive, it implies '--casefold'.
 

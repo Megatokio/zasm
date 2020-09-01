@@ -1,26 +1,26 @@
 
 
-H5	--dotnames, .dotnames, _dotnames_
+H5	--dotnames, .dotnames
 	dotnames
 
 p	Related command line option, pseudo instruction and predefined label
 
 p	Allow label names to start with a dot.
 p	First dots were not allowed in label names. Then some assemblers prepended a dot to the pseudo instructions to easily distinguish them from normal instructions and label names, so they could start at any column of a source line. Having seen that, some people immediately developed the need to start their label names with a dot as well…
-p	Normally, without this option, only pseudo instructions like '.ds' or '.org' can start with a dot. Then they may be written in any column of a source line regardless of the '--reqcolon' setting. 
+p	Normally, without this option, only pseudo instructions like '.ds' or '.org' can start with a dot. Then they may be written in any column of a source line regardless of the '--reqcolon' setting.
 p	With this setting the limitations described at '--reqcolons' also applies to pseudo instructions starting with a dot because the dot no longer makes them special and implicitely a non-label.
 
 p	The following example is only valid source with --dotnames and --reqcolon:
-pre	.org	0				; starts in column 0 => requires --reqcolon 
+pre	.org	0				; starts in column 0 => requires --reqcolon
 		.ds 0x66			; one of the original dot named pseudo instructions
 		jp	.nmi_handler	; requires --dotname
 
 p	Of course you could clean up your source as well…
 
-p	If option --dotnames is selected, then the label _dotnames_ is defined and can be tested with 'defined(_dotnames_)' in expressions.
+p	Prior to version 4.3.4 a label _dotnames_ was also defined.
 
 
-                    
+
 
 
 

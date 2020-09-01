@@ -1,7 +1,7 @@
 
 
 
-H5	--reqcolon, .reqcolon, _reqcolon_
+H5	--reqcolon, .reqcolon
 p	Related command line option, pseudo instruction and predefined label
 
 p	Select syntax variant where colons ':' are required after program label definitions.
@@ -14,7 +14,7 @@ pre	.org 0					; due to the dot this pseudo instruction is allowed in column 1
 			jp	foo			; instruction
 	shelf	db	0			; program label def and a pseudo instruction
 
-p	But some source files don't obey this widely accepted rule and put instructions in column 1 or – actually seen – start label definitions indented with some tabs. 
+p	But some source files don't obey this widely accepted rule and put instructions in column 1 or – actually seen – start label definitions indented with some tabs.
 p	As long as only pseudo instructions starting with a dot are put in column 1 and option --dotnames is not required, this is no problem. In all other cases you need this option --reqcolon and, of course, then colons are required after program label definitions, but still not after other label definitions with 'equ' and the like:
 
 p	This example must be compiled with --reqcolon:
@@ -26,11 +26,11 @@ pre	; funny indented:
 		shelf:					; program label definition
 	.db	0						; a pseudo instruction
 
-p	If option --reqcolon is selected, then the label _reqcolon_ is defined and can be tested with 'defined(_reqcolon_)' in expressions.
-			
+p	Prior to version 4.3.4 a label _reqcolon_ was also defined.
 
 
-                    
+
+
 
 
 

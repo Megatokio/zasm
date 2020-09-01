@@ -5,9 +5,9 @@ pre	$> zasm -T ./Test
 
 p	Since version 4.1.5: Run all regression tests in a directory. The directory is scanned recursively. Only files which end with ".asm" and which start with a Shebang '#!' in line 1 are assembled and compared. Symbolic links, whether files or folders, are ignored.
 
-p	A single regression test case consists of a proper assembler source with a shell-style first line, which was (or could have been used) to assemble this file originally, and the output file created that way. 
+p	A single regression test case consists of a proper assembler source with a shell-style first line, which was (or could have been used) to assemble this file originally, and the output file created that way.
 
-p	Note that the arguments in line 1 are not evaluated by zasm (except if running the regression tests). They are evaluated by the shell, if you run this file as a command. You may use this trick and always execute your source files to save you some typing in your own projects.
+p	Formerly the arguments in line 1 are not evaluated by zasm (except if running the regression tests). They are evaluated by the shell, if you run this file as a command. Since version 4.3.4 zasm itself also evaluates some of these options. You may use this trick and always execute your source files to save you some typing in your own projects.
 
 pre	<span class=blue>$> # create test case from file test1.asm
 	$> # edit test1.asm and set line 1 to:</span>
@@ -16,34 +16,34 @@ pre	<span class=blue>$> # create test case from file test1.asm
 	<span class=blue>$> cd /my/test/dir                            # must stay in source's dir when creating the reference file
 	$> chmod u+x test1.asm                        # make source executable
 	$> ./test1.asm                                # execute it to create the reference file
-	$> # later: 
+	$> # later:
 	$> zasm -T                                    # run all tests in the current directory or
 	$> zasm -T /my/test/dir                       # in the named directory or
 	$> zasm -T -v                                 # with additional options for all test cases</span>
 	zasm: +++ Regression Test +++
-	zasm: scanning directory for test sources ... 
+	zasm: scanning directory for test sources ...
 	zasm: found 3 test source files
-	
+
 	assemble file: /pub/Develop/Projects/zasm-4.0/Test/8080/zasm-test-opcodes-8080.asm
 	assembled file: zasm-test-opcodes-8080.asm
 	    412 lines, 1 pass, 0.0037 sec.
 	    no errors
-	
+
 	assemble file: /pub/Develop/Projects/zasm-4.0/Test/Z180/zasm-test-opcodes-180.asm
 	assembled file: zasm-test-opcodes-180.asm
 	    1999 lines, 2 passes, 0.0121 sec.
 	    no errors
-	
+
 	assemble file: /pub/Develop/Projects/zasm-4.0/Test/Z80/CPM22.asm
 	assembled file: CPM22.asm
 	    3741 lines, 2 passes, 0.0171 sec.
 	    no errors
-	
+
 	total time: 0.0329 sec.
 	zasm: no errors
 	<span class=blue>$> </span>
 
-p	A regression test file must successfully assemble and produce an output file. 
+p	A regression test file must successfully assemble and produce an output file.
 p	Line 1 is parsed by zasm when running the regression test. Therefore no sophisticated Bash tricks should be used here.
 p	If no output directory is specified in line 1, then the source file's directory is used. The directory path may be a partial path. Then the regression test uses the source file's directory as the starting point. Therefore you should <tt>cd</tt> into the source directory before running the source to create the reference file, to make sure that the regression test can find it.
 
@@ -54,3 +54,10 @@ pre	#ASSERT my_boolean_value
 
 p.b	Use '!' in column 1 to check that a source line <span class=red>fails:</span>
 pre	!	sub	de,bc
+
+
+
+
+
+
+

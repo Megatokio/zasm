@@ -1,25 +1,28 @@
 
 
-	
+
 H5	--ixcbxh, .ixcbxh, _ixcbxh_<br>--ixcbr2, .ixcbr2, _ixcbr2_
 	ixcbxh, ixcbr2, ixcbr2 xh
-	
+
 p	Related command line option, pseudo instruction and predefined label
-	
-p	IXCB is used here as a mnenonic for the prefix IX or IY plus prefix 0xCB instructions like 'rr', 'bit', 'set' and 'res'. These are allowed for those opcodes which use the '(hl)' register only. But people have found out what they do when you use one of the other, regular registers: They may additionally copy the result into the selected register or they may, if you use register 'h' or 'l', access the upper or lower byte of the index register. 
+
+p	IXCB is used here as a mnenonic for the prefix IX or IY plus prefix 0xCB instructions like 'rr', 'bit', 'set' and 'res'. These are allowed for those opcodes which use the '(hl)' register only. But people have found out what they do when you use one of the other, regular registers: They may additionally copy the result into the selected register or they may, if you use register 'h' or 'l', access the upper or lower byte of the index register.
 p	What a CPU does depends on it's hardware. Original Zilog Z80 CPUs should behave as for --ixcbr2. Others allow the access to the index register halves, some just behave as for '(hl)' for all other registers as well and some, like the Z180, even trap all illegal instruction.
+
 p	Option --ixcbr2 enables the 'second register target' opcodes like
 pre	 	set 0,(ix+0),b
+
 p	and option --ixcbxh enables the 'index register halves' opcodes like
 pre	 	set 0,xh
+
 p	Obviously they are mutually exclusive.
 
-p	If option --ixcbr2 is selected, then the label _ixcbr2_ is defined and can be tested with 'defined(_ixcbr2_)' in expressions.
+p	If command line option --ixcbr2 or pseudo opcode .ixcbr2 was used, then the label _ixcbr2_ is defined and can be tested with 'defined(_ixcbr2_)' in expressions.
 
-p	If option --ixcbxh is selected, then the label _ixcbr2_ is defined and can be tested with 'defined(_ixcbxh_)' in expressions.
+p	If command line option --ixcbxh or pseudo opcode .ixcbxh was used, then the label _ixcbxh_ is defined and can be tested with 'defined(_ixcbxh_)' in expressions.
 
 
-                    
+
 
 
 

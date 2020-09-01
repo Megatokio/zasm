@@ -3,21 +3,20 @@
 
 
 
-H5	--casefold, .casefold, _casefold_
+H5	--casefold, .casefold
 	casefold
-	
+
 p	Related command line option, pseudo instruction and predefined label
-	
+
 p	Tell the assembler that label names are case insensitive and that the source does not distinguish between uppercase and lowercase writing of label names.
 p	Note: instruction and register names are always case insensitive.
 p	This option is implied by '--asm8080'.
 p	Normally label names are case sensitive or people just tend to just write them allways the same.
 
-p	If option --casefold is selected, then the label _casefold_ is defined and can be tested with 'defined(_casefold_)' in expressions.
+p	Prior to version 4.3.4 a label _casefold_ was also defined.
 
 
 
-                    
 
 
 

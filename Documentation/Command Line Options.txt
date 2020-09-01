@@ -2,6 +2,8 @@
 // –––––––––––––––––––––––––––––––––––––––––
 H1 Command Line Options
 
+p	Note: command line options can also be set in line 1 of the source if it starts with '#!' (Shebang).
+
 H5	Command line options
 
 p	When invoking zasm you can append options to it on the command line, most notably the name of the source file.
@@ -189,24 +191,27 @@ p	Use this option if you don't want a list file to be created. Normally, if no l
 
 H5	--z80
 p	Set the target cpu to Z80. This is the default, except if --asm8080 is used to assemble source using 8080 assembler syntax.
-	The pseudo instruction '.z80' has a similar effect, but it can only verify that the target cpu is the Z80, and can't override a different target chosen on the command line.
-p	If the target cpu is a Z80 or Z180 and 8080 assembler syntax is selected, then the label _z80_ is defined and can be tested with 'defined(_z80_)' in expressions.
+	Alternative: Use the pseudo instruction '.z80' at the start of the source file.
+p	If target Z80 is set with --z80 or .z80 and not by default only, then the label _z80_ is defined and can be tested with 'defined(_z80_)' in expressions.
+	(changed in version 4.3.4)
 
 H5	--z180
 p	Set the target cpu to Z180 / HD64180. This enables additional instructions and disables all illegal instructions, because the Z180 traps them.
-	Similar effect as with pseudo instruction '.z180' at the start of the source file.
-p	If the target cpu is a Z180, then the label _z180_ is defined and can be tested with 'defined(_z180_)' in expressions.
+	Alternative: Use the pseudo instruction '.z180' at the start of the source file.
+p	If target Z180 is set with --z180 or .z180, then the label _z180_ is defined and can be tested with 'defined(_z180_)' in expressions.
 
 H5	--8080
 	i8080
 p	Set the target cpu to the Intel 8080. This disables all additional Z80 instructions. The source must still be in Z80 syntax unless you also use --asm8080, in which case you don't need --8080 because it is implied. Use this option if you want to verify that your program will also run on the 8080 cpu, e.g. for CP/M.
-p	Note: the pseudo instruction '.8080' has an additional effect: '.8080' also selects 8080 assembler syntax!
-p	If the target cpu is a 8080 and Z80 assembler syntax is selected, then the label _8080_ is defined and can be tested with 'defined(_8080_)' in expressions.
+p	Note: The pseudo instruction '.8080' has an additional effect: '.8080' also selects 8080 assembler syntax!
+p	If target 8080 is set with --8080 or .8080, then the label _8080_ is defined and can be tested with 'defined(_8080_)' in expressions.
+	(changed in version 4.3.4)
 
 H5	--asm8080
 p	Announce that this is an assembler source in the Intel 8080 assembler format with these 'weird mnemonics'. This option implies the option --casefold and set's the default cpu target to the Intel 8080.
 p	'--asm8080' can be used in combination with '--z80' to assemble source for a Z80 (including the Z80's additional opcodes) in 8080 assembler syntax. See section about 8080 assembler instructions.
-p	The pseudo instruction '.8080' has a similar effect but does not only set the i8080 as the default cpu targetbut actually uses it.
+	Alternative: Use the pseudo instruction '.asm8080' at the start of the source file.
+p	Note: The pseudo instruction '.8080' has a similar effect but does not only select 8080 assembler syntax but also set's the target cpu to Intel 8080.
 
 H5	--convert8080
 p	Since version 4.3.0: Convert 8080 assembler source file to Z80 style.

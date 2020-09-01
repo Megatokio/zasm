@@ -1,6 +1,6 @@
 
 
-H5	--flatops, .flatops, _flatops_
+H5	--flatops, .flatops
 	flatops
 
 p	Related command line option, pseudo instruction and predefined label
@@ -15,11 +15,11 @@ pre	unary ! ~ + –  ▶︎  >> <<  ▶︎  & | ^  ▶︎  * / %  ▶︎  + – 
 
 p	Note that this is not the precedence as defined for C. <b>B-)</b>. The hierarchy of operators in c is very bad.
 
-p	If option --flatops is selected, then the label _flatops_ is defined and can be tested with 'defined(_flatops_)' in expressions.
+p	Prior to version 4.3.4 a label _flatops_ was also defined.
 
 
 
-                    
+
 
 
 
