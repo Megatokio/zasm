@@ -77,7 +77,7 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 	case ZX81:
 	case ZX81P:	return writeZX81File(fd);
 	}
-	throw syntax_error("internal error: writeTargetfile: unknown target");
+	throw SyntaxError("internal error: writeTargetfile: unknown target");
 }
 
 void Z80Assembler::writeBinFile (FD& fd) throws
@@ -729,7 +729,7 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 void Z80Assembler::checkTargetfile () throws
 {
 	// Prevent empty output:
-	if (CodeSegments(segments).totalCodeSize()==0) throw syntax_error("code size = 0");
+	if (CodeSegments(segments).totalCodeSize()==0) throw SyntaxError("code size = 0");
 
 	switch(target)
 	{
@@ -745,7 +745,7 @@ void Z80Assembler::checkTargetfile () throws
 	case ZX81P:
 	case ZX81: return checkZX81File();
 	}
-	throw syntax_error("internal error: checkTargetfile: unknown target");
+	throw SyntaxError("internal error: checkTargetfile: unknown target");
 }
 
 void Z80Assembler::checkTapFile () throws
@@ -763,7 +763,7 @@ void Z80Assembler::checkTapFile () throws
 	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
-		throw syntax_error("tape block %s: flag byte missing (argument #4)", segments[0]->name);
+		throw SyntaxError("tape block %s: flag byte missing (argument #4)", segments[0]->name);
 
 	uint32 size = 0;
 	for (uint i=segments.count(); i--; )
@@ -773,10 +773,10 @@ void Z80Assembler::checkTapFile () throws
 		if (!s->has_flag) continue;	// not first segment
 
 		if (!s->no_flagbyte && (s->flag > 255 || s->flag < -128))
-			throw syntax_error("tape block %s: flag byte out of range", s->name);
+			throw SyntaxError("tape block %s: flag byte out of range", s->name);
 
-		if (size == 0) throw syntax_error("tape block %s: size = 0", s->name);
-		if (size > 0xfeff) throw syntax_error("tape block %s: size = %u (max = 0xfeff)", s->name, size);
+		if (size == 0) throw SyntaxError("tape block %s: size = 0", s->name);
+		if (size > 0xfeff) throw SyntaxError("tape block %s: size = %u (max = 0xfeff)", s->name, size);
 		size = 0;
 	}
 }
@@ -883,13 +883,13 @@ void Z80Assembler::checkTzxFile () throws
 	{
 		bool f1 = segments[0]->type == TZX_ARCHIVE_INFO;
 		bool f2 = segments[1]->type == TZX_ARCHIVE_INFO;
-		if (f1 && f2) throw syntax_error("multiple TZX archive info blocks");
+		if (f1 && f2) throw SyntaxError("multiple TZX archive info blocks");
 
 		if (segments.count() >= 2u+f1)
 		{
 			bool f3 = segments[0+f1]->type == TZX_HARDWARE_INFO;
 			bool f4 = segments[1+f1]->type == TZX_HARDWARE_INFO;
-			if (f3 && f4) throw syntax_error("multiple TZX hardware info blocks");
+			if (f3 && f4) throw SyntaxError("multiple TZX hardware info blocks");
 		}
 	}
 
@@ -914,19 +914,19 @@ void Z80Assembler::checkTzxFile () throws
 		{
 			TzxPureToneSegment* s = dynamic_cast<TzxPureToneSegment*>(tzxseg);
 			if (s->num_pulses <= 0 || s->num_pulses > 0xffff )
-				throw syntax_error("TZX pure tone: invalid num pulses");
+				throw SyntaxError("TZX pure tone: invalid num pulses");
 			if (s->pulse_length <= 0 || s->pulse_length > 0xffff )
-				throw syntax_error("TZX pure tone: invalid pulse length");
+				throw SyntaxError("TZX pure tone: invalid pulse length");
 			break;
 		}
 		case TZX_PULSES:
 		{
 			TzxPulses* s = dynamic_cast<TzxPulses*>(tzxseg);
 			if (s->count == 0 || s->count > 255)
-				throw syntax_error("TZX pulses: invalid num pulses");
+				throw SyntaxError("TZX pulses: invalid num pulses");
 			for (uint i=0; i<s->count; i++)
 				if (s->pulses[i] <= 0 || s->pulses[i] > 0xffff)
-					throw syntax_error("TZX pulses: invalid pulse");
+					throw SyntaxError("TZX pulses: invalid pulse");
 			break;
 		}
 		case TZX_CSW_RECORDING:	// TODO
@@ -951,15 +951,15 @@ void Z80Assembler::checkTzxFile () throws
 			off_t filesize = file_size(s->filename);
 
 			if (filesize > (1<<30))
-				throw syntax_error("TZX CSW \"%s\": file too long", filename);
+				throw SyntaxError("TZX CSW \"%s\": file too long", filename);
 
 			if (eq(ext,".wav"))
 			{
 				WavFile wf(s->filename);
-				if (!wf.is_valid) throw syntax_error("TZX CSW \"%s\": unknown wav format: rename file and "
+				if (!wf.is_valid) throw SyntaxError("TZX CSW \"%s\": unknown wav format: rename file and "
 													 "set sample-rate, sample-format and channels", filename);
 				if (s->sample_rate || s->sample_size || s->num_channels)
-					throw syntax_error("TZX CSW \"%s\": sample-rate, sample-format or channels set", filename);
+					throw SyntaxError("TZX CSW \"%s\": sample-rate, sample-format or channels set", filename);
 
 				s->header_size = int32(wf.data_start);
 				s->sample_rate = int32(wf.frames_per_second);
@@ -972,30 +972,30 @@ void Z80Assembler::checkTzxFile () throws
 				assert(s->raw);
 
 				if (!s->sample_rate || !s->sample_size || !s->num_channels)
-					throw syntax_error("TZX CSW %s: sample rate, size or num channels not set", filename);
+					throw SyntaxError("TZX CSW %s: sample rate, size or num channels not set", filename);
 
 				if (s->sample_rate<8000 || s->sample_rate>200000)
-					throw syntax_error("TZX CSW %s: sample rate out of range", filename);
+					throw SyntaxError("TZX CSW %s: sample rate out of range", filename);
 
 				if (s->sample_size!=1 && s->sample_size!=2)
-					throw syntax_error("TZX CSW %s: illegal sample size", filename);
+					throw SyntaxError("TZX CSW %s: illegal sample size", filename);
 
 				if (s->num_channels!=1 && s->num_channels!=2)
-					throw syntax_error("TZX CSW %s: illegal number of channels", filename);
+					throw SyntaxError("TZX CSW %s: illegal number of channels", filename);
 
 				if (s->header_size < 0 || s->header_size > (1<<30))
-					throw syntax_error("TZX CSW %s: header size out of range", filename);
+					throw SyntaxError("TZX CSW %s: header size out of range", filename);
 
 				total_frames = int32(filesize - s->header_size) / int32(s->sample_size * s->num_channels);
-				if(total_frames < 0) throw syntax_error("TZX CSW %s: file too short", filename);
+				if(total_frames < 0) throw SyntaxError("TZX CSW %s: file too short", filename);
 			}
 
 			s->last_frame.value = min(total_frames, s->last_frame.value);
 
-			if(s->pause < 0 || s->pause > 0xffff) throw syntax_error("TZX CSW %s: pause out of range", filename);
-			if (s->first_frame < 0) throw syntax_error("TZX CSW %s: start < 0", filename);
-			if (s->first_frame >= total_frames) throw syntax_error("TZX CSW %s: start ≥ file end", filename);
-			if (s->first_frame >= s->last_frame) throw syntax_error("TZX CSW %s: start ≥ end", filename);
+			if(s->pause < 0 || s->pause > 0xffff) throw SyntaxError("TZX CSW %s: pause out of range", filename);
+			if (s->first_frame < 0) throw SyntaxError("TZX CSW %s: start < 0", filename);
+			if (s->first_frame >= total_frames) throw SyntaxError("TZX CSW %s: start ≥ file end", filename);
+			if (s->first_frame >= s->last_frame) throw SyntaxError("TZX CSW %s: start ≥ end", filename);
 
 			break;
 		}
@@ -1003,33 +1003,33 @@ void Z80Assembler::checkTzxFile () throws
 		{
 			TzxPauseSegment* s = dynamic_cast<TzxPauseSegment*>(tzxseg);
 			if (s->duration < 0 || s->duration > 0xffff)
-				throw syntax_error("TZX pause: illegal duration");
+				throw SyntaxError("TZX pause: illegal duration");
 			break;
 		}
 		case TZX_GROUP_START:
 		{
 			TzxGroupStartSegment* s = dynamic_cast<TzxGroupStartSegment*>(tzxseg);
-			if (!s->name || !*s->name) throw syntax_error("TZX group start: no name");
+			if (!s->name || !*s->name) throw SyntaxError("TZX group start: no name");
 			blocks.append(s->name);
 			break;
 		}
 		case TZX_GROUP_END:
 		{
-			if (blocks.count()==0) throw syntax_error("TZX group end: not in TZX group");
-			if (blocks.pop() == nullptr) throw syntax_error("TZX group end: in TZX loop");
+			if (blocks.count()==0) throw SyntaxError("TZX group end: not in TZX group");
+			if (blocks.pop() == nullptr) throw SyntaxError("TZX group end: in TZX loop");
 			break;
 		}
 		case TZX_LOOP_START:
 		{
 			TzxLoopStartSegment* s = dynamic_cast<TzxLoopStartSegment*>(tzxseg);
-			if (s->repetitions<2 || s->repetitions>0xffff) throw syntax_error("TZX loop start: illegal repetitions");
+			if (s->repetitions<2 || s->repetitions>0xffff) throw SyntaxError("TZX loop start: illegal repetitions");
 			blocks.append(s->name);
 			break;
 		}
 		case TZX_LOOP_END:
 		{
-			if (blocks.count()==0) throw syntax_error("TZX loop end: not in TZX loop");
-			if (blocks.pop() != nullptr) throw syntax_error("TZX loop end: in TZX group");
+			if (blocks.count()==0) throw SyntaxError("TZX loop end: not in TZX loop");
+			if (blocks.pop() != nullptr) throw SyntaxError("TZX loop end: in TZX group");
 			break;
 		}
 		case TZX_STOP_48K:
@@ -1039,36 +1039,36 @@ void Z80Assembler::checkTzxFile () throws
 		case TZX_POLARITY:
 		{
 			TzxPolaritySegment* s = dynamic_cast<TzxPolaritySegment*>(tzxseg);
-			if (s->polarity != 0 && s->polarity != 1) throw syntax_error("TZX polarity: illegal value");
+			if (s->polarity != 0 && s->polarity != 1) throw SyntaxError("TZX polarity: illegal value");
 			break;
 		}
 		case TZX_INFO:
 		{
 			TzxInfoSegment* s = dynamic_cast<TzxInfoSegment*>(tzxseg);
-			if (!s->text || !*s->text) throw syntax_error("TZX info: no text");
-			if (strlen(s->text) > 32) throw syntax_error("TZX info: text too long");
+			if (!s->text || !*s->text) throw SyntaxError("TZX info: no text");
+			if (strlen(s->text) > 32) throw SyntaxError("TZX info: text too long");
 			// test for ASCII: verified when created
 			break;
 		}
 		case TZX_MESSAGE:
 		{
 			TzxMessageSegment* s = dynamic_cast<TzxMessageSegment*>(tzxseg);
-			if (s->text.count()==0 || s->text.count()>8) throw syntax_error("TZX message: too many lines");
-			if (strlen(join(s->text,' '))>255) throw syntax_error("TZX message: total text length too long");
+			if (s->text.count()==0 || s->text.count()>8) throw SyntaxError("TZX message: too many lines");
+			if (strlen(join(s->text,' '))>255) throw SyntaxError("TZX message: total text length too long");
 			// test for ASCII: verified when created
 			break;
 		}
 		case TZX_ARCHIVE_INFO:
 		{
 			TzxArchiveInfo* s = dynamic_cast<TzxArchiveInfo*>(tzxseg);
-			if (s->archinfo.count()==0) throw syntax_error("TZX archive info: empty");
-			if (s->archinfo.count()>255) throw syntax_error("TZX archive info: to many entries");
+			if (s->archinfo.count()==0) throw SyntaxError("TZX archive info: empty");
+			if (s->archinfo.count()>255) throw SyntaxError("TZX archive info: to many entries");
 			for (uint i=0; i<s->archinfo.count(); i++)
 			{
 				auto& info = s->archinfo[i];
-				if (info.id>0x10 && info.id!=255) throw syntax_error("TZX archive info: illegal ID");
-				if (eq(info.text,"")) throw syntax_error("TZX archive info: empty text");
-				if (strlen(info.text)>255) throw syntax_error("TZX archive info: text too long");
+				if (info.id>0x10 && info.id!=255) throw SyntaxError("TZX archive info: illegal ID");
+				if (eq(info.text,"")) throw SyntaxError("TZX archive info: empty text");
+				if (strlen(info.text)>255) throw SyntaxError("TZX archive info: text too long");
 			}
 			break;
 		}
@@ -1076,14 +1076,14 @@ void Z80Assembler::checkTzxFile () throws
 		{
 			TzxHardwareInfo* s = dynamic_cast<TzxHardwareInfo*>(tzxseg);
 			Array<TzxHardwareInfo::HwInfo>& hwinfo = s->hwinfo;
-			if (hwinfo.count()==0) throw syntax_error("TZX hardware info: empty");
-			if (hwinfo.count()>255) throw syntax_error("TZX hardware info: to many entries");
+			if (hwinfo.count()==0) throw SyntaxError("TZX hardware info: empty");
+			if (hwinfo.count()>255) throw SyntaxError("TZX hardware info: to many entries");
 
 			for (uint i=0; i<hwinfo.count(); i++)
 			{
 				auto& info = hwinfo[i];
 				if (info.type>0x20 || info.id>0x80 || info.support>3)
-					throw syntax_error("TZX hardware info: illegal value");
+					throw SyntaxError("TZX hardware info: illegal value");
 			}
 
 			// test for redefined entries:
@@ -1095,7 +1095,7 @@ void Z80Assembler::checkTzxFile () throws
 				if (a.type == b.type && a.id == b.id)
 				{
 					if (a.support != b.support)
-						throw syntax_error("TZX hardware info: entry %u,%u redefined", a.type, a.id);
+						throw SyntaxError("TZX hardware info: entry %u,%u redefined", a.type, a.id);
 					if (verbose) logline("TZX hardware info: multiple definitions for %u,%u", a.type, a.id);
 				}
 			}
@@ -1116,7 +1116,7 @@ void Z80Assembler::checkTzxFile () throws
 			if (cs->has_flag)
 				cs0_name = cs->name;
 			else if(segments[i-1]->is_tzx)
-				if (cs0_name) throw syntax_error("non-code TZX block in tape block %s",cs0_name);
+				if (cs0_name) throw SyntaxError("non-code TZX block in tape block %s",cs0_name);
 		}
 	}
 
@@ -1126,7 +1126,7 @@ void Z80Assembler::checkTzxFile () throws
 	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
-		throw syntax_error("tape block %s: flag byte missing (argument #4)", segments[0]->name);
+		throw SyntaxError("tape block %s: flag byte missing (argument #4)", segments[0]->name);
 
 	uint32 size = 0;
 	for (uint i=segments.count(); i--; )
@@ -1164,27 +1164,27 @@ void Z80Assembler::checkTzxFile () throws
 		try
 		{
 			uint minsz = s->no_checksum + s->no_flagbyte;
-			if (size <= minsz) throw syntax_error("size = 0");
-			if (size > minsz+0xfeff) throw syntax_error("size = %u (max = 0xfeff)", size-minsz);
+			if (size <= minsz) throw SyntaxError("size = 0");
+			if (size > minsz+0xfeff) throw SyntaxError("size = %u (max = 0xfeff)", size-minsz);
 			size = 0;
 
 			assert(s->lastbits>=1 && s->lastbits<=8);
-			if (s->flag > 255 || s->flag < -128) throw syntax_error("flag byte out of range");
-			if (uint(s->pause) > 0xffff) throw syntax_error("pause out of range");
+			if (s->flag > 255 || s->flag < -128) throw SyntaxError("flag byte out of range");
+			if (uint(s->pause) > 0xffff) throw SyntaxError("pause out of range");
 
 			// check pilot and data pulses:
 			if (s->type == TZX_STANDARD)
 			{
-				if (s->no_pilot) throw syntax_error("invalid pilot=none");
-				if (s->lastbits != 8) throw syntax_error("invalid lastbits=%i",int(s->lastbits));
-				if (!is_zxsp_data_symbols(s->datasym)) throw syntax_error("invalid data pulses");
-				if (!is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag)) throw syntax_error("invalid pilot pulses");
+				if (s->no_pilot) throw SyntaxError("invalid pilot=none");
+				if (s->lastbits != 8) throw SyntaxError("invalid lastbits=%i",int(s->lastbits));
+				if (!is_zxsp_data_symbols(s->datasym)) throw SyntaxError("invalid data pulses");
+				if (!is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag)) throw SyntaxError("invalid pilot pulses");
 			}
 			else if (s->type == TZX_TURBO)
 			{
-				if (s->no_pilot) throw syntax_error("invalid pilot=none");
-				if (!is_simple_data_symbols(s->datasym)) throw syntax_error("invalid data pulses");
-				if (!is_simple_pilot_scheme(s->pilot,s->pilotsym)) throw syntax_error("invalid pilot pulses");
+				if (s->no_pilot) throw SyntaxError("invalid pilot=none");
+				if (!is_simple_data_symbols(s->datasym)) throw SyntaxError("invalid data pulses");
+				if (!is_simple_pilot_scheme(s->pilot,s->pilotsym)) throw SyntaxError("invalid pilot pulses");
 
 				set_default_data_symbols(s);
 				set_default_pilot(s);
@@ -1192,7 +1192,7 @@ void Z80Assembler::checkTzxFile () throws
 			else if (s->type == TZX_PURE_DATA)
 			{
 				assert(s->no_pilot);
-				if (!is_simple_data_symbols(s->datasym)) throw syntax_error("invalid data pulses");
+				if (!is_simple_data_symbols(s->datasym)) throw SyntaxError("invalid data pulses");
 
 				set_default_data_symbols(s);
 			}
@@ -1200,23 +1200,23 @@ void Z80Assembler::checkTzxFile () throws
 			{
 				uint n = s->datasym.count();
 				if (n!=0 && n!=2 && n!=4 && n!=16 && n!=256)
-					throw syntax_error("invalid number of data symbols = %u", n);
+					throw SyntaxError("invalid number of data symbols = %u", n);
 
 				if (n==0 && !(size==0 && s->no_flagbyte && s->no_checksum))
 					set_default_data_symbols(s);
 
 				if (n > 2 && s->lastbits % (n==4 ? 2 : n==16 ? 4 : 8))
-					throw syntax_error("invalid lastbits=%u for %u data symbols", uint(s->lastbits), n);
+					throw SyntaxError("invalid lastbits=%u for %u data symbols", uint(s->lastbits), n);
 
 				// check data symbols:
 				for (uint i=0; i<s->datasym.count(); i++)
 				{
 					Values& ds = s->datasym[i];
-					if (ds.count() > 256) throw syntax_error("data symbol #%u: too many pulses", i);
-					if (uint(ds[0]) > 3) throw syntax_error("data symbol #%u: invalid toggle mode", i);
+					if (ds.count() > 256) throw SyntaxError("data symbol #%u: too many pulses", i);
+					if (uint(ds[0]) > 3) throw SyntaxError("data symbol #%u: invalid toggle mode", i);
 					for (uint j=1; j<ds.count(); j++)
 						if (uint(ds[j]) > 0xffff)
-							throw syntax_error("data symbol #%u: invalid pulse length %i", i, int(ds[j]));
+							throw SyntaxError("data symbol #%u: invalid pulse length %i", i, int(ds[j]));
 				}
 
 				if (s->no_pilot)
@@ -1235,22 +1235,22 @@ void Z80Assembler::checkTzxFile () throws
 					{
 						uint idx = uint(s->pilot[i]);			// symbol idx
 						if (idx < s->pilotsym.count()) used[idx] = true;
-						else throw syntax_error("pilot symbol #%u used but not defined", idx);
+						else throw SyntaxError("pilot symbol #%u used but not defined", idx);
 
 						int rep = s->pilot[i+1];				// repetitions
-						if (uint(rep) > 0xffff) throw syntax_error("pilot #%u: too many repetitions %i", i/2, rep);
+						if (uint(rep) > 0xffff) throw SyntaxError("pilot #%u: too many repetitions %i", i/2, rep);
 					}
 
 					// check pilot symbol definitions and pilot symbol usage:
 					for (uint i=0; i<s->pilotsym.count(); i++)
 					{
-						if (!used[i]) throw syntax_error("pilot symbol #%u not used", i);
+						if (!used[i]) throw SyntaxError("pilot symbol #%u not used", i);
 						Values& ps = s->pilotsym[i];
-						if (ps.count() > 256) throw syntax_error("pilot symbol #%u: too many pulses", i);
-						if (uint(ps[0]) > 3) throw syntax_error("pilot symbol #%u: invalid toggle mode", i);
+						if (ps.count() > 256) throw SyntaxError("pilot symbol #%u: too many pulses", i);
+						if (uint(ps[0]) > 3) throw SyntaxError("pilot symbol #%u: invalid toggle mode", i);
 						for (uint j=1; j<ps.count(); j++)
 							if (uint(ps[j]) > 0xffff)
-								throw syntax_error("pilot symbol #%u: invalid pulse length %i", i, int(ps[j]));
+								throw SyntaxError("pilot symbol #%u: invalid pulse length %i", i, int(ps[j]));
 					}
 				}
 			}
@@ -1259,9 +1259,9 @@ void Z80Assembler::checkTzxFile () throws
 				IERR();
 			}
 		}
-		catch (syntax_error& e)
+		catch (SyntaxError& e)
 		{
-			throw syntax_error("tape block %s: %s", s->name, e.text);
+			throw SyntaxError("tape block %s: %s", s->name, e.what());
 		}
 	}
 }
@@ -1298,9 +1298,9 @@ void Z80Assembler::checkSnaFile () throws
 
 	// verify that first block is the header:
 	CodeSegment& hs = segments[i0];
-	if (hs.compressed) throw syntax_error(
+	if (hs.compressed) throw SyntaxError(
 		"target SNA: header segment %s cannot be compressed",hs.name);
-	if (hs.size!=27) throw syntax_error(
+	if (hs.size!=27) throw SyntaxError(
 		"target SNA: header segment %s must be 27 bytes (size=%u)", hs.name, uint(hs.size));
 	SnaHead* head = (SnaHead*)hs.getData();
 
@@ -1372,9 +1372,9 @@ void Z80Assembler::checkAceFile () throws
 
 		if (s.address.value!=addr) setError(
 			"segment %s must start at 0x%04X (address=0x%04X)", s.name, uint(addr), uint(s.address));
-		if (s.compressed) throw syntax_error(
+		if (s.compressed) throw SyntaxError(
 			"segment %s cannot be compressed",s.name);
-		if (s.size&0x3ff) throw syntax_error(
+		if (s.size&0x3ff) throw SyntaxError(
 			"segment %s size must be a multiple of 0x400 (size=0x%04X)", s.name, uint(s.size));
 
 		for (int32 offs=0; offs<s.size && addr<0x3C00; offs+=0x400, addr+=0x400)
@@ -1493,11 +1493,11 @@ void Z80Assembler::checkZX80File () throws
 	if (ramsize<sizeof(ZX80Head)) return;
 
 	CodeSegment& hs = segments[i0];
-	if (hs.address != 0x4000) throw syntax_error(
+	if (hs.address != 0x4000) throw SyntaxError(
 		"segment %s: first segment must start at $4000",hs.name);
-	if (hs.compressed) throw syntax_error(
+	if (hs.compressed) throw SyntaxError(
 		"segment %s: system variables cannot be compressed",hs.name);
-	if (hs.size<int(sizeof(ZX80Head))) throw syntax_error(
+	if (hs.size<int(sizeof(ZX80Head))) throw SyntaxError(
 		"segment %s: system variables must be at least 40 ($28) bytes (size=%u)",hs.name,uint(hs.size));
 
 	ZX80Head* head = (ZX80Head*)hs.getData();
@@ -1584,15 +1584,15 @@ void Z80Assembler::checkZX81File () throws
 		// => prog name: only characters in range 0..63; last char +$80
 
 a:		CodeSegment& s = segments[hi++];
-		if (s.compressed) throw syntax_error("segment %s: program name cannot be compressed",s.name);
+		if (s.compressed) throw SyntaxError("segment %s: program name cannot be compressed",s.name);
 		if (s.size==0) goto a;
-		if (s.size>128) throw syntax_error(
+		if (s.size>128) throw SyntaxError(
 			"segment %s: program name too long: max=128 bytes (size=%u)",s.name,uint(s.size));
 
 		int i=0;
 		while (i<s.size && s[i]<0x40) i++;
-		if (i==s.size) throw syntax_error("segment %s: prog name delimiter on last char missing",s.name);
-		if (s[i]&0x40) throw syntax_error("segment %s: ill. character in prog name: (bit6=1)",s.name);
+		if (i==s.size) throw SyntaxError("segment %s: prog name delimiter on last char missing",s.name);
+		if (s[i]&0x40) throw SyntaxError("segment %s: ill. character in prog name: (bit6=1)",s.name);
 		ramsize -= i+1;
 	}
 
@@ -1602,11 +1602,11 @@ a:		CodeSegment& s = segments[hi++];
 		"total ram size out of range: must be ≥125+1 ($7D+1) and ≤16k (size=$%04X)",ramsize);
 
 	CodeSegment& hs = segments[hi];
-	if (hs.address != 0x4009) throw syntax_error(
+	if (hs.address != 0x4009) throw SyntaxError(
 		"segment %s: first segment must start at $4009",hs.name);
 	if (hs.compressed)
-		throw syntax_error("segment %s: system variables cannot be compressed",hs.name);
-	if (hs.size < 125-9) throw syntax_error(
+		throw SyntaxError("segment %s: system variables cannot be compressed",hs.name);
+	if (hs.size < 125-9) throw SyntaxError(
 		"segment %s must be at least 125-9 ($7D-9) bytes (size=%u)",hs.name,uint(hs.size));
 
 	ZX81Head* head = (ZX81Head*)hs.getData();
@@ -1632,18 +1632,18 @@ void Z80Assembler::checkZ80File () throws
 	CodeSegments segments(this->segments);
 
 	// assert header and at least one ram page:
-	if (segments.count()<2) throw syntax_error("no ram pages found");
+	if (segments.count()<2) throw SyntaxError("no ram pages found");
 
 	const uint i0 = 0;
 
 	// verify that first block is the header:
 	CodeSegment& hs = segments[i0];
-	if (hs.has_flag) throw syntax_error("first code segment must be the z80 file header (no flag!)");
-	if (hs.compressed) throw syntax_error("the z80 file header (first code segment) cannot be compressed");
+	if (hs.has_flag) throw SyntaxError("first code segment must be the z80 file header (no flag!)");
+	if (hs.compressed) throw SyntaxError("the z80 file header (first code segment) cannot be compressed");
 
 	for (uint i=0; i<segments.count(); i++)
 	{
-		if (segments[i]->compressed) throw syntax_error("zx7 compressed data in z80 files not yet supported. TODO!");
+		if (segments[i]->compressed) throw SyntaxError("zx7 compressed data in z80 files not yet supported. TODO!");
 	}
 
 	Z80Header& head = *(Z80Header*)hs.getData();
@@ -1669,26 +1669,26 @@ void Z80Assembler::checkZ80File () throws
 	// check header:
 
 	if (hs.size < z80v3len && hs.size!=z80v2len)
-		throw syntax_error("header: length must be 30 (v1.45), 55 (v2.01) or 86++ (v3++)");
-	if (head.pch || head.pcl) throw syntax_error("header v2++: PC at offset 6 must be 0");
+		throw SyntaxError("header: length must be 30 (v1.45), 55 (v2.01) or 86++ (v3++)");
+	if (head.pch || head.pcl) throw SyntaxError("header v2++: PC at offset 6 must be 0");
 
 	int n = head.h2lenl + 256 * head.h2lenh;	// length of header extension
-	if (32+n != hs.size) throw syntax_error(
+	if (32+n != hs.size) throw SyntaxError(
 		"header v2++: wrong header extension length at offset 30: %u + 32 != %u", n, hs.size.value);
 
 	Model model = head.getZxspModel();
-	if (model==unknown_model) throw syntax_error("header: illegal model");
+	if (model==unknown_model) throw SyntaxError("header: illegal model");
 	if (model>=zxplus3 && model<=zxplus2a_span && hs.size<z80v3len+1)
-		throw syntax_error("header: size must be ≥ 87 for +3/+2A for port_1ffd byte (warajewo/xzx extension)");
+		throw SyntaxError("header: size must be ≥ 87 for +3/+2A for port_1ffd byte (warajewo/xzx extension)");
 
 	//uint32 cc = head.getCpuCycle(model_info->cpu_cycles_per_frame);
 	//if(cc>70000) {}
 
 	bool spectra_used = head.isVersion300() && (head.rldiremu & 0x08);
 	if (spectra_used && model>inves)
-		throw syntax_error("header: SPECTRA extension can only be attached to ZX Spectrum 16/48k (rldiremu&8)");
+		throw SyntaxError("header: SPECTRA extension can only be attached to ZX Spectrum 16/48k (rldiremu&8)");
 	if (spectra_used && hs.size<89)
-		throw syntax_error("header: size must be ≥ 89 bytes for SPECTRA extension (rldiremu&8)");
+		throw SyntaxError("header: size must be ≥ 89 bytes for SPECTRA extension (rldiremu&8)");
 
 	// v2.0++
 	// check pages:

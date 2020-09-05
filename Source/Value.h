@@ -81,8 +81,8 @@ public:
 	void	add (int32 n, Validity v) { value += n; chkv(v); }
 	void	sub (int32 n, Validity v) { value -= n; chkv(v); }
 	void	mul (int32 n, Validity v) { value *= n; chkv(v); }
-	void	div (int32 n, Validity v) throws; // throw(any_error);
-	void	rem (int32 n, Validity v) throws; // throw(any_error);
+	void	div (int32 n, Validity v) throws; // throw(AnyError);
+	void	rem (int32 n, Validity v) throws; // throw(AnyError);
 
 	void	set (Value const& v)	{ set(v.value,v.validity); }
 	void	ge  (Value const& v)	{ ge (v.value,v.validity); }

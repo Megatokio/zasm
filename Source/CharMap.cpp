@@ -51,7 +51,7 @@ static UCS2Char ucs2_from_utf8 (cptr s) throws
 	assert(s);
 
 	if (utf8_is_7bit(*s)) return UCS2Char(*s);	// 7-bit ascii char
-	if (utf8_is_fup(*s)) throw data_error("broken character in map (unexpected UTF-8 fup character)");
+	if (utf8_is_fup(*s)) throw DataError("broken character in map (unexpected UTF-8 fup character)");
 	UCS4Char n = uchar(*s);					// UCS-4 char code akku
 											// 0x80 … 0xBF: unexpected fups
 // multi-byte character:
@@ -60,17 +60,17 @@ static UCS2Char ucs2_from_utf8 (cptr s) throws
 	while (char(c<<(++i)) < 0)				// loop over fup bytes
 	{
 		char c1 = *(++s);
-		if (utf8_no_fup(c1)) throw data_error("broken character in map (truncated UTF-8 character)");
+		if (utf8_no_fup(c1)) throw DataError("broken character in map (truncated UTF-8 character)");
 		n = (n<<6) + (c1&0x3F);
 	}
 
 // now: i = total number of bytes
 //      n = UCS4 char code with some of the '1' bits from c0
 	n &= RMASK(2+i*5);
-	if (n!=UCS2Char(n)) throw data_error("UTF-8 character outside the UCS2 code range in map");
+	if (n!=UCS2Char(n)) throw DataError("UTF-8 character outside the UCS2 code range in map");
 
 // ill. overlong encodings:
-	if (n < 1u<<(i*5-4)) throw data_error("illegal character in map (illegal overlong UTF-8 encoding)");
+	if (n < 1u<<(i*5-4)) throw DataError("illegal character in map (illegal overlong UTF-8 encoding)");
 
 // ok => return code
 	return UCS2Char(n);
@@ -219,8 +219,8 @@ uchar CharMap::get (UCS2Char key) const throws
 	uchar c = HashMap::get(key,0); if(c) return c;
 	static_assert(NC!=0,"const NC must be non-zero here");
 
-	if (key>=' ' && key<=0x7F) throw syntax_error("Character '%c' is not in the target character set",key);
-	else					   throw syntax_error("Character 0x%04X is not in the target character set",key);
+	if (key>=' ' && key<=0x7F) throw SyntaxError("Character '%c' is not in the target character set",key);
+	else					   throw SyntaxError("Character 0x%04X is not in the target character set",key);
 }
 
 uchar CharMap::operator[] (UCS2Char key) const noexcept
@@ -247,12 +247,12 @@ pstr CharMap::translate (cptr q) throws
 		else
 		{
 			if (!HashMap::contains(key))
-				throw data_error("target character set does not contain '%s'",substr(q0,q));
+				throw DataError("target character set does not contain '%s'",substr(q0,q));
 			zstr[++len] = HashMap::get(key);
 		}
 	}
 
-	if (len > 255) throw data_error("text string too long");
+	if (len > 255) throw DataError("text string too long");
 	zstr[0] = uchar(len);
 	return zstr;
 }

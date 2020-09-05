@@ -43,7 +43,7 @@ void Source::includeFile (cstr filename_fqn, uint sourceAE_index) throws
 		FD fd(filename_fqn,'r');
 		off_t sz = fd.file_size();
 		if (sz>=3 && fd.read_int24_x() != 0x00efbbbf) fd.rewind_file();				// skip BOM
-		if (sz>10000000) throw any_error("source file exceeds 10,000,000 bytes");	// sanity
+		if (sz>10000000) throw AnyError("source file exceeds 10,000,000 bytes");	// sanity
 
 		RCArray<SourceLine> zsource;
 		for (;;)
@@ -55,11 +55,11 @@ void Source::includeFile (cstr filename_fqn, uint sourceAE_index) throws
 		}
 
 		insertat(sourceAE_index,zsource);
-		if (count()>1000000) throw any_error("total source exceeds 1,000,000 lines");	// sanity
+		if (count()>1000000) throw AnyError("total source exceeds 1,000,000 lines");	// sanity
 	}
-	catch (any_error& e)
+	catch (AnyError& e)
 	{
-		throw fatal_error("file \"%s\" could not be read: %s", filename_fqn, e.what());
+		throw FatalError("file \"%s\" could not be read: %s", filename_fqn, e.what());
 	}
 }
 
@@ -143,7 +143,7 @@ void SourceLine::expect (char c) throws
 	// skip spaces and test for and skip char
 	// throw error if char does not match
 
-	if (!testChar(c)) throw syntax_error("'%c'", c);
+	if (!testChar(c)) throw SyntaxError("'%c'", c);
 }
 
 void SourceLine::expectEol () throws
@@ -155,7 +155,7 @@ void SourceLine::expectEol () throws
 	skip_spaces();
 	char c = *p;
 	if (c==';' || c==0) return;
-	else throw syntax_error("end of line expected");
+	else throw SyntaxError("end of line expected");
 }
 
 cstr SourceLine::nextWord ()

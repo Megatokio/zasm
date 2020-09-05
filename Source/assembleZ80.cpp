@@ -38,7 +38,7 @@ static bool lceq (cptr w, cptr s)
 void Z80Assembler::storeEDopcode (int n) throws
 {
 	if (target_z80_or_z180) return store(PFX_ED,n);
-	throw syntax_error(syntax_8080 ?
+	throw SyntaxError(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
 }
@@ -46,7 +46,7 @@ void Z80Assembler::storeEDopcode (int n) throws
 void Z80Assembler::storeIXopcode (int n) throws
 {
 	if (target_z80_or_z180) return store(PFX_IX,n);
-	throw syntax_error(syntax_8080 ?
+	throw SyntaxError(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
 }
@@ -54,7 +54,7 @@ void Z80Assembler::storeIXopcode (int n) throws
 void Z80Assembler::storeIYopcode (int n) throws
 {
 	if (target_z80_or_z180) return store(PFX_IY,n);
-	throw syntax_error(syntax_8080 ?
+	throw SyntaxError(syntax_8080 ?
 		  "no i8080 opcode (use option --asm8080 and --z80)"
 		: "no i8080 opcode (option --8080)");
 }
@@ -110,7 +110,7 @@ int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 		if (c1=='n') { if (c2=='z') return NZ; if (c2=='c') return NC; }
 		if (c1=='p') { if (c2=='o') return PO; if (c2=='e') return PE; }
 	}
-	throw syntax_error("illegal condition");
+	throw SyntaxError("illegal condition");
 }
 
 int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
@@ -126,7 +126,7 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 	cptr p = q.p;
 	cstr w = q.nextWord();
 
-	char c1 = *w++ | 0x20;	if (c1==0x20) throw syntax_error("unexpected end of line");
+	char c1 = *w++ | 0x20;	if (c1==0x20) throw SyntaxError("unexpected end of line");
 	char c2 = *w++ | 0x20;
 
 	if (c2==0x20)	// strlen=1
@@ -167,7 +167,7 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 				if (q.testWord("iy")) { if (target_8080) goto no_8080; r = XIY; if (q.testChar(')')) return r; }
 				if (q.testWord("c"))  { if (target_8080) goto no_8080; q.expect(')'); return XC; }
 
-				n = value(q); if (r!=XNN && n!=int8(n) && n.is_valid()) throw syntax_error("offset out of range");
+				n = value(q); if (r!=XNN && n!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
 				q.expectClose();
 				return r;
 			}
@@ -213,15 +213,15 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 	if (target_8080 || !q.testChar('(')) return NN;
 
 	// SDASZ80 syntax: n(IX)
-	if (n!=int8(n) && n.is_valid()) throw syntax_error("offset out of range");
+	if (n!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
 	if (q.testWord("ix")) { q.expectClose(); return XIX; }
 	if (q.testWord("iy")) { q.expectClose(); return XIY; }
-	throw syntax_error("syntax error");
+	throw SyntaxError("syntax error");
 
 z80_only:
-	if (target_z180) throw syntax_error("illegal register: the Z180 traps illegal instructions");
+	if (target_z180) throw SyntaxError("illegal register: the Z180 traps illegal instructions");
 no_8080:
-	throw syntax_error("no 8080 register");
+	throw SyntaxError("no 8080 register");
 }
 
 void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
@@ -253,7 +253,7 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 	switch (instr|0x20202020)
 	{
 	case ' jmp':
-	case ' mov':	throw syntax_error("no Z80 assembler opcode (use option --asm8080)");
+	case ' mov':	throw SyntaxError("no Z80 assembler opcode (use option --asm8080)");
 
 	case ' nop':	return store(NOP);
 	case '  ei':	return store(EI);
@@ -279,7 +279,7 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 		// jr nn
 		// jr cc,nn
 		if (target_8080) goto ill_8080;
-		r2 = getCondition(q,yes); if (r2>CY) throw syntax_error("illegal condition");
+		r2 = getCondition(q,yes); if (r2>CY) throw SyntaxError("illegal condition");
 		instr = r2==NIX ? JR : JR_NZ+(r2-NZ)*8; goto jr;
 
 	jr:	r = getRegister(q,n); if (r!=NN) goto ill_dest;
@@ -316,7 +316,7 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 		// rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
 		if (n%8==0) n.value>>=3;
-		if (n.is_valid() && n>>3) throw syntax_error( "illegal vector number" );
+		if (n.is_valid() && n>>3) throw SyntaxError( "illegal vector number" );
 		else return store(RST00+n*8);
 
 	case 'push':	instr = PUSH_HL; goto pop;
@@ -724,7 +724,7 @@ ld_r:		assert(r<=RA && r!=XHL);
 		// im n		0 1 2
 		r = getRegister(q,n);
 		if (r==NN && uint(n)<=2) return storeEDopcode( n==0 ? IM_0 : n==1 ? IM_1 : IM_2);
-		throw syntax_error("illegal interrupt mode");
+		throw SyntaxError("illegal interrupt mode");
 
 	case '  in':
 		// in a,(N)
@@ -790,7 +790,7 @@ ld_r:		assert(r<=RA && r!=XHL);
 	case ' bit':	instr = BIT0_B;	goto bit;
 
 bit:	n = value(q);
-		if (uint(n)>7) throw syntax_error("illegal bit number");
+		if (uint(n)>7) throw SyntaxError("illegal bit number");
 		instr += 8*n;
 		q.expectComma();
 		goto rr;
@@ -828,7 +828,7 @@ rr:		if (target_8080) goto ill_8080;
 
 		if (r2<=YL)
 		{
-			if (!ixcbxh_enabled) throw syntax_error("illegal instruction (use --ixcbxh)");
+			if (!ixcbxh_enabled) throw SyntaxError("illegal instruction (use --ixcbxh)");
 			if (r2>=YH) return store(PFX_IY, PFX_CB, 0, instr+r2+RH-YH-RB);
 			else	    return store(PFX_IX, PFX_CB, 0, instr+r2+RH-XH-RB);
 		}
@@ -838,9 +838,9 @@ rr:		if (target_8080) goto ill_8080;
 			r = XHL;
 			if (q.testComma())
 			{
-				if (!ixcbr2_enabled) throw syntax_error("illegal instruction (use --ixcbr2)");
+				if (!ixcbr2_enabled) throw SyntaxError("illegal instruction (use --ixcbr2)");
 				r = getRegister(q,n);
-				if (r>RA || r==XHL) throw syntax_error("illegal secondary destination");
+				if (r>RA || r==XHL) throw SyntaxError("illegal secondary destination");
 			}
 			return store(r2==XIX?PFX_IX:PFX_IY, PFX_CB, n2, instr+r-RB);
 		}
@@ -933,12 +933,12 @@ wlen5:
 	}
 
 // generate error
-ill_target:		if (depp) q.p=depp; throw syntax_error("illegal target");		// 1st arg
-ill_source:		throw syntax_error("illegal source");							// 2nd arg
-ill_dest:		if (depp) q.p=depp; throw syntax_error("illegal destination");	// jp etc., ld, in, out: destination
-ill_z180:		throw syntax_error("z180 opcode (use option --z180)");
-ill_8080:		throw syntax_error("no 8080 opcode (option --8080)");
-ill_opcode:		throw syntax_error("illegal opcode (option --z180)");
+ill_target:		if (depp) q.p=depp; throw SyntaxError("illegal target");		// 1st arg
+ill_source:		throw SyntaxError("illegal source");							// 2nd arg
+ill_dest:		if (depp) q.p=depp; throw SyntaxError("illegal destination");	// jp etc., ld, in, out: destination
+ill_z180:		throw SyntaxError("z180 opcode (use option --z180)");
+ill_8080:		throw SyntaxError("no 8080 opcode (option --8080)");
+ill_opcode:		throw SyntaxError("illegal opcode (option --z180)");
 
 // try macro and pseudo instructions
 misc:	asmPseudoInstr(q,w);

@@ -355,7 +355,7 @@ static cstr h4u5str (Value const& n)
 ============================================================== */
 
 
-void Z80Assembler::writeListfile(cstr listpath, int style) throws /*any_error*/
+void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 {
 	// style: 0=none, 1=plain, 2=w/ocode, 4=w/labels, 8=w/clkcycles
 

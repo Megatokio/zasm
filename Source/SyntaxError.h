@@ -23,22 +23,22 @@
 
 // ----	Error classes: ----
 
-class syntax_error : public any_error
+class SyntaxError : public AnyError
 {
 public:
-	syntax_error (cstr s, ...)		noexcept __printflike(2,3);
-	syntax_error (cstr s, va_list va) noexcept __printflike(2,0) : any_error(s,va){}
-	syntax_error (int err)			noexcept : any_error(err){}
-	syntax_error (int err, cstr t)	noexcept : any_error(err,t){}
+	SyntaxError (cstr s, ...)		noexcept __printflike(2,3);
+	SyntaxError (cstr s, va_list va) noexcept __printflike(2,0) : AnyError(s,va){}
+	SyntaxError (int error)			noexcept : AnyError(error){}
+	SyntaxError (int error, cstr t)	noexcept : AnyError(error,t){}
 };
 
-class fatal_error : public any_error
+class FatalError : public AnyError
 {
 public:
-	fatal_error	(cstr s, ...)		noexcept __printflike(2,3);
-	fatal_error (cstr s, va_list va) noexcept  __printflike(2,0) : any_error(s,va){}
-	fatal_error	(int err)			noexcept : any_error(err){}
-	fatal_error	(int err, cstr t)	noexcept : any_error(err,t){}
+	FatalError (cstr s, ...)		noexcept __printflike(2,3);
+	FatalError (cstr s, va_list va) noexcept  __printflike(2,0) : AnyError(s,va){}
+	FatalError (int error)			noexcept : AnyError(error){}
+	FatalError (int error, cstr t)	noexcept : AnyError(error,t){}
 };
 
 

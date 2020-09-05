@@ -90,7 +90,7 @@ static const Value N2(2);
 //					Helper
 // --------------------------------------------------
 
-void Z80Assembler::setError (const any_error& e)
+void Z80Assembler::setError (const AnyError& e)
 {
 	// set error for current file, line & column
 
@@ -166,14 +166,14 @@ cstr Z80Assembler::get_filename (SourceLine& q, bool dir) throws
 
 	cstr fqn = q.nextWord();
 	if (fqn[0]!='"' && fqn[0]!='\'')
-		throw syntax_error(dir ? "quoted directory name expected" : "quoted filename expected");
+		throw SyntaxError(dir ? "quoted directory name expected" : "quoted filename expected");
 	fqn = unquotedstr(fqn);
 	if (dir && lastchar(fqn)!='/') fqn = catstr(fqn,"/");
 
 	if (cgi_mode && q.sourcelinenumber)
 	{
 		if (fqn[0]=='/' || startswith(fqn,"~/") || startswith(fqn,"../") || contains(fqn,"/../"))
-			throw fatal_error("Escape from Darthmoore Castle");
+			throw FatalError("Escape from Darthmoore Castle");
 	}
 
 	if (fqn[0]!='/') fqn = catstr(directory_from_path(q.sourcefile),fqn);
@@ -251,8 +251,8 @@ static uint charcode_from_utf8 (cptr& s) throws
 
 	n = uchar(*s++);						// char code akku
 	if (utf8_is_7bit(n)) return n;			// 7-bit ascii char
-	if (utf8_is_fup(n))  throw syntax_error("broken utf-8 character!");	// unexpected fup
-	if (utf8_is_ucs4(n)) throw syntax_error("broken utf-8 character!");	// code exceeds UCS-2
+	if (utf8_is_fup(n))  throw SyntaxError("broken utf-8 character!");	// unexpected fup
+	if (utf8_is_ucs4(n)) throw SyntaxError("broken utf-8 character!");	// code exceeds UCS-2
 
 	// longish character:
 	i = 0;									// UTF-8 character size
@@ -261,12 +261,12 @@ static uint charcode_from_utf8 (cptr& s) throws
 	while (char(c<<(++i)) < 0)				// loop over fup bytes
 	{
 		uchar c1 = *s++;
-		if (utf8_no_fup(c1)) throw syntax_error("broken utf-8 character!");
+		if (utf8_no_fup(c1)) throw SyntaxError("broken utf-8 character!");
 		n = (n<<6) + (c1&0x3F);
 	}
 
 	// simplify error checking for caller:
-	if (utf8_is_fup(*s)) throw syntax_error("broken utf-8 character!"); // more unexpected fups follows
+	if (utf8_is_fup(*s)) throw SyntaxError("broken utf-8 character!"); // more unexpected fups follows
 
 	// now: i = total number of digits
 	//      n = char code with some of the '1' bits from c0
@@ -299,21 +299,21 @@ void Z80Assembler::checkCpuOptions() throws
 	if (target_z80)
 	{
 		if (ixcbr2_enabled && ixcbxh_enabled)
-			throw fatal_error("options ixcbr2 and ixcbxh are mutually exclusive.");
+			throw FatalError("options ixcbr2 and ixcbxh are mutually exclusive.");
 	}
 
 	if (target_z180)
 	{
 		if (syntax_8080)
-			throw fatal_error("8080 syntax: Z180 opcodes not supported.");
+			throw FatalError("8080 syntax: Z180 opcodes not supported.");
 		if (ixcbr2_enabled || ixcbxh_enabled)
-			throw fatal_error("ixcbr2 and ixcbxh not allowed: the Z180 traps illegal instructions");
+			throw FatalError("ixcbr2 and ixcbxh not allowed: the Z180 traps illegal instructions");
 	}
 
 	if (target_8080)
 	{
 		if (ixcbr2_enabled || ixcbxh_enabled)
-			throw fatal_error("ixcbr2 and ixcbxh not allowed: i8080 has no index registers.");
+			throw FatalError("ixcbr2 and ixcbxh not allowed: i8080 has no index registers.");
 	}
 }
 
@@ -507,7 +507,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			}
 		}
 	}
-	catch (any_error& e) { setError("%s",e.what()); }
+	catch (AnyError& e) { setError("%s",e.what()); }
 
 	if (liststyle)
 	{
@@ -516,7 +516,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			listpath = endswith(listpath,"/") ? catstr(listpath, basename, ".lst") : listpath;
 			writeListfile(listpath, liststyle);
 		}
-		catch (any_error& e) { setError("%s",e.what()); }
+		catch (AnyError& e) { setError("%s",e.what()); }
 	}
 }
 
@@ -549,7 +549,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 		if (label->is_valid())
 		{
 			if (value == label->value) return;
-			else throw syntax_error("label redefined (use 'defl' or '=')");
+			else throw SyntaxError("label redefined (use 'defl' or '=')");
 		}
 	}
 
@@ -557,7 +557,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 		labels_resolved++;
 
 	if (validity < label->value.validity)
-		throw syntax_error("label %s value decayed",label->name);
+		throw SyntaxError("label %s value decayed",label->name);
 
 	if (value!=label->value) labels_changed++;
 
@@ -792,12 +792,12 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 			assembleLine(source[i]);
 			i = current_sourceline_index;	// some pseudo instr. skip some lines
 		}
-		catch(fatal_error& e)
+		catch(FatalError& e)
 		{
 			setError(e);
 			return;
 		}
-		catch(any_error& e)
+		catch(AnyError& e)
 		{
 			setError(e);
 			if (errors.count()>=max_errors) return;
@@ -846,7 +846,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 
 		compressSegments();
 	}
-	catch(any_error& e)
+	catch(AnyError& e)
 	{
 		setError("%s",e.what());
 		return;
@@ -893,7 +893,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 				q.expectEol();							// expect end of line
 			}
 		}
-		catch (any_error&)		// we expect to come here:
+		catch (AnyError&)		// we expect to come here:
 		{
 			assert(q.segment==current_segment_ptr);		// zunächst: wir nehmen mal an,
 			//assert(currentPosition() == q.byteptr);	// dass dann auch kein Code erzeugt wurde
@@ -912,7 +912,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 
 			return;
 		}
-		throw syntax_error("instruction did not fail!");
+		throw SyntaxError("instruction did not fail!");
 	}
 	else						// [label:] + opcode
 	{
@@ -943,7 +943,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 				}
 			}
 		}
-		catch (syntax_error& e)
+		catch (SyntaxError& e)
 		{
 			if (pass>1)
 				if (auto s = dynamic_cast<DataSegment*>(q.segment))
@@ -977,7 +977,7 @@ void Z80Assembler::skip_expression (SourceLine& q, int prio) throws
 {
 	cstr w = q.nextWord();				// get next word
 	if (w[0]==0)						// end of line
-eol:	throw syntax_error("unexpected end of line");
+eol:	throw SyntaxError("unexpected end of line");
 
 	if (w[1]==0)						// 1 char word
 	{
@@ -1003,7 +1003,7 @@ eol:	throw syntax_error("unexpected end of line");
 	}
 
 	if (is_dec_digit(w[0])) { q.test_char('$'); goto op; }	// decimal number or reusable label
-	if (!is_letter(*w) && *w!='_' && *w!='.') throw syntax_error("syntax error");	// last chance: plain idf
+	if (!is_letter(*w) && *w!='_' && *w!='.') throw SyntaxError("syntax error");	// last chance: plain idf
 
 	if (q.testChar('('))				// test for built-in function
 	{
@@ -1014,7 +1014,7 @@ eol:	throw syntax_error("unexpected end of line");
 			for (uint nkl = 1; nkl; )
 			{
 				w = q.nextWord();
-				if (w[0]==0) throw syntax_error("')' missing");	// EOL
+				if (w[0]==0) throw SyntaxError("')' missing");	// EOL
 				if (w[0]=='(') { nkl++; continue; }
 				if (w[0]==')') { nkl--; continue; }
 			}
@@ -1077,7 +1077,7 @@ w:	cstr w = q.nextWord();			// get next word
 		switch (w[0])
 		{
 		case '#':	if (prio==pAny) goto w; else goto syntax_error;	// SDASZ80: immediate value prefix
-		case ';':	throw syntax_error("value expected");	// comment  =>  unexpected end of line
+		case ';':	throw SyntaxError("value expected");	// comment  =>  unexpected end of line
 		case '+':	n = +value(q,pUna); goto op;			// plus sign
 		case '-':	n = -value(q,pUna); goto op;			// minus sign
 		case '~':	n = ~value(q,pUna); goto op;			// complement
@@ -1128,7 +1128,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 			w = unquotedstr(w);
 			n.value = charcode_from_utf8(w);
 			if (charset) n.value = charset->get(n.value);
-			if (*w) throw syntax_error("only one character allowed");
+			if (*w) throw SyntaxError("only one character allowed");
 			goto op;
 		}
 		else if (is_dec_digit(w[0]))	// decimal number
@@ -1172,7 +1172,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 		{						// note: label value is not neccessarily valid
 								// value of 'defined()' is always valid
 			w = q.nextWord();
-			if (!is_letter(*w) && *w!='_') throw fatal_error("label name expected");
+			if (!is_letter(*w) && *w!='_') throw FatalError("label name expected");
 			bool global = q.testChar(':')&&q.testChar(':');
 
 			if (pass == 1)
@@ -1195,7 +1195,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 		{						// note: label value is not neccessarily valid
 								// value of 'required()' is always valid
 			w = q.nextWord();
-			if (!(is_letter(*w) || *w=='_' || (allow_dotnames&&*w=='.'))) throw fatal_error("label name expected");
+			if (!(is_letter(*w) || *w=='_' || (allow_dotnames&&*w=='.'))) throw FatalError("label name expected");
 			bool global = q.testChar(':')&&q.testChar(':');
 
 			if (pass==1)
@@ -1245,10 +1245,10 @@ hi:			n = value(q);
 			Value a = value(q);		// angle
 			q.expectComma();
 			Value b = value(q);		// value for full rotation (==360°)
-			if (abs(b)<4) { if (b.is_valid()) throw syntax_error("value for full circle must be ≥ 4"); b.value = 360; }
+			if (abs(b)<4) { if (b.is_valid()) throw SyntaxError("value for full circle must be ≥ 4"); b.value = 360; }
 			q.expectComma();
 			n = value(q);			// scale value for result (==1.0)
-			if (n==0) { if (n.is_valid()) throw syntax_error("scale value for result must be ≥ 1"); n.value = 128; }
+			if (n==0) { if (n.is_valid()) throw SyntaxError("scale value for result must be ≥ 1"); n.value = 128; }
 
 			n.validity = min(n.validity,min(a.validity,b.validity));
 			float32 r  = a.value * 6.2831853f / b.value;
@@ -1262,7 +1262,7 @@ hi:			n = value(q);
 			while (nkl)
 			{
 				w = q.nextWord();
-				if (w[0]==0) throw syntax_error("')' missing");	// EOL
+				if (w[0]==0) throw SyntaxError("')' missing");	// EOL
 				if (w[0]=='(') { nkl++; continue; }
 				if (w[0]==')') { nkl--; continue; }
 			}
@@ -1271,16 +1271,16 @@ hi:			n = value(q);
 		}
 		else if (eq(w,"target"))
 		{
-			if (!target && current_segment_ptr==nullptr) throw syntax_error("#target not yet defined");
+			if (!target && current_segment_ptr==nullptr) throw SyntaxError("#target not yet defined");
 			n = q.testWord(target ? target_ext : "ROM");
-			if (!n && !is_name(q.nextWord())) throw syntax_error("target name expected");
+			if (!n && !is_name(q.nextWord())) throw SyntaxError("target name expected");
 			goto kzop;
 		}
 		else if (eq(w,"segment"))
 		{
-			if (current_segment_ptr==nullptr) throw syntax_error("#code or #data segment not yet defined");
+			if (current_segment_ptr==nullptr) throw SyntaxError("#code or #data segment not yet defined");
 			n = q.testWord(current_segment_ptr->name);
-			if (!n && !is_name(q.nextWord())) throw syntax_error("segment name expected");
+			if (!n && !is_name(q.nextWord())) throw SyntaxError("segment name expected");
 			goto kzop;
 		}
 		else --q;	// put back '('
@@ -1365,10 +1365,10 @@ label:	if (casefold) w = lowerstr(w);
 					// es kann aber evtl. schon in einem lokalen Kontext gefunden werden,
 					// wenn es dort mit .globl deklariert wurde:
 					assert(l->is_global);
-					throw syntax_error("label \"%s\" not found",w);
+					throw SyntaxError("label \"%s\" not found",w);
 				}
 				if (l->was_redefined && l->is_invalid() && l->sourceline > current_sourceline_index)
-					throw syntax_error("redefinable label \"%s\" not yet defined here",w);
+					throw SyntaxError("redefinable label \"%s\" not yet defined here",w);
 
 				n = l->value;
 				assert(l->is_used);
@@ -1379,7 +1379,7 @@ label:	if (casefold) w = lowerstr(w);
 
 // if we come here we are out of clues:
 syntax_error:
-	throw syntax_error("syntax error");
+	throw SyntaxError("syntax error");
 
 // expect ')' and goto op:
 kzop:
@@ -1518,14 +1518,14 @@ op:	char c1,c2;
 		if (c1=='/')
 		{
 			Value m = value(++q,pMul);
-			if (m==0) { if (m.validity!=valid) { m = 1; } else throw syntax_error("division by zero"); }
+			if (m==0) { if (m.validity!=valid) { m = 1; } else throw SyntaxError("division by zero"); }
 			n = n / m;
 			goto op;
 		}
 		if (c1=='%')
 		{
 			Value m = value(++q,pMul);
-			if (m==0) { if (validity==invalid) { m = 1; } else throw syntax_error("division by zero"); }
+			if (m==0) { if (validity==invalid) { m = 1; } else throw SyntaxError("division by zero"); }
 			n = n % m;
 			goto op;
 		}
@@ -1570,7 +1570,7 @@ void Z80Assembler::asmLabel (SourceLine& q) throws
 	if (!is_reusable && !is_name(name))					// must be a pseudo instruction or broken code
 	{													// or a label name with '.' and no --dotnames
 		if (q.testChar(':'))
-			throw syntax_error(*name=='.' ? "illegal label name (use option --dotnames)" : "illegal label name");
+			throw SyntaxError(*name=='.' ? "illegal label name (use option --dotnames)" : "illegal label name");
 		q.p = p; return;
 	}
 
@@ -1614,9 +1614,9 @@ void Z80Assembler::asmLabel (SourceLine& q) throws
 		if (!current_segment_ptr)
 		{
 			if (lceq(name,"org"))
-				throw fatal_error("'org' in column 1: option '--reqcolon' may help");
+				throw FatalError("'org' in column 1: option '--reqcolon' may help");
 			else
-				throw syntax_error("org not yet set (use instruction 'org' or directive '#code')");
+				throw SyntaxError("org not yet set (use instruction 'org' or directive '#code')");
 		}
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
 		n = static_cast<DataSegment*>(current_segment_ptr)->lpos;
@@ -1633,7 +1633,7 @@ a:	Labels& labels = is_global ? global_labels() : local_labels();
 			if (!l->is_defined)
 				l->is_redefinable = is_redefinable;
 			else
-				throw syntax_error(is_redefinable ? "normal label redefined as redefinable label"
+				throw SyntaxError(is_redefinable ? "normal label redefined as redefinable label"
 												  : "redefinable label redefined as normal label");
 		}
 
@@ -1646,17 +1646,17 @@ a:	Labels& labels = is_global ? global_labels() : local_labels();
 			if (name[1]==0)	// strlen(name) == 1
 			{
 				cstr names = "irbcdehla";
-				if (strchr(names,name[0])) throw syntax_error("'%s' is the name of a register",name);
+				if (strchr(names,name[0])) throw SyntaxError("'%s' is the name of a register",name);
 			}
 			else if (name[2]==0)	// strlen == 2
 			{
 				cstr names = target_z180 ? "bc de hl sp af" : "ix iy xh xl yh yl bc de hl sp af";
-				if (find(names,name)) throw syntax_error("'%s' is the name of a register",name);
+				if (find(names,name)) throw SyntaxError("'%s' is the name of a register",name);
 			}
 			else if (name[3]==0 && !target_z180)	// strlen == 3
 			{
 				cstr names = "ixh iyh ixl iyl";
-				if (find(names,name)) throw syntax_error("'%s' is the name of a register",name);
+				if (find(names,name)) throw SyntaxError("'%s' is the name of a register",name);
 			}
 		}
 
@@ -1704,10 +1704,10 @@ void Z80Assembler::asmDirect (SourceLine& q) throws /*fatal_error*/
 		if (lceq(w,"tzx"))		asmTzx(q);			else
 		if (lceq(w,"compress"))	asmCompress(q);		else
 		if (lceq(w,"end"))		asmEnd(q);			else
-		if (lceq(w,"!"))		asmShebang(q);		else throw fatal_error("unknown assembler directive");
+		if (lceq(w,"!"))		asmShebang(q);		else throw FatalError("unknown assembler directive");
 	}
-	catch (fatal_error& e) { throw e; }
-	catch (any_error& e)   { throw fatal_error("%s",e.what()); }
+	catch (FatalError& e) { throw e; }
+	catch (AnyError& e)   { throw FatalError("%s",e.what()); }
 }
 
 void Z80Assembler::asmShebang (SourceLine& q) throws
@@ -1731,14 +1731,14 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 	if (pass>1) { q.skip_to_eol(); return; }
 
 	cstr name = q.nextWord();
-	if (!name) throw syntax_error("segment name expected");
+	if (!name) throw SyntaxError("segment name expected");
 	if (casefold) name = lowerstr(name);
 	Label* l1 = global_labels().find(name);
-	if (!l1) throw syntax_error("label not found");
+	if (!l1) throw SyntaxError("label not found");
 
-	if (!l1->segment || !l1->segment->isCode()) throw syntax_error("code segment required");
+	if (!l1->segment || !l1->segment->isCode()) throw SyntaxError("code segment required");
 	CodeSegment* s1 = dynamic_cast<CodeSegment*>(l1->segment); assert(s1);
-	if (ne(s1->name,name)) throw syntax_error("segment name expected");
+	if (ne(s1->name,name)) throw SyntaxError("segment name expected");
 
 	Value size = s1->size;
 	bool multiple = q.testWord("to");
@@ -1746,14 +1746,14 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 	if (multiple)	// compress range of segments
 	{
 		cstr name2 = q.nextWord();
-		if (!name2) throw syntax_error("segment name expected");
+		if (!name2) throw SyntaxError("segment name expected");
 		if (casefold) name2 = lowerstr(name2);
 		Label* l2 = global_labels().find(name2);
-		if (!l2) throw syntax_error("label not found");
+		if (!l2) throw SyntaxError("label not found");
 
-		if (!l2->segment || !l2->segment->isCode()) throw syntax_error("code segment required");
+		if (!l2->segment || !l2->segment->isCode()) throw SyntaxError("code segment required");
 		CodeSegment* s2 = dynamic_cast<CodeSegment*>(l2->segment); assert(s2);
-		if (ne(s2->name,name2)) throw syntax_error("segment name expected");
+		if (ne(s2->name,name2)) throw SyntaxError("segment name expected");
 
 		if (s1==s2) goto a; // first == end segment
 
@@ -1761,7 +1761,7 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 
 		uint a; for (a=0; ne(segments[a]->name,name); a++) {}		//must exist
 		uint e; for (e=0; ne(segments[e]->name,name2); e++) {}		//must exist
-		if (e<a) throw syntax_error("2nd segment before 1st segment");
+		if (e<a) throw SyntaxError("2nd segment before 1st segment");
 
 		if (s1->compressed || s2->compressed)	// check for duplicate directive
 		{
@@ -1772,7 +1772,7 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 					if (segments[a]->compressed != middle_cseg) break;
 				}
 			}
-			if (a<e) throw syntax_error("segments overlap with other compressed segments");
+			if (a<e) throw SyntaxError("segments overlap with other compressed segments");
 			else return;	// duplicate
 		}
 		else	// mark segments for compression
@@ -1782,14 +1782,14 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 			segments[a]->compressed = first_cseg;
 			while (++a<e)
 			{
-				if (segments[a]->compressed) throw syntax_error("segments overlap with other compressed segments");
+				if (segments[a]->compressed) throw SyntaxError("segments overlap with other compressed segments");
 				if (!segments[a]->relocatable) break;
 				assert(segments[a]->ccore.count()==0);
 				assert(segments[a]->ucore.count()==0);
 				segments[a]->compressed = middle_cseg;
 				size += segments[a]->size;
 			}
-			if (!segments[a]->relocatable) throw syntax_error("segments 2++ must have no start address");
+			if (!segments[a]->relocatable) throw SyntaxError("segments 2++ must have no start address");
 			assert(segments[a]->ccore.count()==0);
 			assert(segments[a]->ucore.count()==0);
 			segments[a]->compressed = last_cseg;
@@ -1801,7 +1801,7 @@ void Z80Assembler::asmCompress (SourceLine& q) throws
 	else	// compress single segment
 	{
 a:		if (s1->compressed == single_cseg) return;	// duplicate directive
-		if (s1->compressed) throw syntax_error("segment is already part of other compressed segments");
+		if (s1->compressed) throw SyntaxError("segment is already part of other compressed segments");
 		assert(s1->ccore.count()==0);
 		assert(s1->ucore.count()==0);
 		s1->compressed = single_cseg;
@@ -1811,7 +1811,7 @@ a:		if (s1->compressed == single_cseg) return;	// duplicate directive
 	for (uint i=1-multiple; i<4; i++)
 	{
 		cstr n1 = catstr(name,ext[i]);
-		Label* l = global_labels().find(n1); if (l&&l->is_defined) throw syntax_error("label %s redefined",n1);
+		Label* l = global_labels().find(n1); if (l&&l->is_defined) throw SyntaxError("label %s redefined",n1);
 		if (!l) global_labels().add(new Label(n1,current_segment_ptr,current_sourceline_index,0,invalid,yes,yes,no));
 		else { l->is_defined = yes; l->segment = current_segment_ptr; l->sourceline = current_sourceline_index; }
 	}
@@ -1865,7 +1865,7 @@ void Z80Assembler::compressSegments ()
 		cstr name = multiple ? catstr(s1->name,"_to_",s2->name) : s1->name;
 
 		if (usize>0x10000 && usize.is_valid())
-			throw fatal_error("%s_size exceeds $10000 bytes (size=%u)",name,int32(usize));
+			throw FatalError("%s_size exceeds $10000 bytes (size=%u)",name,int32(usize));
 
 		if (ucore.count()==s1->ucore.count() && memcmp(ucore.getData(),s1->ucore.getData(),ucore.count()) == 0)
 		{
@@ -1904,7 +1904,7 @@ void Z80Assembler::asmDefine (SourceLine& q) throws
 	// Test for: preprocessor function:
 	//	#define note(l1,l2,r1,r2,time) .dw l1+(l2*256)\.dw r1+(r2*256)\.dw time
 
-	if (q.testChar('(')) throw fatal_error("preprocessor functions are not supported: use macros.");
+	if (q.testChar('(')) throw FatalError("preprocessor functions are not supported: use macros.");
 
 	// Test for: renamed instruction:
 	//	#define DEFB .BYTE
@@ -1919,7 +1919,7 @@ void Z80Assembler::asmDefine (SourceLine& q) throws
 		if (q.testDotWord("equ")) return;
 		else goto unknown_instr;
 unknown_instr:
-		throw fatal_error("unknown instruction");
+		throw FatalError("unknown instruction");
 	}
 
 	if (q.testDotWord("org"))
@@ -1962,7 +1962,7 @@ unknown_instr:
 	//	#define	CALSLT	0001Ch
 
 	cstr w = q.nextWord();
-	if (!is_name(w)) throw syntax_error("name expected");
+	if (!is_name(w)) throw SyntaxError("name expected");
 	if( casefold) w = lowerstr(w);
 
 	Value n = value(q);
@@ -1979,17 +1979,17 @@ unknown_instr:
 			if (w[1]==0)	// strlen(name) == 1
 			{
 				cstr names = "irbcdehla";
-				if (strchr(names,w[0])) throw syntax_error("'%s' is the name of a register",w);
+				if (strchr(names,w[0])) throw SyntaxError("'%s' is the name of a register",w);
 			}
 			else if (w[2]==0)	// strlen == 2
 			{
 				cstr names = target_z180 ? "bc de hl sp af" : "ix iy xh xl yh yl bc de hl sp af";
-				if (find(names,w)) throw syntax_error("'%s' is the name of a register",w);
+				if (find(names,w)) throw SyntaxError("'%s' is the name of a register",w);
 			}
 			else if (w[3]==0 && !target_z180)	// strlen == 3			2016-10-01
 			{
 				cstr names = "ixh iyh ixl iyl";
-				if (find(names,w)) throw syntax_error("'%s' is the name of a register",w);
+				if (find(names,w)) throw SyntaxError("'%s' is the name of a register",w);
 			}
 		}
 
@@ -2018,7 +2018,7 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 		else
 		{
 			if_pending = yes;		// => global labels can be used
-			try {n = value(q);} catch (any_error& e) { n=1; setError(e); }
+			try {n = value(q);} catch (AnyError& e) { n=1; setError(e); }
 			if_pending = no;
 			if (!n.is_valid()){ n=1; setError("count must be evaluatable in pass 1"); }
 			if (n>0x8000)     { n=1; setError("number of repetitions too high"); }
@@ -2030,22 +2030,22 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 	// does not check for interleaved macro def or similar.
 	for (;;)
 	{
-		if (++e>=source.count()) throw fatal_error("end of repetition (instruction '%s') missing", endm);
+		if (++e>=source.count()) throw FatalError("end of repetition (instruction '%s') missing", endm);
 		SourceLine& s = source[e];
-		if (s[0]=='#') throw fatal_error("unexpected assembler directive inside macro");
+		if (s[0]=='#') throw FatalError("unexpected assembler directive inside macro");
 		s.rewind();
 		if (s.testDotWord(endm)) break;
 		//if (s.testDotWord("endm")) throw fatal_error("");
 		//if (s.testDotWord("edup")) throw fatal_error("");
-		if (s.testDotWord("rept")) throw fatal_error("nested repetition macro");
-		if (s.testDotWord("dup")) throw fatal_error("nested repetition macro");
+		if (s.testDotWord("rept")) throw FatalError("nested repetition macro");
+		if (s.testDotWord("dup")) throw FatalError("nested repetition macro");
 		//if (s.testDotWord("macro")) throw fatal_error("");
 	}
 
 	if (pass==1)
 	{
 		if (source.count() + n*(e-a-1) > 1000000)
-			throw fatal_error("total source exceeds 1,000,000 lines");
+			throw FatalError("total source exceeds 1,000,000 lines");
 	}
 	else // if (pass>1)	// => just skip the rept macro
 	{
@@ -2100,7 +2100,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 		return;
 	}
 
-	if (macros.contains(name)) throw fatal_error("macro redefined");
+	if (macros.contains(name)) throw FatalError("macro redefined");
 
 	// parse argument list:
 	Array<cstr> args;
@@ -2111,7 +2111,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 		{
 			if (tag) q.testChar(tag);
 			cstr w = q.nextWord();
-			if (!is_name(w)) throw syntax_error("argument name expected");
+			if (!is_name(w)) throw SyntaxError("argument name expected");
 			if (casefold) w = lowerstr(w);
 			args.append(w);
 		}
@@ -2130,11 +2130,11 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 		if (s[0]=='#')
 		{
 			if (tag=='#' && is_name(++s.p) && args.contains(s.nextWord())) continue;
-			throw fatal_error("unexpected assembler directive inside macro");
+			throw FatalError("unexpected assembler directive inside macro");
 		}
 		if (s.testDotWord("macro"))
 		{
-			throw fatal_error("macro definition inside macro");
+			throw FatalError("macro definition inside macro");
 		}
 		if (s.testDotWord("endm"))
 		{
@@ -2143,7 +2143,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 			return;
 		}
 	}
-	throw fatal_error("endm missing");
+	throw FatalError("endm missing");
 }
 
 void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
@@ -2165,7 +2165,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			cptr ae;
 			do
 			{
-				while (*q && *q!='>') { ++q; } if (*q==0) throw syntax_error("closing '>' missing");
+				while (*q && *q!='>') { ++q; } if (*q==0) throw SyntaxError("closing '>' missing");
 				ae = q.p;
 				++q;			// skip '>'
 			}
@@ -2185,7 +2185,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 				if (c!='"'&&c!='\'') { q.p++; continue; }
 				w = q.nextWord();
 				n = int32(strlen(w));
-				if (n<2||w[n-1]!=c) throw syntax_error("closing '%c' missing",c);
+				if (n<2||w[n-1]!=c) throw SyntaxError("closing '%c' missing",c);
 			}
 			while (q.p>aa && *(q.p-1)<=' ') { q.p--; }
 			//if (aa==q.p) throw syntax_error("empty argument (use <>");		denk…
@@ -2198,8 +2198,8 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 
 	// get arguments in macro definition:
 	Array<cstr>& args = m.args;
-	if (rpl.count()<args.count()) throw syntax_error("not enough arguments: required=%i",args.count());
-	if (rpl.count()>args.count()) throw syntax_error("too many arguments: required=%i",args.count());
+	if (rpl.count()<args.count()) throw SyntaxError("not enough arguments: required=%i",args.count());
+	if (rpl.count()>args.count()) throw SyntaxError("too many arguments: required=%i",args.count());
 
 	// get text of macro definition:
 	uint32 i = m.mdef;
@@ -2254,7 +2254,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			s.p = p+1;							// set the parser position behind '{'
 			Value v = value(s, pAny);			// get the value
 			s.expect('}');
-			if (!v.is_valid()) throw syntax_error("value must be valid in pass 1"); // because replacement is done in pass 1
+			if (!v.is_valid()) throw SyntaxError("value must be valid in pass 1"); // because replacement is done in pass 1
 			cstr rpl = numstr(v.value);			// textual replacement
 			j = p + strlen(rpl) - s.text;					// calculate index j after text replacement
 			s.text = catstr(substr(s.text,p), rpl, s.p);	// … because this reallocates s.text!
@@ -2280,18 +2280,18 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 	if (lceq(w,"map") || lceq(w,"add"))				// add mapping
 	{
 		w = q.nextWord();
-		if (w[0]!='"') throw syntax_error("string with source character(s) expected");
-		if (!q.testChar('=') && !q.testChar(',') && !q.testWord("to")) throw syntax_error("keyword 'to' expected");
+		if (w[0]!='"') throw SyntaxError("string with source character(s) expected");
+		if (!q.testChar('=') && !q.testChar(',') && !q.testWord("to")) throw SyntaxError("keyword 'to' expected");
 		n = value(q);
-		if (n.is_valid() && (n < -0x80 || n > 0xff)) throw syntax_error("destination char code out of range");
+		if (n.is_valid() && (n < -0x80 || n > 0xff)) throw SyntaxError("destination char code out of range");
 		if (!charset) charset = new CharMap();
 		charset->addMappings(unquotedstr(w),n);		// throws on illegal utf-8 chars
 	}
 	else if (lceq(w,"unmap") || lceq(w,"remove"))	// remove mapping
 	{
-		if (!charset) throw syntax_error("no charset in place");
+		if (!charset) throw SyntaxError("no charset in place");
 		w = q.nextWord();
-		if (w[0]!='"') throw syntax_error("string with source character(s) for removal expected");
+		if (w[0]!='"') throw SyntaxError("string with source character(s) for removal expected");
 		charset->removeMappings(unquotedstr(w));	// throws on illegal utf-8 chars
 	}
 	else if (lceq(w,"none"))						// reset mapping to no mapping at all
@@ -2302,7 +2302,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 	else											// select charset
 	{
 		CharMap::CharSet cs = CharMap::charsetFromName(w);
-		if (cs==CharMap::NONE) throw syntax_error("map, unmap, none or charset name expected");
+		if (cs==CharMap::NONE) throw SyntaxError("map, unmap, none or charset name expected");
 		delete charset;
 		charset = new CharMap(cs);
 	}
@@ -2313,7 +2313,7 @@ void Z80Assembler::asmAssert (SourceLine& q) throws
 	Value n = value(q);
 
 	//if (!v) throw fatal_error("the expression was not evaluatable in pass 1");
-	if (n.is_valid() && !n) throw fatal_error("assertion failed");
+	if (n.is_valid() && !n) throw FatalError("assertion failed");
 }
 
 void Z80Assembler::init_c_compiler (cstr cc) throws
@@ -2324,15 +2324,15 @@ void Z80Assembler::init_c_compiler (cstr cc) throws
 	if (!cc) // #CFLAGS without #CPATH => assume command line argument "-c sdcc"
 	{
 		cc = sdcc_compiler_path ? sdcc_compiler_path : find_executable("sdcc");
-		if (!cc) throw fatal_error("can't find c-compiler sdcc (use cmd line option -c or directive '#cpath')");
+		if (!cc) throw FatalError("can't find c-compiler sdcc (use cmd line option -c or directive '#cpath')");
 	}
 	else if (eq(cc,"sdcc")) cc = sdcc_compiler_path ? sdcc_compiler_path : find_executable(cc);
 	else if (eq(cc,"vcc")) cc = vcc_compiler_path ? vcc_compiler_path : find_executable(cc);
 
 	cc = fullpath(cc);
-	if (errno) throw fatal_error("%s: %s", cc, strerror(errno));
-	if (!is_file(cc)) throw fatal_error("%s: not a regular file", cc);
-	if (!is_executable(cc)) throw fatal_error("%s: not executable", cc);
+	if (errno) throw FatalError("%s: %s", cc, strerror(errno));
+	if (!is_file(cc)) throw FatalError("%s: not a regular file", cc);
+	if (!is_executable(cc)) throw FatalError("%s: not executable", cc);
 
 	c_compiler = cc;
 	init_c_flags();
@@ -2348,7 +2348,7 @@ void Z80Assembler::asmCPath (SourceLine& q) throws
 	//   => command line argument overrides #CPATH
 	// this directive should occur very early and at most once in the source.
 
-	if (cgi_mode) throw fatal_error("#CPATH not allowed in CGI mode");
+	if (cgi_mode) throw FatalError("#CPATH not allowed in CGI mode");
 	if (c_compiler) { q.skip_to_eol(); return; }		// pass 2++ or set on command line
 
 	cstr cc = get_filename(q);	// fqn
@@ -2413,20 +2413,20 @@ void Z80Assembler::asmCFlags (SourceLine& q) throws
 		{
 			if (eq(s,"$SOURCE"))
 			{
-				if (c_qi >= 0) throw fatal_error("$SOURCE redefined");
+				if (c_qi >= 0) throw FatalError("$SOURCE redefined");
 				c_qi = c_flags.count();
 			}
 
 			if (eq(s,"$DEST"))
 			{
-				if (c_zi >= 0) throw fatal_error("$DEST redefined");
+				if (c_zi >= 0) throw FatalError("$DEST redefined");
 				c_zi = c_flags.count();
 			}
 
 			if (eq(s,"$CFLAGS"))
 			{
-				if (old_c_qi >= 0 && c_qi >= 0) throw fatal_error("$SOURCE redefined");
-				if (old_c_zi >= 0 && c_zi >= 0) throw fatal_error("$DEST redefined");
+				if (old_c_qi >= 0 && c_qi >= 0) throw FatalError("$SOURCE redefined");
+				if (old_c_zi >= 0 && c_zi >= 0) throw FatalError("$DEST redefined");
 				if (old_c_qi >= 0) c_qi = old_c_qi + c_flags.count();
 				if (old_c_zi >= 0) c_zi = old_c_zi + c_flags.count();
 				c_flags.append(old_cflags);	// moves contents
@@ -2442,16 +2442,16 @@ void Z80Assembler::asmCFlags (SourceLine& q) throws
 			//	'vcc' kann nicht vorkommen, weil das cgi-script fest den sdcc vorgibt.
 			//	((dann würde hierdurch auch das Einstellen der Optimierung -o0 … -o3 verboten.))
 
-			if (s[1]=='o') throw fatal_error("option '-o' not allowed in CGI mode"); // set output file
-			if (s[1]=='I') throw fatal_error("option '-I' not allowed in CGI mode"); // set dir for include files
+			if (s[1]=='o') throw FatalError("option '-o' not allowed in CGI mode"); // set output file
+			if (s[1]=='I') throw FatalError("option '-I' not allowed in CGI mode"); // set dir for include files
 		}
 
 		if (s[0]=='-' && s[1]=='I')	// -I/full/path/to/include/dir
 		{							// -Ior/path/rel/to/source/dir	=> path in #cflags is relative to source file!
 			cstr path = s+2;
 			if (path[0]!='/') path = catstr(source_directory,path);
-			path = fullpath(path); if (errno) throw fatal_error(errno);
-			if(lastchar(path)!='/') throw fatal_error(ENOTDIR);
+			path = fullpath(path); if (errno) throw FatalError(errno);
+			if(lastchar(path)!='/') throw FatalError(ENOTDIR);
 			s = catstr("-I",path);
 		}
 
@@ -2470,7 +2470,7 @@ void Z80Assembler::asmEnd (SourceLine& q) throws
 	end = true;
 
 	cstr w = q.nextWord();		// seen in some source: "  end <label>"
-	if (*w && !global_labels().find(w)) throw syntax_error("end of line or label name expected");
+	if (*w && !global_labels().find(w)) throw SyntaxError("end of line or label name expected");
 
 //	// assign default segment to all remaining source lines
 //	// to keep writeListfile() happy:
@@ -2489,7 +2489,7 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 	// while assembling is disabled, only #if, #else, #elif and #endif are recognized
 	// and #include is also skipped if conditional assembly is off.
 
-	if (cond[NELEM(cond)-1] != no_cond) throw fatal_error("too many conditions nested");
+	if (cond[NELEM(cond)-1] != no_cond) throw FatalError("too many conditions nested");
 
 	Value f(false);
 	if (cond_off)
@@ -2501,9 +2501,9 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 		if_pending = yes;
 		f = value(q);
 		if_pending = no;
-		if (!f.is_valid()) throw fatal_error("condition not evaluatable in pass1");
+		if (!f.is_valid()) throw FatalError("condition not evaluatable in pass1");
 		if (pass==1) if_values.append(f);
-		else if (if_values[if_values_idx++] != f) throw fatal_error("condition changed in pass%i",pass);
+		else if (if_values[if_values_idx++] != f) throw FatalError("condition changed in pass%i",pass);
 	}
 
 	memmove( cond+1, cond, sizeof(cond)-sizeof(*cond) );
@@ -2519,8 +2519,8 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 	switch (cond[0])			// state of innermost condition
 	{
 	default:			IERR();
-	case no_cond:		throw syntax_error("#elif without #if");
-	case cond_else:		throw syntax_error("#elif after #else");
+	case no_cond:		throw SyntaxError("#elif without #if");
+	case cond_else:		throw SyntaxError("#elif after #else");
 
 	case cond_if_dis:			// we are in an if or elif clause and there was already a true condition
 		cond_off |= 1;			// disable #elif clause
@@ -2537,9 +2537,9 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 			if_pending = yes;
 			f = value(q);		// else evaluate value
 			if_pending = no;
-			if (!f.is_valid()) throw fatal_error("condition must be evaluatable in pass1");
+			if (!f.is_valid()) throw FatalError("condition must be evaluatable in pass1");
 			if (pass==1) if_values.append(f);
-			else if (if_values[if_values_idx++] != f) throw fatal_error("condition changed in pass%i",pass);
+			else if (if_values[if_values_idx++] != f) throw FatalError("condition changed in pass%i",pass);
 		}
 
 		cond_off -= !!f;		// if f==1 then clear bit 0 => enable #elif clause
@@ -2555,8 +2555,8 @@ void Z80Assembler::asmElse (SourceLine&) throws
 	switch (cond[0])
 	{
 	default:			IERR();
-	case no_cond:		throw syntax_error("#else without #if");
-	case cond_else:		throw syntax_error("multiple #else clause");
+	case no_cond:		throw SyntaxError("#else without #if");
+	case cond_else:		throw SyntaxError("multiple #else clause");
 
 	case cond_if_dis:			// we are in an if or elif clause and there was already a true condition
 		cond[0] = cond_else;
@@ -2574,7 +2574,7 @@ void Z80Assembler::asmEndif (SourceLine&) throws
 {
 	// #endif
 
-	if (cond[0]==no_cond) throw syntax_error("no #if pending");
+	if (cond[0]==no_cond) throw SyntaxError("no #if pending");
 
 	memmove(cond, cond+1, sizeof(cond)-sizeof(*cond));
 	cond[NELEM(cond)-1] = no_cond;
@@ -2584,7 +2584,7 @@ void Z80Assembler::asmEndif (SourceLine&) throws
 void Z80Assembler::asmTarget (SourceLine& q) throws
 {
 	if (pass > 1) { q.skip_to_eol(); return; }
-	if (target != TARGET_UNSET) throw fatal_error("#target redefined");
+	if (target != TARGET_UNSET) throw FatalError("#target redefined");
 	assert(!current_segment_ptr);
 
 	static HashMap<cstr,Target> targets;
@@ -2608,7 +2608,7 @@ void Z80Assembler::asmTarget (SourceLine& q) throws
 
 	target_ext = q.nextWord();
 	target = targets.get(lowerstr(target_ext), TARGET_UNSET);
-	if (target == TARGET_UNSET) throw syntax_error("target name expected");
+	if (target == TARGET_UNSET) throw SyntaxError("target name expected");
 }
 
 void Z80Assembler::asmInclude (SourceLine& q) throws
@@ -2633,7 +2633,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 
 	bool is_stdlib = q.testWord("standard") || q.testWord("default") || q.testWord("system");
 	bool is_library = q.testWord("library");
-	if (is_stdlib && !is_library) throw syntax_error("keyword 'library' expected");
+	if (is_stdlib && !is_library) throw SyntaxError("keyword 'library' expected");
 
 	if (is_library)
 	{
@@ -2653,7 +2653,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 				if (is_sdcc && sdcc_library_path) stdlib_dir = sdcc_library_path;
 				if (is_vcc && vcc_library_path)   stdlib_dir = vcc_library_path;
 			}
-			if (!stdlib_dir) throw syntax_error("standard library path is not set (use command line option -L)");
+			if (!stdlib_dir) throw SyntaxError("standard library path is not set (use command line option -L)");
 
 			assert(eq(stdlib_dir,fullpath(stdlib_dir)) && lastchar(stdlib_dir)=='/' && !errno);
 			fqn = stdlib_dir;
@@ -2667,7 +2667,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 		if (q.testWord("resolve") && !q.testChar('*')) for(;;)
 		{
 			cstr w = q.nextWord();
-			if (w[0]!='_' && !is_letter(w[0])) throw syntax_error("label name expected");
+			if (w[0]!='_' && !is_letter(w[0])) throw SyntaxError("label name expected");
 
 			Label* l = global_labels().find(w);
 			if (l && !l->is_defined && l->is_used) { names.append(w); }
@@ -2719,7 +2719,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 		}
 
 		// if we come here, not a single label was resolved
-		if (names.count()) throw fatal_error("source file for label %s not found",names[0]);
+		if (names.count()) throw FatalError("source file for label %s not found",names[0]);
 		// else we are done.
 	}
 	else
@@ -2752,7 +2752,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 			}
 			else
 			{
-				throw fatal_error("c compiler not set (use cmd line option -c or directive '#cpath')");
+				throw FatalError("c compiler not set (use cmd line option -c or directive '#cpath')");
 			}
 		}
 		else
@@ -2783,7 +2783,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 	// create pipe:
 	const int R=0,W=1;
 	int pipout[2];
-	if (pipe(pipout)) throw fatal_error(errno);
+	if (pipe(pipout)) throw FatalError(errno);
 
 	// compile source file:
 
@@ -2858,7 +2858,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 		for (int err; (err = waitpid(child_id,&status,0)) != child_id; )
 		{
 			assert(err==-1);
-			if (errno!=EINTR) throw fatal_error("waitpid: %s",strerror(errno));
+			if (errno!=EINTR) throw FatalError("waitpid: %s",strerror(errno));
 		}
 
 		if (WIFEXITED(status))				// child process exited normally
@@ -2866,7 +2866,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 			if (WEXITSTATUS(status)!=0)		// child process returned error code
 			{
 				log("%s",bu);
-				throw fatal_error("\"%s %s\" returned exit code %i\n- - - - - -\n%s- - - - - -\n",
+				throw FatalError("\"%s %s\" returned exit code %i\n- - - - - -\n%s- - - - - -\n",
 					filename_from_path(c_compiler), filename_from_path(fqn_q), int(WEXITSTATUS(status)), bu);
 			}
 			else if (verbose)
@@ -2875,7 +2875,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 		else if (WIFSIGNALED(status))		// child process terminated by signal
 		{
 			log("%s",bu);
-			throw fatal_error("\"%s %s\" terminated by signal %i",
+			throw FatalError("\"%s %s\" terminated by signal %i",
 					filename_from_path(c_compiler), filename_from_path(fqn_q), int(WTERMSIG(status)));
 		}
 		else IERR();
@@ -2889,7 +2889,7 @@ void Z80Assembler::asmInsert (SourceLine& q) throws
 	// #insert <"path/filename">
 	// insert file's contents into code
 
-	if (!current_segment_ptr) throw syntax_error("org not yet set (use instruction 'org' or directive '#code')");
+	if (!current_segment_ptr) throw SyntaxError("org not yet set (use instruction 'org' or directive '#code')");
 
 	q.is_data = yes;	// even if it isn't, but we don't know. else listfile() will bummer
 
@@ -2897,7 +2897,7 @@ void Z80Assembler::asmInsert (SourceLine& q) throws
 
 	FD fd(fqn,'r');
 	off_t sz = fd.file_size();			// file size
-	if (sz>0x10000) throw fatal_error("file is larger than $10000 bytes");	// max. possible size in any case
+	if (sz>0x10000) throw FatalError("file is larger than $10000 bytes");	// max. possible size in any case
 
 	char bu[sz];
 	fd.read_bytes(bu, uint32(sz));
@@ -2906,8 +2906,8 @@ void Z80Assembler::asmInsert (SourceLine& q) throws
 
 void Z80Assembler::asmTzx (SourceLine& q) throws
 {
-	if (target!=TZX) throw fatal_error("#target TZX required");
-	if (q.peekChar() == 0) throw fatal_error("block type expected");
+	if (target!=TZX) throw FatalError("#target TZX required");
+	if (q.peekChar() == 0) throw FatalError("block type expected");
 
 	/*
 	0x10: #TZX STANDARD,	name, address, length, ...
@@ -2963,7 +2963,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 	{
 		q.p = q0;
 		Value v = value(q);
-		if (!v.is_valid()) throw syntax_error("block type must be valid in pass 1");
+		if (!v.is_valid()) throw SyntaxError("block type must be valid in pass 1");
 		segment_type = SegmentType(int(v));	// will be checked in switch()
 	}
 
@@ -3002,8 +3002,8 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 
 		if (pass==1)
 		{
-			if (!exists_node(filename)) throw syntax_error("file not found");
-			if (!is_file((filename))) throw syntax_error("not a regular file");
+			if (!exists_node(filename)) throw SyntaxError("file not found");
+			if (!is_file((filename))) throw SyntaxError("not a regular file");
 
 			q.segment = new TzxCswRecording(filename);
 			segments.append(q.segment);
@@ -3019,7 +3019,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 		{
 			if (q.testWord("pause"))
 			{
-				if(seen & PAUSE) throw syntax_error("multiple definitions for pause");
+				if(seen & PAUSE) throw SyntaxError("multiple definitions for pause");
 				q.expect(('='));
 				segment->setPause(value(q));
 				seen |= PAUSE;
@@ -3032,7 +3032,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 			{
 				q.expect(('='));
 				Value v = value(q);
-				if(!v.is_valid()) throw syntax_error("number of channels must be valid in pass 1");
+				if(!v.is_valid()) throw SyntaxError("number of channels must be valid in pass 1");
 				segment->setNumChannels(uint(v));
 				seen |= CHANNELS;
 			}
@@ -3050,7 +3050,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 			{
 				q.expect(('='));
 				Value v = value(q);
-				if(!v.is_valid()) throw syntax_error("sample-rate must be valid in pass 1");
+				if(!v.is_valid()) throw SyntaxError("sample-rate must be valid in pass 1");
 				segment->setSampleRate(v);
 				seen |= SAMPLE_RATE;
 			}
@@ -3067,41 +3067,41 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 					segment->setSampleFormat(uint(c2-'0'), c1=='s', c3=='x');
 					seen |= SAMPLE_FMT;
 				}
-				else throw syntax_error("illegal format. known formats = [s1|u1|s2|u2|s2x|u2x]");
+				else throw SyntaxError("illegal format. known formats = [s1|u1|s2|u2|s2x|u2x]");
 			}
 			else if (q.testWord("header"))
 			{
-				if(seen & HEADER) throw syntax_error("multiple definitions for HEADER");
+				if(seen & HEADER) throw SyntaxError("multiple definitions for HEADER");
 				q.expect(('='));
 				segment->setHeaderSize(value(q));
 				seen |= HEADER;
 			}
 			else if (q.testWord("start"))
 			{
-				if(seen & START) throw syntax_error("multiple definitions for START");
+				if(seen & START) throw SyntaxError("multiple definitions for START");
 				q.expect(('='));
 				segment->setFirstFrame(value(q));
 				seen |= START;
 			}
 			else if (q.testWord("end"))
 			{
-				if(seen & END) throw syntax_error("multiple definitions for END or COUNT");
+				if(seen & END) throw SyntaxError("multiple definitions for END or COUNT");
 				q.expect(('='));
 				segment->setLastFrame(value(q));
 				seen |= END;
 			}
 			else if (q.testWord("count"))
 			{
-				if(seen & END) throw syntax_error("multiple definitions for END or COUNT");
+				if(seen & END) throw SyntaxError("multiple definitions for END or COUNT");
 				q.expect(('='));
 				segment->setLastFrame(segment->first_frame + value(q));
 				seen |= END;
 			}
-			else throw syntax_error("unknown setting name");
+			else throw SyntaxError("unknown setting name");
 		}
 
 		if (segment->raw && (~seen & ALL_THREE))
-			throw syntax_error("raw audio: setting sample-rate, sample-format and channels required");
+			throw SyntaxError("raw audio: setting sample-rate, sample-format and channels required");
 
 		if (~seen & PAUSE) segment->pause = 0;					// default = no gap of silence
 		if (~seen & START) segment->first_frame = 0;			// default = first sample
@@ -3190,11 +3190,11 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 			cstr name = q.nextWord();
 			if (name[0]=='"' || name[0]=='\'') name = unquotedstr(name);	// quotes optional
 			name = croppedstr(name);
-			if (*name==0) throw syntax_error("name must not be empty");
-			if (strlen(name)>32) throw syntax_error("name too long. (max. ~30 char)");
+			if (*name==0) throw SyntaxError("name must not be empty");
+			if (strlen(name)>32) throw SyntaxError("name too long. (max. ~30 char)");
 			for (cptr p=name; *p; p++)
 			{
-				if (!isascii(*p)) throw syntax_error("name must only contain ASCII characters");
+				if (!isascii(*p)) throw SyntaxError("name must only contain ASCII characters");
 			}
 			q.segment = new TzxGroupStartSegment(name);
 			segments.append(q.segment);
@@ -3285,13 +3285,13 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 		{
 			q.testComma(); if (q.testWord("text")) q.expect('=');
 			cstr text = q.nextWord();
-			if (text[0]!='"' && text[0]!='\'') throw syntax_error("quoted text expected");
+			if (text[0]!='"' && text[0]!='\'') throw SyntaxError("quoted text expected");
 			text = croppedstr(unquotedstr(text));
-			if (*text==0) throw syntax_error("text must not be empty");
-			if (strlen(text)>255) throw syntax_error("text too long. (max. 255, pls. ~30 char)");
+			if (*text==0) throw SyntaxError("text must not be empty");
+			if (strlen(text)>255) throw SyntaxError("text too long. (max. 255, pls. ~30 char)");
 			for (cptr p=text; *p; p++)
 			{
-				if (!isascii(*p)) throw syntax_error("text must only contain ASCII characters");
+				if (!isascii(*p)) throw SyntaxError("text must only contain ASCII characters");
 			}
 			q.segment = new TzxInfoSegment(text);
 			segments.append(q.segment);
@@ -3317,14 +3317,14 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 			Array<cstr> text;
 			do
 			{
-				if (text.count()==8) throw syntax_error("too many lines. (max. 8 lines)");
+				if (text.count()==8) throw SyntaxError("too many lines. (max. 8 lines)");
 				cstr  s = q.nextWord();
-				if (s[0]!='"' && s[0]!='\'') throw syntax_error("quoted text expected");
+				if (s[0]!='"' && s[0]!='\'') throw SyntaxError("quoted text expected");
 				s = unquotedstr(s);
-				if (strlen(s)>31) throw syntax_error("text too long. (max. ~30 char)");
+				if (strlen(s)>31) throw SyntaxError("text too long. (max. ~30 char)");
 				for (cptr p=s; *p; p++)
 				{
-					if (!isascii(*p)) throw syntax_error("text must only contain ASCII characters");
+					if (!isascii(*p)) throw SyntaxError("text must only contain ASCII characters");
 				}
 				text.append(s);
 			}
@@ -3344,7 +3344,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 	default: break;
 	}//switch
 
-	throw syntax_error("invalid or unsupported block type");
+	throw SyntaxError("invalid or unsupported block type");
 }
 
 void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
@@ -3374,10 +3374,10 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 	// on subsequent re-opening of segment no arguments are allowed
 
 	// wenn #code oder #data benutzt werden, muss #target gesetzt worden sein:
-	if (target==TARGET_UNSET) throw fatal_error("#target declaration missing");
+	if (target==TARGET_UNSET) throw FatalError("#target declaration missing");
 
 	cstr name = q.nextWord();
-	if (!is_name(name)) throw fatal_error("segment name expected");
+	if (!is_name(name)) throw FatalError("segment name expected");
 	if (casefold) name = lowerstr(name);
 
 	DataSegment* segment = segments.find(name);
@@ -3388,12 +3388,12 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		if (pass==1)	// re-enter segment
 		{
 			if (q.testComma())
-				throw fatal_error("segment %s redefined", name);
+				throw FatalError("segment %s redefined", name);
 
 			if (segment->type != segment_type)
 			{
 				if (segment_type == CODE && isCode(segment->type)) {}	// OK: #tzx code block re-opened with #code
-				else throw fatal_error("#code/#data mismatch");
+				else throw FatalError("#code/#data mismatch");
 			}
 		}
 	}
@@ -3512,7 +3512,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		{
 			if (q.testWord("flag"))
 			{
-				if (seen & FLAG) throw syntax_error("multiple definitions for flag");
+				if (seen & FLAG) throw SyntaxError("multiple definitions for flag");
 				q.expect(('='));
 
 				if (q.testWord("none")) cseg->setNoFlag();
@@ -3521,17 +3521,17 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 			}
 			else if (q.testWord("checksum"))
 			{
-				if (seen & CHECKSUM) throw syntax_error("multiple definitions for checksum");
+				if (seen & CHECKSUM) throw SyntaxError("multiple definitions for checksum");
 				q.expect(('='));
 
 				if (q.testWord("none")) cseg->NoChecksum();
 				else if (q.testWord("ace")) { cseg->checksum_ace = true; cseg->has_flag = true; }
-				else throw syntax_error("keyword 'none' or 'ace' expected");
+				else throw SyntaxError("keyword 'none' or 'ace' expected");
 				seen |= CHECKSUM;
 			}
 			else if (q.testWord("pause"))
 			{
-				if (seen & PAUSE) throw syntax_error("multiple definitions for pause");
+				if (seen & PAUSE) throw SyntaxError("multiple definitions for pause");
 				q.expect(('='));
 
 				cseg->setPause(q.testWord("none") ? Value(0) : value(q));
@@ -3539,13 +3539,13 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 			}
 			else if (q.testWord("pilot"))
 			{
-				if (seen & PILOT) throw syntax_error("multiple definitions for pilot count");
+				if (seen & PILOT) throw SyntaxError("multiple definitions for pilot count");
 				q.expect(('='));
 
 				if (q.testWord("none"))
 				{
 					if (segment_type!=CODE && segment_type!=TZX_PURE_DATA && segment_type!=TZX_GENERALIZED)
-						throw syntax_error("TZX pure data or generalized block required");
+						throw SyntaxError("TZX pure data or generalized block required");
 
 					cseg->no_pilot = true;
 					seen |= PILOT;
@@ -3553,7 +3553,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 				else
 				{
 					if (segment_type!=CODE && segment_type!=TZX_TURBO && segment_type!=TZX_GENERALIZED)
-						throw syntax_error("TZX turbo or generalized block required");
+						throw SyntaxError("TZX turbo or generalized block required");
 
 					cseg->setNumPilotPulses(value(q));
 					seen |= PILOT;
@@ -3561,9 +3561,9 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 			}
 			else if (q.testWord("lastbits"))
 			{
-				if (seen & LASTBITS) throw syntax_error("multiple definitions for lastbits");
+				if (seen & LASTBITS) throw SyntaxError("multiple definitions for lastbits");
 				if (segment_type == TZX_STANDARD)
-					throw syntax_error("TZX pure data, turbo or generalized block required");
+					throw SyntaxError("TZX pure data, turbo or generalized block required");
 				q.expect(('='));
 
 				cseg->setLastBits(value(q));
@@ -3572,12 +3572,12 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		}
 		while (q.testComma());
 
-		if (~seen & FLAG) throw syntax_error("definition for 'flag' missing");
+		if (~seen & FLAG) throw SyntaxError("definition for 'flag' missing");
 	}
 
 	else
 	{
-		throw syntax_error("too many arguments");
+		throw SyntaxError("too many arguments");
 	}
 }
 
@@ -3608,7 +3608,7 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 	if (pass==1)
 	{
 		// ORG after #TARGET and no #CODE:
-		if (target!=TARGET_UNSET) throw fatal_error("#code segment definition expected after #target");
+		if (target!=TARGET_UNSET) throw FatalError("#code segment definition expected after #target");
 
 		s = new CodeSegment(name,CODE,0xff,no,yes);
 		segments.append(s);
@@ -3673,7 +3673,7 @@ void Z80Assembler::asmEndLocal (SourceLine&) throws
 	// #endlocal
 	// beendet lokalen Codeblock
 
-	if (local_labels_index==0) throw syntax_error("#endlocal without #local");
+	if (local_labels_index==0) throw SyntaxError("#endlocal without #local");
 
 	if (pass==1)	// Pass 1: verschiebe undefinierte lokale Label in den umgebenden Kontext
 	{
@@ -3746,18 +3746,18 @@ void Z80Assembler::asmTzxHardwareInfo (SourceLine& q, cstr w) throws
 		if (pass>1) { q.skip_to_eol(); return; }
 
 		Value type = value(q);
-		if (!type.is_valid()) throw syntax_error("hardware type must evaluate in pass 1");
-		if (uint(type) > 0x20) throw syntax_error("hardware type out of range [0..16]");
+		if (!type.is_valid()) throw SyntaxError("hardware type must evaluate in pass 1");
+		if (uint(type) > 0x20) throw SyntaxError("hardware type out of range [0..16]");
 
 		q.expectComma();
 		Value id = value(q);
-		if (!id.is_valid()) throw syntax_error("hardware ID must evaluate in pass 1");
-		if (uint(id) > 0x40) throw syntax_error("hardware type out of range [0..45]");
+		if (!id.is_valid()) throw SyntaxError("hardware ID must evaluate in pass 1");
+		if (uint(id) > 0x40) throw SyntaxError("hardware type out of range [0..45]");
 
 		q.expectComma();
 		Value support = value(q);
-		if (!support.is_valid()) throw syntax_error("hardware support flag must evaluate in pass 1");
-		if (uint(support) > 3) throw syntax_error("hardware support flag out of range [0..3]");
+		if (!support.is_valid()) throw SyntaxError("hardware support flag must evaluate in pass 1");
+		if (uint(support) > 3) throw SyntaxError("hardware support flag out of range [0..3]");
 
 		dynamic_cast<TzxHardwareInfo*>(current_segment_ptr)->addInfo(uint8(type),uint8(id),uint8(support));
 	}
@@ -3779,12 +3779,12 @@ void Z80Assembler::asmTzxArchiveInfo (SourceLine& q, cstr w) throws
 		if (pass>1) { q.skip_to_eol(); return; }
 
 		Value id = value(q);
-		if (!id.is_valid()) throw syntax_error("archive info: ID must evaluate in pass 1");
-		if (uint(id) > 0x10 && id!=0xff) throw syntax_error("archive info: ID out of range [0..0F]");
+		if (!id.is_valid()) throw SyntaxError("archive info: ID must evaluate in pass 1");
+		if (uint(id) > 0x10 && id!=0xff) throw SyntaxError("archive info: ID out of range [0..0F]");
 
 		q.expectComma();
 		w = q.nextWord();
-		if (w[0]!='"' && w[0]!='\'') throw syntax_error("archive info: text must be quoted");
+		if (w[0]!='"' && w[0]!='\'') throw SyntaxError("archive info: text must be quoted");
 		w = unquotedstr(w);
 
 		dynamic_cast<TzxArchiveInfo*>(current_segment_ptr)->addArchiveInfo(uint8(id),w);
@@ -3829,7 +3829,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (doteq(w,"macro"))		// define macro:	".macro NAME ARG"		"binutils style macros"
 	{							//					"	instr \ARG"			seen in: OpenSE
 		w = q.nextWord();
-		if(!is_name(w)) throw syntax_error("name expected");
+		if(!is_name(w)) throw SyntaxError("name expected");
 		asmMacro(q,w,'\\');
 		return;
 	}
@@ -3838,10 +3838,10 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// select segment for following code
 
 		w = q.nextWord();	// name
-		if (!is_letter(*w) && *w!='_'  && !(allow_dotnames&&*w=='.')) throw fatal_error("segment name expected");
+		if (!is_letter(*w) && *w!='_'  && !(allow_dotnames&&*w=='.')) throw FatalError("segment name expected");
 		if (casefold) w=lowerstr(w);
 		Segment* segment = segments.find(w);
-		if (!segment) throw fatal_error(current_segment_ptr?"segment not found":"no #code or #data segment defined");
+		if (!segment) throw FatalError(current_segment_ptr?"segment not found":"no #code or #data segment defined");
 
 		current_segment_ptr = segment;
 		q.segment = current_segment_ptr;
@@ -3850,28 +3850,28 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 		if (q.testChar('('))
 		{
-			if (!q.testWord("ABS")) throw syntax_error("'ABS' expected");
+			if (!q.testWord("ABS")) throw SyntaxError("'ABS' expected");
 			q.expect(')');
 		}
 		return;
 	}
 	if (lceq(w,".optsdcc"))		// .optsdcc -mz80
 	{
-		if (!q.testChar('-') )		 throw syntax_error("-mz80 expected");
-		if (ne(q.nextWord(),"mz80")) throw syntax_error("-mz80 expected");
+		if (!q.testChar('-') )		 throw SyntaxError("-mz80 expected");
+		if (ne(q.nextWord(),"mz80")) throw SyntaxError("-mz80 expected");
 		return;
 	}
 	if (lceq(w,".phase"))		// M80: set logical code position
 	{
 		DataSegment* s = dynamic_cast<DataSegment*>(current_segment_ptr);
 		if (s) { s->setOrigin(value(q)); return; }
-		else throw syntax_error("#data or #code segment required");
+		else throw SyntaxError("#data or #code segment required");
 	}
 	if (lceq(w,".dephase"))		// M80: restore logical code position to real address
 	{
 		DataSegment* s = dynamic_cast<DataSegment*>(current_segment_ptr);
 		if (s) { s->setOrigin(s->physicalAddress()); return; }
-		else throw syntax_error("#data or #code segment required");
+		else throw SyntaxError("#data or #code segment required");
 	}
 	if (doteq(w,"include"))	return asmInclude(q);
 	if (doteq(w,"incbin"))	return asmInsert(q);
@@ -3889,7 +3889,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 			SourceLine& z = source[n]; z.rewind();
 			if (z.testWord(".endme")) { z.skip_to_eol(); current_sourceline_index=n; goto warn; }
 		}
-		throw syntax_error("'.endme' missing");
+		throw SyntaxError("'.endme' missing");
 	}
 	if (lceq(w,".rombankmap"))	// skip up to ".endro" and print warning
 	{
@@ -3900,10 +3900,10 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 			SourceLine& z = source[n]; z.rewind();
 			if (z.testWord(".endro")) { z.skip_to_eol(); current_sourceline_index=n; goto warn; }
 		}
-		throw syntax_error("'.endro' missing");
+		throw SyntaxError("'.endro' missing");
 	}
-	if (lceq(w,".endme"))	throw syntax_error("'.endme' without '.memorymap'");
-	if (lceq(w,".endro"))	throw syntax_error("'.endro' without '.rombankmap'");
+	if (lceq(w,".endme"))	throw SyntaxError("'.endme' without '.memorymap'");
+	if (lceq(w,".endro"))	throw SyntaxError("'.endro' without '.rombankmap'");
 	if (doteq(w,"title"))	goto ignore;
 	if (lceq(w,".xlist"))	goto ignore;
 	if (lceq(w,".nolist"))	goto ignore;
@@ -3921,16 +3921,16 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq (w,"aseg"))	goto warn;
 	if (doteq(w,"list"))	goto ignore;
 	if (doteq(w,"end"))		return asmEnd(q);
-	if (doteq(w,"endm"))	throw syntax_error("no REPT or macro definition pending");
-	if (doteq(w,"edup"))	throw syntax_error("no DUP pending");
+	if (doteq(w,"endm"))	throw SyntaxError("no REPT or macro definition pending");
+	if (doteq(w,"edup"))	throw SyntaxError("no DUP pending");
 	if (lceq(w,".z80"))
 	{
 		// MACRO80: selects target cpu and Z80 syntax
 		// zasm: can't easily disable 8080 syntax, but this must have been actively enabled, so let it go.
 
 		if (cpu == CpuZ80) return;
-		if (cpu != CpuDefault)   throw fatal_error("can't redefine target cpu: already set");
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (cpu != CpuDefault)   throw FatalError("can't redefine target cpu: already set");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		cpu = CpuZ80;
 		global_labels().add(new Label("_z80_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
@@ -3940,8 +3940,8 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".z180"))
 	{
 		if (cpu == CpuZ180) return;
-		if (cpu != CpuDefault)   throw fatal_error("can't redefine target cpu: already set");
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (cpu != CpuDefault)   throw FatalError("can't redefine target cpu: already set");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		cpu = CpuZ180;
 		global_labels().add(new Label("_z180_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
@@ -3953,14 +3953,14 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// MACRO80: selects target cpu and 8080 syntax
 
 		if (cpu == Cpu8080 && syntax_8080) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		if (cpu == CpuDefault)
 		{
 			cpu = Cpu8080;
 			global_labels().add(new Label("_8080_",nullptr,current_sourceline_index,1,valid,yes,yes,no));
 		}
-		else if (cpu != Cpu8080) throw fatal_error("can't redefine target cpu: already set");
+		else if (cpu != Cpu8080) throw FatalError("can't redefine target cpu: already set");
 
 		syntax_8080 = yes;
 		checkCpuOptions();
@@ -3972,7 +3972,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 		// this will also change the default cpu.
 
 		if (syntax_8080) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		syntax_8080 = yes;
 		checkCpuOptions();
@@ -3981,7 +3981,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".ixcbr2"))
 	{
 		if (ixcbr2_enabled) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		ixcbr2_enabled = yes;
 		global_labels().add(new Label("_ixcbr2_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
@@ -3991,7 +3991,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".ixcbxh"))
 	{
 		if (ixcbxh_enabled) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		ixcbxh_enabled = yes;
 		global_labels().add(new Label("_ixcbxh_",  nullptr,current_sourceline_index,1,valid,yes,yes,no));
@@ -4001,7 +4001,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".dotnames"))
 	{
 		if (allow_dotnames) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		// if .dotnames is set too late then there may be already errors
 
@@ -4011,7 +4011,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".reqcolon"))	// wenn das zu spät steht, kann es schon Fehler gegeben haben
 	{
 		if (require_colon) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		// if .reqcolon is set too late then there may be already errors
 
@@ -4021,7 +4021,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".casefold"))	// wenn das nach Label-Definitionen steht, kann es zu spät sein
 	{
 		if (casefold) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		// if .casefold is set after some first label definitions then these may be not found later
 
@@ -4031,7 +4031,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".flatops"))
 	{
 		if (flat_operators) return;
-		if (current_segment_ptr) throw fatal_error("this statement must occur before ORG, #CODE or #DATA");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
 
 		// if .flatops is set after some first equations have been evaluated, then these may differ in pass 2++
 
@@ -4046,17 +4046,17 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 // throw error "instruction expected":
 
-	if (!is_letter(*w) && *w!='_' && *w!='.') throw syntax_error("instruction expected");	// no identifier
+	if (!is_letter(*w) && *w!='_' && *w!='.') throw SyntaxError("instruction expected");	// no identifier
 
 	if (q.testDotWord("equ") || q.test_char(':') || q.test_char('=') || q.testWord("defl"))
 	{
-		if (q[0]<=' ' && !require_colon) throw syntax_error("indented label definition (use option --reqcolon)");
-		if (*w=='.' && !allow_dotnames) throw syntax_error("label starts with a dot (use option --dotnames)");
-		throw syntax_error("label not recognized (why?)");
+		if (q[0]<=' ' && !require_colon) throw SyntaxError("indented label definition (use option --reqcolon)");
+		if (*w=='.' && !allow_dotnames) throw SyntaxError("label starts with a dot (use option --dotnames)");
+		throw SyntaxError("label not recognized (why?)");
 	}
 
-	if (!current_segment_ptr) throw syntax_error("org not yet set (use instruction 'org' or directive '#code')");
-	throw syntax_error("unknown instruction");
+	if (!current_segment_ptr) throw SyntaxError("org not yet set (use instruction 'org' or directive '#code')");
+	throw SyntaxError("unknown instruction");
 
 // print warning & ignore:
 ignore:	if (pass>1 || verbose<2) return q.skip_to_eol();
@@ -4109,9 +4109,9 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 
 			if (w[0]=='"' || w[0]=='\'')	// Text string:
 			{
-				if (n<3 || w[n-1]!=w[0]) throw syntax_error("closing quotes expected");
+				if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 				w = unquotedstr(w);
-				if (*w==0) throw syntax_error("closing quotes expected");	// broken '\' etc.
+				if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 				cptr depp = w;
 				charcode_from_utf8(depp);	// skip over 1 char; throws on ill. utf8
@@ -4125,7 +4125,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 			else if (n>3 && w[0]=='$')		// Stuffed Hex?
 			{								// stored in order of occurance: in $ABCD byte $AB is stored first!
 				w += 1; n -= 1;
-	sh:			if (n&1) throw syntax_error("even number of hex characters expected");
+	sh:			if (n&1) throw SyntaxError("even number of hex characters expected");
 				storeHexbytes(w,n/2);
 			}
 			else if (n>4 && is_dec_digit(w[0]) && tolower(w[n-1])=='h')
@@ -4149,12 +4149,12 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 
 		q.is_data = yes;
 		w = q.nextWord();
-		if (w[0]!='"' && w[0]!='\'') throw syntax_error("quoted string expected");
+		if (w[0]!='"' && w[0]!='\'') throw SyntaxError("quoted string expected");
 
 		uint n = strlen(w);
-		if (n<3 || w[n-1]!=w[0]) throw syntax_error("closing quotes expected");
+		if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 		w = unquotedstr(w);
-		if (*w==0) throw syntax_error("closing quotes expected");	// broken '\' etc.
+		if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 		while(*w) store(charcode_from_utf8(w));
 		store(0);
@@ -4209,7 +4209,7 @@ void Z80Assembler::asmPseudoInstr (SourceLine& q, cstr w) throws
 
 	case 'data':
 		if (current_segment_ptr->isData()) goto ds;
-		else throw syntax_error("only allowed in data segments (use defs)");
+		else throw SyntaxError("only allowed in data segments (use defs)");
 
 	case '  ds':
 	case ' .ds':
@@ -4259,15 +4259,15 @@ dl:		q.is_data = yes;
 			uint n;
 db:dm:		q.is_data = yes;
 			w = q.nextWord();
-			if (w[0]==0) throw syntax_error("value expected");
+			if (w[0]==0) throw SyntaxError("value expected");
 
 			// Text string:
 			if (w[0]=='"' || w[0]=='\'')
 			{
 				n = strlen(w);
-				if (n<3 || w[n-1]!=w[0]) throw syntax_error("closing quotes expected");
+				if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 				w = unquotedstr(w);
-				if (*w==0) throw syntax_error("closing quotes expected");	// broken '\' etc.
+				if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 				depp = w;
 				charcode_from_utf8(depp);	// skip over 1 char; throws on ill. utf8
@@ -4300,7 +4300,7 @@ cb:					if (charset) while(*w) store(charset->get(charcode_from_utf8(w)));
 			if (n>3 && w[0]=='$')
 			{
 sx:				w = midstr(w,1); n-=1;
-sh:				if (n&1) throw syntax_error("even number of hex characters expected");
+sh:				if (n&1) throw SyntaxError("even number of hex characters expected");
 				storeHexbytes(w,n/2);
 				if (q.testComma()) goto dm; else return;
 			}
@@ -4327,10 +4327,10 @@ sh:				if (n&1) throw syntax_error("even number of hex characters expected");
 		if (q.testComma()) goto dm; else return;
 
 	case '.tzx':
-		if (target!=TZX) throw syntax_error("#target TZX required");
-		if (!current_segment_ptr->isCode()) throw syntax_error("code segment required");
+		if (target!=TZX) throw SyntaxError("#target TZX required");
+		if (!current_segment_ptr->isCode()) throw SyntaxError("code segment required");
 		assert(dynamic_cast<CodeSegment*>(current_segment_ptr) != nullptr);
-		if (currentPosition() != 0) throw syntax_error(".tzx pseudo instructions must appear before any code");
+		if (currentPosition() != 0) throw SyntaxError(".tzx pseudo instructions must appear before any code");
 
 		q.expect('-');
 
@@ -4371,7 +4371,7 @@ sh:				if (n&1) throw syntax_error("even number of hex characters expected");
 			// else throw
 		}
 
-		throw syntax_error("unknown .tzx instruction");
+		throw SyntaxError("unknown .tzx instruction");
 
 	default:
 		return asmNoSegmentInstr(q,w);
@@ -4385,8 +4385,8 @@ longer:
 	{								// note: current address is evaluated as uint
 		q.is_data = yes;
 		Value n = value(q);
-		if (n.is_valid() && n<1)	  throw syntax_error("alignment value must be ≥ 1");
-		if (n.is_valid() && n>0x4000) throw syntax_error("alignment value must be ≤ $4000");
+		if (n.is_valid() && n<1)	  throw SyntaxError("alignment value must be ≥ 1");
+		if (n.is_valid() && n>0x4000) throw SyntaxError("alignment value must be ≤ $4000");
 
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
 		Value a = static_cast<DataSegment*>(current_segment_ptr)->lpos;
@@ -4405,16 +4405,16 @@ longer:
 	if (lceq(w,".asciz"))			// store 0-terminated string:
 	{
 		if (charset && charset->get(' ',' ')==0) // ZX80/81: the only conversion i know where 0x00 is a printable char
-			throw syntax_error("this won't work because in the target charset 0x00 is a printable char");
+			throw SyntaxError("this won't work because in the target charset 0x00 is a printable char");
 
 		q.is_data = yes;
 		w = q.nextWord();
-		if (w[0]!='"' && w[0]!='\'') throw syntax_error("quoted string expected");
+		if (w[0]!='"' && w[0]!='\'') throw SyntaxError("quoted string expected");
 
 		uint n = strlen(w);
-		if (n<3 || w[n-1]!=w[0]) throw syntax_error("closing quotes expected");
+		if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 		w = unquotedstr(w);
-		if (*w==0) throw syntax_error("closing quotes expected");	// broken '\' etc.
+		if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 		if (charset) while(*w) store(charset->get(charcode_from_utf8(w)));
 		else		 while(*w) store(charcode_from_utf8(w));
@@ -4425,13 +4425,13 @@ longer:
 	if (lceq(w,".globl"))			// declare global label for linker: mark label for #include library "libdir"
 	{								// das Label wird in mehrere Labels[] eingehängt!
 		w = q.nextWord();
-		if (!is_letter(*w) && *w!='_') throw syntax_error("label name expected");
+		if (!is_letter(*w) && *w!='_') throw SyntaxError("label name expected");
 
 		if (local_labels_index)		// local context?
 		{
 			Label* g = global_labels().find(w);
 			Label* l = local_labels().find(w);
-			if (l && !l->is_global) throw syntax_error("label already defined local");
+			if (l && !l->is_global) throw SyntaxError("label already defined local");
 			assert(!g||!l||g==l);
 
 			Label* label = l ? l : g ? g : new Label(w,nullptr,current_sourceline_index,0,invalid,yes,no,no);

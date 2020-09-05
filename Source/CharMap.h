@@ -40,12 +40,12 @@ public:
 	void	purge		();
 	bool	contains	(UCS2Char) const;
 	void	add			(UCS2Char, uchar);
-	void	addMappings	(cUTF8Str map, uint first_char_in_map) throws /*data_error*/;
+	void	addMappings	(cUTF8Str map, uint first_char_in_map) throws /*DataError*/;
 	void	remove		(UCS2Char);
-	void	removeMappings (cUTF8Str) throws /*data_error*/;
+	void	removeMappings (cUTF8Str) throws /*DataError*/;
 	uchar	get			(UCS2Char, uchar dflt) const;
 	uchar	get			(UCS2Char) const throws ;
 	uchar	operator[]	(UCS2Char) const noexcept;
-	pstr	translate	(cUTF8Str) throws /*data_error*/;
+	pstr	translate	(cUTF8Str) throws /*DataError*/;
 };
 

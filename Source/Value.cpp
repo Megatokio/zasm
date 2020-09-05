@@ -36,7 +36,7 @@ void Value::div (int32 n, Validity v) throws
 	}
 	else
 	{
-		if (v==valid) throw any_error(EDOM,"division by zero");
+		if (v==valid) throw AnyError(EDOM,"division by zero");
 		value = n<0 ? 0x80000000 : 0x7FFFFFFF;
 	}
 	chkv(v);
@@ -50,7 +50,7 @@ void Value::rem (int32 n, Validity v) throws
 	}
 	else
 	{
-		if (v==valid) throw any_error(EDOM,"division by zero");
+		if (v==valid) throw AnyError(EDOM,"division by zero");
 		value = 0;
 	}
 	chkv(v);

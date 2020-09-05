@@ -28,22 +28,22 @@
 #include "kio/kio.h"
 #include "SyntaxError.h"
 
-syntax_error::syntax_error (cstr s, ...) noexcept
+SyntaxError::SyntaxError (cstr s, ...) noexcept
 :
-	any_error(customerror)
+	AnyError(customerror)
 {
-    va_list va;
-    va_start(va,s);
-    text = newcopy(usingstr(s,va));
-    va_end(va);
+	va_list va;
+	va_start(va,s);
+	msg = newcopy(usingstr(s,va));
+	va_end(va);
 }
 
-fatal_error::fatal_error (cstr s, ...) noexcept
+FatalError::FatalError (cstr s, ...) noexcept
 :
-	any_error(customerror)
+	AnyError(customerror)
 {
-    va_list va;
-    va_start(va,s);
-    text = newcopy(usingstr(s,va));
-    va_end(va);
+	va_list va;
+	va_start(va,s);
+	msg = newcopy(usingstr(s,va));
+	va_end(va);
 }

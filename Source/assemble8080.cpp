@@ -28,7 +28,7 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 	// target_z80 => n(X) and n(Y) returns PFX_XY<<8 + offset (offset checked)
 
 	cstr w = q.nextWord();
-	char c = *w; if (c==0) throw syntax_error("unexpected end of line");
+	char c = *w; if (c==0) throw SyntaxError("unexpected end of line");
 
 	if (*++w==0)	// strlen=1
 	{
@@ -45,16 +45,16 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 		}
 		if (target_z80_or_z180)	// n(X) or n(Y)
 		{
-			Value n = value(q); if(n.is_valid() && n != int8(n)) throw syntax_error("offset out of range");
+			Value n = value(q); if(n.is_valid() && n != int8(n)) throw SyntaxError("offset out of range");
 			q.expect('(');
 			w = q.nextWord();
 			if ((*w|0x20)=='x') n = (PFX_IX<<8) + (n&0xff); else
-			if ((*w|0x20)=='y') n = (PFX_IY<<8) + (n&0xff); else throw syntax_error("register X or Y exepcted");
+			if ((*w|0x20)=='y') n = (PFX_IY<<8) + (n&0xff); else throw SyntaxError("register X or Y exepcted");
 			q.expectClose();
 			return n;
 		}
 	}
-	throw syntax_error("register A to L or memory M expected");
+	throw SyntaxError("register A to L or memory M expected");
 }
 
 enum { BD, BDHSP,BDHAF };
@@ -67,7 +67,7 @@ int Z80Assembler::get8080WordRegister (SourceLine& q, uint what) throws
 
 	cstr w = q.nextWord();
 
-	char c1 = *w++ | 0x20;	if (c1==0) throw syntax_error("unexpected end of line");
+	char c1 = *w++ | 0x20;	if (c1==0) throw SyntaxError("unexpected end of line");
 	char c2 = *w++ | 0x20;
 
 	if (c2==0x20)	// strlen=1
@@ -87,7 +87,7 @@ int Z80Assembler::get8080WordRegister (SourceLine& q, uint what) throws
 	else if (what==BDHSP && c1=='s' && c2=='p' && *w==0) return 48;
 	else if (what==BDHAF && c1=='p' && c2=='s' && (*w++|0x20)=='w' && *w==0) return 48;
 
-	throw syntax_error("word register %s expected", what==0 ? "B or D" : what==1 ? "B, D, H or SP" : "B, D, H or PSW");
+	throw SyntaxError("word register %s expected", what==0 ? "B or D" : what==1 ? "B, D, H or SP" : "B, D, H or PSW");
 }
 
 void Z80Assembler::asm8080Instr (SourceLine& q, cstr w) throws
@@ -243,8 +243,8 @@ dcr:	r = get8080Register(q);
 		goto ill_source;
 
 
-ill_source:	throw syntax_error("illegal source");
-ill_8080:	throw syntax_error("no 8080 opcode (use option --asm8080 and --z80)");
+ill_source:	throw SyntaxError("illegal source");
+ill_8080:	throw SyntaxError("no 8080 opcode (use option --asm8080 and --z80)");
 
 
 	case 'ldax':	instr = LD_A_xBC;	goto stax;		// 8080: ldax r => ld a,(rr)	b=bc d=de
@@ -285,7 +285,7 @@ pop:	r = get8080WordRegister(q, BDHAF);
 	case ' rst':										// rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
 		if (n%8==0) n.value>>=3;
-		if (n.is_valid() && n>>3) throw syntax_error( "illegal vector number" );
+		if (n.is_valid() && n>>3) throw SyntaxError( "illegal vector number" );
 		else return store(RST00+n*8);
 
 // ---- Z80 opcodes ----
@@ -384,7 +384,7 @@ lspd:	n = value(q);
 
 outc:	r = get8080Register(q);
 		if (r<8 && r!=6) return storeEDopcode(instr+r*8);
-		throw syntax_error("register A to L expected");
+		throw SyntaxError("register A to L expected");
 
 	case 'sixd':	instr = LD_xNN_HL; goto lixd;
 	case 'lixd':	instr = LD_HL_xNN; goto lixd;
@@ -405,7 +405,7 @@ liyd:	n = value(q);
 
 dsbc:	r = get8080WordRegister(q,BDHSP);
 		if (r<64) return storeEDopcode(instr+r);
-		throw syntax_error("illegal register");		// X or Y
+		throw SyntaxError("illegal register");		// X or Y
 
 	case 'dadx':	// DADX: add ix,bc,de,ix,sp		kio added; note: DAD = add hl,rr
 
@@ -431,7 +431,7 @@ dsbc:	r = get8080WordRegister(q,BDHSP);
 
 bit:	if (target_8080) goto ill_8080;
 		n = value(q);
-		if (uint(n)>7) throw syntax_error("illegal bit number");
+		if (uint(n)>7) throw SyntaxError("illegal bit number");
 		instr += 8*n;
 		q.expectComma();
 		goto rlcr;

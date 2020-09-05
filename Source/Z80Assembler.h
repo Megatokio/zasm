@@ -211,14 +211,14 @@ private:
 			{
 				if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
 					return seg->lpos - seg->dpos + cmd_dpos;
-				else throw syntax_error(current_segment_ptr ? "current segment does not provide a '$' address" :
+				else throw SyntaxError(current_segment_ptr ? "current segment does not provide a '$' address" :
 															  "not in any segment -- org not yet set?");
 			}
 	Value	dollarDollar	()
 			{
 				if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
 					return seg->getAddress() + cmd_dpos;
-				else throw syntax_error("current segment does not provide a '$$' address");
+				else throw SyntaxError("current segment does not provide a '$$' address");
 			}
 
 	int 	getCondition	(SourceLine&, bool expect_comma) throws ;
@@ -229,7 +229,7 @@ private:
 	void	setLabelValue(Label*, int32, Validity) throws ;
 	void	setLabelValue(Label*, Value const&) throws ;
 
-	void	setError		(const any_error&);					  // set error for current file, line & column
+	void	setError		(const AnyError&);					  // set error for current file, line & column
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
 	void	init_c_flags	();
 	void	init_c_tempdir	()							throws;
