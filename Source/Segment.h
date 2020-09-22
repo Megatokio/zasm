@@ -183,8 +183,6 @@ public:
 
 	CodeSegment (cstr name, SegmentType, uint8 fillbyte, bool relocatable, bool resizable);
 
-	bool	isEmpty			()			{ bool empty=yes; for(int i=0; i<size.value && empty; i++)
-										  { empty = core[i]==fillbyte; } return empty; }
 	uint8*	getData ()					{ return core.getData(); }
 	uint	outputSize () const			{ return compressed ? ccore.count() : uint(size); }
 	uint	outputSizeUpToDpos () const { return compressed ? ccore.count() : uint(dpos); }

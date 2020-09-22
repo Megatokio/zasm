@@ -1426,7 +1426,7 @@ void Z80Assembler::checkAceFile () throws
 			{
 				uint32* bu = (uint32*)&s[offs]; bool empty=yes;
 				for (int i=0; i<0x100 && empty; i++) { empty = bu[i]==0; }
-				if (!s.isEmpty()) setError(
+				if (!empty) setError(
 					"segment %s: page 0x%04X-0x%04X must be empty", s.name, uint(addr), uint(addr+0x3ff));
 				break;
 			}
