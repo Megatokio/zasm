@@ -23,4 +23,20 @@ foo2	defs 2
 	defs 4
 	ret
 
+#code CODE3,$100,$10
+	defb "CODE3"
+	defs 4
+	jp	 0x0066			; last byte = 0x00
+
+#code CODE4,$200,$10
+	defb "CODE4"
+	defs 4				; last 4 bytes = 0x00
+
+#code CODE5,$000,$10
+	defb "CODE5"
+	defs 4
+	ret
+	defs	2,0xff
+	defs	2,0x00		; last 2 bytes = 0x00
+
 end

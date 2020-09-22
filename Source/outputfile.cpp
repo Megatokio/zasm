@@ -126,8 +126,8 @@ void Z80Assembler::writeHexFile (FD& fd) throws
 
 	// ROM: ignore segment addresses.
 	//	 start file at address 0 and concatenate all segments with no gaps.
-	//	 trailing fillbytes in each segment are omitted from the file
-	//	 but accounted for the address of the following segment
+	//	 unset bytes at the end of fixed-size segments are not written
+	//	 but accounted for the address of the following segment.
 	//	 this is just to save space in the file and may be used
 	//	 to skip over areas of not yet erased contents in eproms
 
@@ -139,10 +139,8 @@ void Z80Assembler::writeHexFile (FD& fd) throws
 		CodeSegment& s = segments[i];
 		if (target == BIN) address = uint(s.address);
 
-		uint8  fillbyte = s.fillbyte;
 		uint8 const* data = s.outputData();
-		uint32 size = s.outputSize();
-		while (size>0 && data[size-1]==fillbyte) { size--; }
+		uint32 size = s.outputSizeUpToDpos();
 		write_intel_hex(fd, address, data, size);
 		address += s.outputSize(); // ROM only
 	}
@@ -160,7 +158,7 @@ void Z80Assembler::writeS19File (FD& fd) throws
 
 	// ROM: ignore segment addresses.
 	//	 start file at address 0 and concatenate all segments with no gaps.
-	//	 trailing fillbytes in each segment are omitted from the file
+	//	 unset bytes at the end of fixed-size segments are not written
 	//	 but accounted for the address of the following segment.
 
 	// S0 record:
@@ -178,10 +176,8 @@ void Z80Assembler::writeS19File (FD& fd) throws
 		CodeSegment& s = segments[i];
 		if (target == BIN) address = uint(s.address);
 
-		uint8  fillbyte = s.fillbyte;
 		uint8 const* data = s.outputData();
-		uint32 size = s.outputSize();
-		while (size>0 && data[size-1]==fillbyte) { size--; }
+		uint32 size = s.outputSizeUpToDpos();
 		srcount += write_motorola_s19(fd, address, data, size);
 		address += s.outputSize(); // ROM only
 	}

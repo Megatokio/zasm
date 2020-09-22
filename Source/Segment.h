@@ -139,6 +139,7 @@ public:
 	void	storeSpace	(Value const&, int)		throws;
 	void	storeSpace	(Value const&)			throws;
 	void	storeSpaceUpToAddress(Value const&)	throws;
+	void	clearTrailingBytes ()				noexcept;
 
 	void	skipExistingData (int sz)			throws;
 
@@ -182,11 +183,12 @@ public:
 
 	CodeSegment (cstr name, SegmentType, uint8 fillbyte, bool relocatable, bool resizable);
 
-	bool		isEmpty			()		 { bool empty=yes; for(int i=0; i<size.value && empty; i++)
-										   { empty = core[i]==fillbyte; } return empty; }
-	uint8*		getData			()		 { return core.getData(); }
-	uint		outputSize		() const { return compressed ? ccore.count() : size; }
-	uint8 const* outputData		() const { return compressed ? ccore.getData() : core.getData(); }
+	bool	isEmpty			()			{ bool empty=yes; for(int i=0; i<size.value && empty; i++)
+										  { empty = core[i]==fillbyte; } return empty; }
+	uint8*	getData ()					{ return core.getData(); }
+	uint	outputSize () const			{ return compressed ? ccore.count() : uint(size); }
+	uint	outputSizeUpToDpos () const { return compressed ? ccore.count() : uint(dpos); }
+	uint8 const* outputData () const	{ return compressed ? ccore.getData() : core.getData(); }
 	Validity validity () const override;
 	void	rewind() override;
 	void	store		(int)					throws override;

@@ -825,7 +825,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 			Value& seg_address = s->isData() ? data_address : code_address;
 
 			if (s->resizable) s->setSize(s->dpos);
-			else s->storeSpace(s->size-s->dpos);
+			else s->clearTrailingBytes();
 
 			if (s->relocatable) s->setAddress(seg_address);
 

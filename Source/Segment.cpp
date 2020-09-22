@@ -235,7 +235,7 @@ void DataSegment::setSize (Value const& newsize) throws
 	// set segment size
 	// should be set between assembly passes
 	// does not clear the 'resizable' flag
-	// rewinds the segment
+	// does not rewind the segment! => preserve dpos for writeHexFile(() and writeS19File()
 
 	if (newsize.is_valid())
 	{
@@ -257,8 +257,6 @@ void DataSegment::setSize (Value const& newsize) throws
 		throw SyntaxError("segment %s size decayed",name);
 
 	size = newsize;
-	dpos = 0;
-	lpos = address;
 }
 
 void DataSegment::setOrigin (Value const& address) throws
@@ -426,6 +424,24 @@ void DataSegment::storeSpace (Value const& sz) throws
 void DataSegment::storeSpaceUpToAddress (Value const& addr) throws
 {
 	storeSpace(addr-lpos);
+}
+
+void DataSegment::clearTrailingBytes () noexcept
+{
+	// clear remaining bytes after current write index 'dpos' without moving dpos.
+	// used to clear unused trailing bytes at the end of a fixed-size CodeSegment.
+	// writeHexFile() and writeS19File actually write data up to dpos only
+	// whereas all binary output formats write the whole segment, so it must be cleared.
+
+	if (auto s = dynamic_cast<CodeSegment*>(this))
+	{
+		Value sz = size - dpos;
+		if (sz.is_invalid()) return;
+
+		assert(dpos.value <= size.value);
+
+		if (sz.value) memset(&s->core[dpos], fillbyte, sz.value);
+	}
 }
 
 Validity DataSegment::validity () const

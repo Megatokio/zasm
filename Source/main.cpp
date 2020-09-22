@@ -44,7 +44,7 @@
 
 
 //static const char appl_name[] = "zasm";
-#define VERSION "4.3.4"
+#define VERSION "4.3.5"
 
 // Help text:
 // optimized for 80 characters / column
