@@ -16,7 +16,7 @@ CONFIG += precompiled_header
 CONFIG(release,debug|release) { DEFINES += NDEBUG RELEASE } # ATTN: curly brace must start in same line!
 CONFIG(debug,debug|release) { DEFINES += DEBUG } # ATTN: curly brace must start in same line!
 #QMAKE_CXXFLAGS += -Wno-four-char-constants
-QMAKE_CXXFLAGS += -Wno-multichar
+QMAKE_CXXFLAGS += -Wno-multichar -Wno-gnu-anonymous-struct -Wno-nested-anon-types
 QMAKE_CXXFLAGS_RELEASE += -Os
 
 LIBS += -lz
@@ -29,6 +29,8 @@ INCLUDEPATH +=          \
 SOURCES += \
 	Source/Error.cpp \
 	Source/Label.cpp \
+	Source/Z80.cpp \
+	Source/Z80Registers.cpp \
 	Source/assemble8080.cpp \
 	Source/assembleZ80.cpp \
 	Source/convert8080.cpp \
@@ -68,9 +70,12 @@ HEADERS += \
 	Source/Error.h \
 	Source/Label.h \
 	Source/Segment.h \
+	Source/Z80.h \
+	Source/Z80Registers.h \
 	Source/settings.h \
 	Source/Source.h \
 	Source/Value.h \
+	Source/z80macros.h \
 	Source/zx7.h \
 	Source/SyntaxError.h \
 	Source/Z80Assembler.h \
