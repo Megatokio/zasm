@@ -41,15 +41,14 @@ void Source::includeFile (cstr filename_fqn, uint sourceAE_index) throws
 	try
 	{
 		FD fd(filename_fqn,'r');
-		off_t sz = fd.file_size();
-		if (sz>=3 && fd.read_int24_x() != 0x00efbbbf) fd.rewind_file();				// skip BOM
-		if (sz>10000000) throw AnyError("source file exceeds 10,000,000 bytes");	// sanity
+		if (fd.file_size() > 10000000) throw AnyError("source file exceeds 10,000,000 bytes");	// sanity
+		fd.skip_utf8_bom();
 
 		RCArray<SourceLine> zsource;
 		for (;;)
 		{
 			cstr s = fd.read_str();
-			if (s==NULL) break;			// file end
+			if (s==nullptr) break;		// file end
 			if (*s==0x1A) break;		// CP/M file padding
 			zsource.append(new SourceLine(filename_fqn, zsource.count(), s));
 		}
@@ -74,10 +73,10 @@ SourceLine::SourceLine (cstr sourcefile, uint linenumber, cstr text)
 	text(text),						// 2nd ptr
 	sourcefile(sourcefile),			// 2nd ptr
 	sourcelinenumber(linenumber),	// 0-based
-	segment(NULL),
+	segment(nullptr),
 	byteptr(0),
 	bytecount(0),
-	label(NULL),
+	label(nullptr),
 	is_data(no),
 	p(text)
 {}

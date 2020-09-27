@@ -442,11 +442,15 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 		if (c_compiler) init_c_compiler(c_compiler);
 
 		StrArray source;
-		source.append( catstr("#include ", quotedstr(sourcefile)) );
+		FD fd(sourcefile, 'r');
+		if (fd.file_size() > 10000000) throw AnyError("source file exceeds 10,000,000 bytes");	// sanity
+		fd.skip_utf8_bom();
+		fd.read_file(source);
+		while(source.count() && source.last()[0]==0x1A) source.drop(); // remove CP/M file padding
 
 		// include options after shebang in line 1:
 		// note: this my come as a surprise to the user
-		if (source.count() && startswith(source[0],"#/"))
+		if (source.count() && startswith(source[0],"#!"))
 		{
 			cstr s = source[0];
 			cstr m = nullptr;
