@@ -151,6 +151,8 @@ private:
 	int			c_zi;			// index for output file in c_flags[] or -1
 
 private:
+	void	parseBytes		(SourceLine&, Array<uint8>&)throws;
+	IoSequence parseIoSequence (SourceLine&)			throws;
 	Value	value			(SourceLine&, int prio=0)	throws;
 	void	skip_expression	(SourceLine&, int prio)		throws;
 	void	asmLabel		(SourceLine&)				throws;

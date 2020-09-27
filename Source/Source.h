@@ -60,8 +60,8 @@ public:
 	char		operator[]	(uint i){ return text[i]; }
 	SourceLine&	operator++	()		{ assert(*p);     ++p; return *this; }	// prefix
 	SourceLine&	operator--	()		{ assert(p>text); --p; return *this; }	// prefix
-	SourceLine&	operator+=	(int n)	{ assert(n>0?p+n<=strchr(p,0):p+n>=text); p+=n; return *this; }
-	SourceLine&	operator-=	(int n)	{ assert(n<0?p-n<=strchr(p,0):p-n>=text); p-=n; return *this; }
+	SourceLine&	operator+=	(off_t n) { assert(n>0?p+n<=strchr(p,0):p+n>=text); p+=n; return *this; }
+	SourceLine&	operator-=	(off_t n) { assert(n<0?p-n<=strchr(p,0):p-n>=text); p-=n; return *this; }
 
 	void	rewind		()			{ p = text; }
 	void	skip_spaces	()			{ while(is_space(*p)) p++; }
@@ -76,6 +76,7 @@ public:
 	bool	testDotWord	(cstr);
 	bool	testComma	()			{ return testChar(','); }
 	bool	testEol		();
+	bool	testCommaNoGKauf ()		{ cptr a=p; if (testComma() && peekChar()!='{') return yes; p=a; return no; }
 
 	void	expect		(char)		throws ;
 	void	expectComma	()			throws 		{ expect(','); }

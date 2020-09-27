@@ -323,6 +323,7 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 		xlogline("TZX fpos = 0x%04llX",fd.file_position());
 		switch (segments[i]->type)
 		{
+		case TEST:
 		case DATA:
 		{
 			continue;

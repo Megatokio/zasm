@@ -142,7 +142,7 @@ void SourceLine::expect (char c) throws
 	// skip spaces and test for and skip char
 	// throw error if char does not match
 
-	if (!testChar(c)) throw SyntaxError("'%c'", c);
+	if (!testChar(c)) throw SyntaxError("'%c' expected", c);
 }
 
 void SourceLine::expectEol () throws

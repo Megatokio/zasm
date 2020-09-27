@@ -22,7 +22,8 @@
 #include "SyntaxError.h"
 typedef Array<uint8> Core;
 #include "Label.h"
-
+#include "Z80Registers.h"
+#include "Source.h"
 
 
 class Z80Assembler;
@@ -41,6 +42,7 @@ enum SegmentType
 {
 	DATA,						// #data
 	CODE,						// #code
+	TEST,						// ~ CODE, not written to file
 	TZX_STANDARD = 0x10,		// ~ CODE
 	TZX_TURBO = 0x11,			// ~ CODE with changed pulse settings
 	TZX_PURE_TONE = 0x12,		// empty body
@@ -64,6 +66,7 @@ enum SegmentType
 
 extern bool isData(SegmentType);
 extern bool isCode(SegmentType);
+extern bool isTest(SegmentType);
 
 
 
@@ -74,14 +77,18 @@ class Segment : public RCObject
 public:
 	SegmentType	type;			// DATA => no actual code storing allowed
 	cstr		name;
-	bool		is_data;
-	bool		is_code;
-	bool		is_tzx;
+
+	bool		is_data;		// DATA
+	bool		is_code;		// CODE, TZX_STANDARD,TURBO,PURE_DATA,GENERALIZED
+	bool		is_test;		// TEST
+	bool		is_tzx;			// TzxSegment subclasses
+
 	Value		dpos;			// code deposition index
 
 public:
 	bool	isData	() const			{ return is_data; }
 	bool	isCode	() const			{ return is_code; }
+	bool	isTest	() const			{ return is_test; }
 	bool	isTzx	() const			{ return is_tzx; }
 	virtual Validity validity () const	{ return Validity::valid; }
 
@@ -123,7 +130,7 @@ public:
 	Value		lpos;			// logical position ('$') at dpos
 
 public:
-	DataSegment (cstr name, uint8 fillbyte, bool relocatable, bool resizable);
+	DataSegment (cstr name, uint8 fillbyte);
 
 	//bool	isAtStart	()						{ return dpos.is_valid() && dpos==0; }
 	Value	physicalAddress	()					{ return address + dpos; }		// segment_address + dpos
@@ -182,7 +189,7 @@ public:
 	uint		pilotsym_idx;	// TZX
 	uint		datasym_idx;	// TZX
 
-	CodeSegment (cstr name, SegmentType, uint8 fillbyte, bool relocatable, bool resizable);
+	CodeSegment (cstr name, SegmentType, uint8 fillbyte);
 
 	uint8*	getData ()					{ return core.getData(); }
 	uint	outputSize () const			{ return compressed ? ccore.count() : uint(size); }
@@ -208,6 +215,149 @@ public:
 
 	void	check_pilot_symbol(uint idx) const;
 	void	check_data_symbol(uint idx) const;
+};
+
+
+
+// ---- class TestSegment ---------------------
+
+enum IoMode
+{
+	IoValues,		// data[count] = input values or to compare output values
+	IoStdIn,		// stdin & stdout
+	IoStdOut,		// stdin & stdout
+	IoInFile,		// data = filename for sequential input or output
+	IoOutFile,		// data = filename for sequential input or output
+	IoAppendFile,	// data = filename for output, append mode
+	IoCompareFile,	// data = filename for output, compare mode
+	IoBlockDevice	// data = filename for block addressed input and output
+};
+
+struct IoSequence
+{
+	// a series of bytes with optional repetition
+
+	uint8* data = nullptr;
+	uint count  = 0;
+	uint repetitions = 1;
+
+	IoSequence() = default;
+	IoSequence(const uint8* data, uint count, uint repetitions=1);
+	~IoSequence() { delete[] data; }
+	IoSequence(IoSequence&& q) noexcept;
+	IoSequence& operator= (IoSequence&& q) noexcept;
+	IoSequence(const IoSequence&) = delete;
+	IoSequence& operator= (const IoSequence&) = delete;
+};
+
+using IoSequences = Array<IoSequence>;
+
+struct IoList
+{
+	IoMode iomode = IoValues;
+	uint32 filler = 0;
+
+	union	// note: extra union for FD, because C++ doesn't allow complex type in anon struct
+	{
+		IoSequences* data = nullptr;	// IoValues
+		FD  fd;							// IoFile
+	};
+
+	union
+	{
+		struct	// IoValues
+		{
+			uint sequence_idx = 0;		// during test run
+			uint in_sequence_idx = 0;	// during test run
+			uint repetition = 0; 		// during test run
+			uint filler2 = 0;
+		};
+		struct	// IoFile*
+		{
+			uint blocksize;
+			uint blockstate;			// during io
+			uint memory_address;		// during io
+			uint block_idx;				// during io
+		};
+	};
+
+	IoList(){}
+	IoList(IoSequence&&);	// ctor "Values" from first io sequence
+	IoList(IoMode, cstr filename, uint blocksize=0);	// ctor "File" etc.
+	~IoList();
+	IoList(IoList&&);
+	IoList& operator=(IoList&&);
+	IoList(const IoList&)=delete;
+	IoList& operator=(const IoList&)=delete;
+
+	void append(IoSequence&&);
+
+	void openFile();					// befor test
+	uint8 inputByte();					// during test
+	void outputByte(uint8, uint8* core);// during test
+	bool isAtEnd();						// after test
+	void closeFile() noexcept;			// after test
+};
+
+struct Expectation
+{
+	cstr  name;		// not retained: register name, cc, cc_min or cc_max
+	int   value;	// validity is managed by a single Validity instance in TestSegment
+	uint16 pc;		// ""
+	int16 padding;
+	RCPtr<SourceLine> sourceline;
+
+	Expectation (cstr name, int v, int pc, SourceLine* q) : name(name), value(v), pc(pc), sourceline(q) {}
+	Expectation (Expectation&& q) = default;
+	~Expectation () = default;
+};
+
+using Expectations = Array<Expectation>;
+
+class TestSegment : public CodeSegment
+{
+public:
+	HashMap<uint16,IoList> inputdata;		// <io_addr,data[]>
+	HashMap<uint16,IoList> outputdata;		// <io_addr,data[]>
+
+	mutable Value cpu_clock{-1,invalid};	static constexpr uint32 cpu_unlimited = 0;
+	mutable Value int_per_sec{-1,invalid};	static constexpr uint   no_interrupts = 0;
+	mutable Value int_ack_byte{-1,invalid};	static constexpr uint8  floating_bus_byte = 255;
+	mutable Value timeout_ms{-1,invalid};	static constexpr uint32 no_timeout = 0;
+
+	Expectations expectations;
+	bool expectations_valid = yes;
+	bool iodata_valid = yes;
+
+public:
+	TestSegment (cstr name, uint8 fillbyte);
+	~TestSegment () override;
+
+	Validity validity () const override;
+	void rewind() override;
+
+	void setCpuClock (Value frequency);
+	void setIntPerSec (Value frequency);
+	void setCcPerInt (Value cc);
+	void setIntAckByte (Value byte);
+	void setTimeoutMsec (Value msecs);
+	void setExpectedCcMin (SourceLine* q, Value cc);
+	void setExpectedCcMax (SourceLine* q, Value cc);
+	void setExpectedCc (SourceLine* q, Value cc);
+	void setExpectedRegisterValue (SourceLine* q, cstr reg, Value v);
+	void setInputData (const Value& ioaddr, IoSequence&&);
+	void setInputFile (const Value& ioaddr, cstr filename, IoMode=IoInFile);
+	void setOutputData (const Value& ioaddr, IoSequence&&);
+	void setOutputFile (const Value& ioaddr, cstr filename, IoMode);
+	void setBlockDevice (const Value& ioaddr, cstr filename, const Value& blocksize);
+	void setConsole (const Value& ioaddr);
+
+	void openFiles();					// befor test
+	uint8 inputByte(uint16 addr);		// during test
+	void outputByte(uint16 addr, uint8, uint8* core);// during test
+	void checkAllBytesRead();			// after test
+	void checkAllBytesWritten();		// after test
+	void closeFiles() noexcept;			// after test
 };
 
 
@@ -349,7 +499,6 @@ public:
 };
 
 
-
 // ---- TZX non-code segments with body: ----------
 
 class TzxPulses : public TzxSegment
@@ -411,13 +560,13 @@ public:
 class DataSegments : public RCArray<DataSegment>
 {
 public:
-	DataSegments (Segments const& segments);	// extract DataSegments and subclasses from source
+	DataSegments (Segments const& segments);	// extract DataSegments and subclasses
 };
 
 class CodeSegments : public RCArray<CodeSegment>
 {
 public:
-	CodeSegments (Segments const& segments);	// extract CodeSegments from source
+	CodeSegments (Segments const& segments);	// extract CodeSegments (CODE, TZX, no TEST) from source array
 	void	checkNoFlagsSet () const throws;
 	uint32	totalCodeSize() const;
 };
@@ -425,7 +574,13 @@ public:
 class TzxSegments : public RCArray<TzxSegment>
 {
 public:
-	TzxSegments (Segments const& segments);	// extract TzxSegments from source
+	TzxSegments (Segments const& segments);	// extract TzxSegments from source array
+};
+
+class TestSegments : public RCArray<TestSegment>
+{
+public:
+	TestSegments (Segments const& segments);	// extract TestSegments from source array
 };
 
 

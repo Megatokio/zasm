@@ -43,7 +43,7 @@
 #include "zx7.h"
 #include "Templates/StrArray.h"
 #include "kio/peekpoke.h"
-
+#include "Z80Registers.h"
 
 extern char** environ;
 
@@ -170,7 +170,7 @@ cstr Z80Assembler::get_filename (SourceLine& q, bool dir) throws
 	fqn = unquotedstr(fqn);
 	if (dir && lastchar(fqn)!='/') fqn = catstr(fqn,"/");
 
-	if (cgi_mode && q.sourcelinenumber)
+	if (cgi_mode) // && q.sourcelinenumber)
 	{
 		if (fqn[0]=='/' || startswith(fqn,"~/") || startswith(fqn,"../") || contains(fqn,"/../"))
 			throw FatalError("Escape from Darthmoore Castle");
@@ -227,7 +227,7 @@ void Z80Assembler::init_c_tempdir () throws
 inline bool utf8_is_ucs4 (char c) { return uchar(c)> 0xf0; }	// 2015-01-02 doesn't fit in ucs2?
 #define     RMASK(n)	 (~(0xFFFFFFFF<<(n)))					// mask to select n bits from the right
 
-static uint charcode_from_utf8 (cptr& s) throws
+static UCS2Char charcode_from_utf8 (cptr& s) throws
 {
 	// convert UTF-8 char to UCS-2
 	// stops at next non-fup
@@ -819,11 +819,12 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 
 		Value data_address(0,valid);	// for data segments
 		Value code_address(0,valid);	// for code segments
+		Value test_address(0,valid);	// for test segments (dummy sink)
 
 		for (uint i=0; i<segments.count(); i++)
 		{
 			DataSegment* s = dynamic_cast<DataSegment*>(segments[i].ptr()); if (!s) continue;
-			Value& seg_address = s->isData() ? data_address : code_address;
+			Value& seg_address = s->isData() ? data_address : s->isCode() ? code_address : test_address;
 
 			if (s->resizable) s->setSize(s->dpos);
 			else s->clearTrailingBytes();
@@ -1692,6 +1693,7 @@ void Z80Assembler::asmDirect (SourceLine& q) throws /*fatal_error*/
 
 		if (lceq(w,"target"))	asmTarget(q);		else
 		if (lceq(w,"code"))		asmSegment(q,CODE);	else
+		if (lceq(w,"test"))		asmSegment(q,TEST);	else
 		if (lceq(w,"data"))		asmSegment(q,DATA);	else
 		if (lceq(w,"include"))	asmInclude(q);		else
 		if (lceq(w,"insert"))	asmInsert(q);		else
@@ -3350,17 +3352,18 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 
 void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 {
-	assert(isData(segment_type)||isCode(segment_type));
+	assert(isData(segment_type)||isCode(segment_type)||isTest(segment_type));
 
 	// #DATA name, [start], [size]
 	// #CODE name, [start], [size]						most targets
 	// #CODE name, [start], [size], [[FLAG=]value]		z80
-	// #CODE name, [start], [size], [[FLAG=]value|ACE]	tap
+	// #CODE name, [start], [size], [[FLAG=]value|NONE]	tap
 	// #CODE name, [start], [size], <flags>				tzx
 	// #TZX TURBO, name, start, size, <flags>
 	// #TZX STANDARD, name, start, size, <flags>
 	// #TZX PURE-DATA, name, start, size, <flags>
 	// #TZX GENERALIZED, name, start, size, <flags>
+	// #TEST name, start, [size]
 
 	// <flags>:		( <nothing> | <value> | <dict> )
 	// <dict>:
@@ -3394,7 +3397,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 			if (segment->type != segment_type)
 			{
 				if (segment_type == CODE && isCode(segment->type)) {}	// OK: #tzx code block re-opened with #code
-				else throw FatalError("#code/#data mismatch");
+				else throw FatalError("segment type mismatch");
 			}
 		}
 	}
@@ -3404,12 +3407,13 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		assert(pass==1);
 
 		if (isData(segment_type))
-			segment = new DataSegment(name,0x00/*fillbyte*/,1/*relocatable*/,1/*resizable*/);
+			segment = new DataSegment(name,0x00/*fillbyte*/);
 		else
 		{
-			assert(isCode(segment_type));
+			assert(isCode(segment_type)||isTest(segment_type));
 			uint8 fillbyte = target==ROM || target==TARGET_UNSET ? 0xFF : 0x00;
-			segment = new CodeSegment(name,segment_type,fillbyte,1/*relocatable*/,1/*resizable*/);
+			if (isTest(segment_type)) segment = new TestSegment(name,fillbyte);
+			else segment = new CodeSegment(name,segment_type,fillbyte);
 		}
 		segments.append(segment);
 
@@ -3443,6 +3447,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		segment->relocatable = q.testChar('*');
 		if (!segment->relocatable) segment->setAddress(value(q));		// throws
 	}
+	if (segment->relocatable && segment->isTest()) setError("segment start address required");
 
 	Label* l = global_labels().find(name);
 	setLabelValue(l,segment->address);
@@ -3459,6 +3464,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 	setLabelValue(l, segment->address+segment->size);
 
 	if (segment->isData()) return;
+	if (segment->isTest()) return;
 	if (!q.testComma()) return;
 	CodeSegment* cseg = dynamic_cast<CodeSegment*>(segment);
 	assert(cseg);
@@ -3611,7 +3617,7 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 		// ORG after #TARGET and no #CODE:
 		if (target!=TARGET_UNSET) throw FatalError("#code segment definition expected after #target");
 
-		s = new CodeSegment(name,CODE,0xff,no,yes);
+		s = new CodeSegment(name,CODE,0xff);
 		segments.append(s);
 
 		Label* l = global_labels().find(name);
@@ -3644,6 +3650,7 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 
 	Value n = value(q);
 	setLabelValue(q.label,n);
+	s->relocatable = no;
 	s->setAddress(n);
 }
 
@@ -4387,6 +4394,145 @@ longer:
 	// instructions which require a valid segment:
 	// names must be longer than 4 characters:
 
+	if (lceq(w,".test"))	// Test Segment: setup test
+	{
+		TestSegment* segment = dynamic_cast<TestSegment*>(current_segment_ptr);
+		if (segment == nullptr) throw SyntaxError("test segment required");
+		if (currentPosition() != 0) throw SyntaxError(".test pseudo instructions must appear before the test code");
+
+		q.expect('-');
+
+		if (q.testWord("clock"))	// .test-clock value [k|M]
+		{
+			Value freq = value(q);
+			long z = freq.value;
+			if (q.testWord("k") || q.testWord("kHz")) z *= 1000;
+			else if (q.testWord("M") || q.testWord("MHz")) z *= 1000000;
+			else q.testWord("Hz");
+			limit(-0x80000000l, z, 0x7fffffffl);
+			freq.value = int32(z);
+			segment->setCpuClock(freq);
+			return;
+		}
+		else if (q.testWord("int"))	// .test-int value
+		{
+			Value freq = value(q);
+			q.testWord("Hz");
+			segment->setIntPerSec(freq);
+			return;
+		}
+		else if (q.testWord("intack"))	// .test-intack value
+		{
+			Value n = value(q);
+			segment->setIntAckByte(n);
+			return;
+		}
+		else if (q.testWord("timeout"))	// .test-timeout value [ms|s|m]
+		{
+			Value timeout = value(q);
+			long z = timeout.value;
+			if (q.testWord("s")) z *= 1000;
+			else if (q.testWord("m")) z *= 60*1000;
+			else q.testWord("ms");
+			limit(-0x80000000l, z, 0x7fffffffl);
+			timeout.value = int(z);
+			segment->setTimeoutMsec(timeout);
+			return;
+		}
+		else if (q.testWord("in"))		// .test-in addr = xxxxxxx
+		{
+			Value addr = value(q);
+			while(q.testComma()) { segment->setInputData(addr,parseIoSequence(q)); }
+			return;
+		}
+		else if (q.testWord("out"))		// .test-out addr = xxxxxxx
+		{
+			Value addr = value(q);
+			while(q.testComma()) { segment->setOutputData(addr,parseIoSequence(q)); }
+			return;
+		}
+		else if (q.testWord("infile"))	// .test-infile addr = "filename"
+		{
+			Value addr = value(q);
+			q.expectComma();
+			cstr fqn = get_filename(q);
+			segment->setInputFile(addr,fqn,IoInFile);
+			return;
+		}
+		else if (q.testWord("outfile"))	// .test-outfile addr = "filename" [ , append ] [ , compare ]
+		{
+			Value addr = value(q);
+			q.expectComma();
+			cstr fqn = get_filename(q);
+			auto mode = IoOutFile;
+			if (q.testComma())
+			{
+				if (q.testWord("append")) mode = IoAppendFile;
+				else if (q.testWord("compare")) mode = IoCompareFile;
+				else throw SyntaxError("'append' or 'compare' expected");
+			}
+			segment->setOutputFile(addr,fqn,mode);
+			return;
+		}
+		else if (q.testWord("console"))	// .test-console addr
+		{
+			Value addr = value(q);
+			segment->setConsole(addr);
+			return;
+		}
+		else if (q.testWord("blockdev")) // .test-blockdev addr, "filename", blocksize
+		{
+			Value addr = value(q);
+			q.expectComma();
+			cstr fqn = get_filename(q);
+			q.expectComma();
+			Value blksz = value(q);
+			segment->setBlockDevice(addr,fqn,blksz);
+			return;
+		}
+	}
+
+	if (lceq(w,".expect"))	// Test Segment: set expected values
+	{
+		TestSegment* segment = dynamic_cast<TestSegment*>(current_segment_ptr);
+		if (segment == nullptr) throw SyntaxError("test segment required");
+		if (currentPosition() == 0) throw SyntaxError(".test pseudo instructions should appear after the test code");
+
+		if (q.testWord("cc"))	// cycle counter: cc [=,<=,>=] nnnnn
+		{
+			q.skip_spaces();
+			bool lt = q.testChar('<');
+			bool gt = !lt && q.testChar('>');
+			bool eq = q.testChar('=');
+			if (!(lt||gt||eq)) q.expect('=');	// throw
+
+			Value cc = value(q);
+			if (lt)
+			{
+				if (!eq) cc.value -= 1;
+				segment->setExpectedCcMax(&q,cc);
+			}
+			else if (gt)
+			{
+				if (!eq) cc.value += 1;
+				segment->setExpectedCcMin(&q,cc);
+			}
+			else
+			{
+				segment->setExpectedCc(&q,cc);
+			}
+		}
+		else // expect register = value
+		{
+			cstr reg = q.nextWord();
+			if (!Z80Registers::isaRegisterName(reg)) throw SyntaxError("register name expected");
+			q.expect('=');
+			Value v = value(q);
+			segment->setExpectedRegisterValue(&q,reg,v);
+		}
+		return;
+	}
+
 	if (doteq(w,"align"))			// align <value> [,<filler>]
 	{								// note: current address is evaluated as uint
 		q.is_data = yes;
@@ -4480,8 +4626,117 @@ longer:
 	return asmNoSegmentInstr(q,w);
 }
 
+IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
+{
+	// "...", value, ...
+	// { values } * reps
+	// { values } *
+	// *
+	// if the source line contains multiple blocks then only the next block is parsed and returned.
+	// --> the caller must check for ','
 
+	if (q.testChar('*')) { q.expectEol(); return IoSequence(nullptr,0,0); }	// any output
 
+	bool block = q.testChar('{');
+
+	Array<uint8> data;
+	do
+	{
+		parseBytes(q,data);
+	}
+	while(q.testCommaNoGKauf());
+
+	if (block)
+	{
+		q.expect('}');
+		q.expect('*');
+		if (q.testEol()) return IoSequence(&data[0], data.count(), 0); // unlimited repetition of input block
+
+		Value reps = value(q);
+		if (reps.is_invalid()) throw SyntaxError("repetitions must be valid in pass 1"); // TODO: support validity
+		if (reps<0) throw SyntaxError("repetitions < 0");
+		return IoSequence(&data[0], data.count(), uint(reps.value));
+	}
+
+	return IoSequence(&data[0], data.count(), 1);
+}
+
+static uint8 validatedByte (const Value& byte)
+{
+	if (byte >= -0x80 && byte <= 0xFF) return uint8(byte);
+	if (byte.is_invalid()) return 0;
+	throw SyntaxError("byte value out of range");
+}
+
+void Z80Assembler::parseBytes (SourceLine& q, Array<uint8>& dest) throws
+{
+	// store bytes:
+	// 'xy' and "xy" are both text strings
+	// literal, label, "text", 'c' Char, $abcdef stuffed hex, usw.
+	// "…", "…"+n, '…', '…'+n, 0xABCDEF…, __date__, __time__, __file__, …
+	// bytes are stuffed in order of occurance: in $ABCD byte $AB is stored first!
+
+	q.is_data = yes;
+
+	cstr w = q.nextWord();
+	size_t n = strlen(w);
+	if (n == 0) throw SyntaxError("value expected");
+
+	// text string:
+	if (w[0]=='"' || w[0]=='\'')
+	{
+		if (n<3 || w[n-1] != w[0]) throw SyntaxError("closing quotes expected");
+		w = substr(w+1, w+n-1);
+
+cb:		if (charset) while (*w) dest.append(charset->get(charcode_from_utf8(w)));
+		else		 while (*w) dest.append(validatedByte(Value(charcode_from_utf8(w))));
+
+		// test for operation on the final char:
+		if (q.testChar ('+'))	{ dest.append(validatedByte(Value(value(q) + dest.pop()))); } else
+		if (q.test_char('-'))	{ dest.append(validatedByte(Value(value(q) - dest.pop()))); } else
+		if (q.test_char('|'))	{ dest.append(validatedByte(Value(value(q) | dest.pop()))); } else
+		if (q.test_char('&'))	{ dest.append(validatedByte(Value(value(q) & dest.pop()))); } else
+		if (q.test_char('^'))	{ dest.append(validatedByte(Value(value(q) ^ dest.pop()))); }
+		return;
+	}
+
+	// Stuffed Hex:
+	if (n>4 && is_dec_digit(w[0]) && tolower(w[n-1])=='h')
+	{
+		n -= 1;
+		if (n&1 && w[0]=='0') goto sx; else goto sh;
+	}
+	if (n>3 && w[0]=='$')
+	{
+sx:		w += 1; n -= 1;
+sh:		if (n&1) throw SyntaxError("even number of hex characters expected");
+		n = n/2;
+
+		while (n--)
+		{
+			char c = *w++;
+			if (!is_hex_digit(c)) throw SyntaxError("only hex characters allowed: '%c'",c);
+			char d = *w++;
+			if (!is_hex_digit(d)) throw SyntaxError("only hex characters allowed: '%c'",d);
+
+			dest.append(uint8((hex_digit_value(c)<<4) + hex_digit_value(d)));
+		}
+		return;
+	}
+
+	// pre-defined special words:
+	if (w[0] == '_')
+	{
+		if (eq(w,"__date__")) { w = datestr(timestamp); goto cb; }
+		if (eq(w,"__time__")) { w = timestr(timestamp); goto cb; }
+		if (eq(w,"__file__")) { w = q.sourcefile; goto cb; }
+		if (eq(w,"__line__")) { w = tostr(q.sourcelinenumber); goto cb; }
+	}
+
+	// anything else:
+	q -= off_t(n);				// put back word
+	dest.append(validatedByte(value(q)));
+}
 
 
 

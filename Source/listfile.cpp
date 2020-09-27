@@ -530,7 +530,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 					h4u5str(s.address), h4u5str(s.size), u5str(static_cast<CodeSegment&>(s).flag));
 			else
 				fd.write_fmt("#%s %s %s %s,  size %s\n",
-					s.isCode()?"CODE":"DATA",
+					s.isCode()?"CODE":s.isTest()?"TEST":"DATA",
 					s.name,spadding+strlen(s.name),
 					h4u5str(s.address), h4u5str(s.size));
 		}

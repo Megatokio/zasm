@@ -27,6 +27,8 @@
 #include "Segment.h"
 #include "Z80Assembler.h"
 #include "Libraries/unix/files.h"
+#include "Z80Registers.h"
+#include <fcntl.h>
 
 
 bool isData(SegmentType t)
@@ -39,60 +41,9 @@ bool isCode(SegmentType t)
 	return t==CODE || t==TZX_STANDARD || t==TZX_TURBO || t==TZX_PURE_DATA || t==TZX_GENERALIZED;
 }
 
-
-// -------------------------------------------------------
-//			Segments[]
-// -------------------------------------------------------
-
-DataSegments::DataSegments (Segments const& segments)
+bool isTest(SegmentType t)
 {
-	// extract Code- and DataSegments from source
-
-	for (uint i=0; i<segments.count(); i++)
-	{
-		if (auto s = dynamic_cast<DataSegment*>(segments[i].ptr()))
-			append(s);
-	}
-}
-
-CodeSegments::CodeSegments (Segments const& segments)
-{
-	// extract CodeSegments from source
-
-	for (uint i=0; i<segments.count(); i++)
-	{
-		if (auto s = dynamic_cast<CodeSegment*>(segments[i].ptr()))
-			append(s);
-	}
-}
-
-void CodeSegments::checkNoFlagsSet () const throws
-{
-	for (uint i=0; i<count(); i++)
-	{
-		auto s = data[i];
-		if (s->has_flag) throw SyntaxError("segment %s must not have flag set", s->name);
-	}
-}
-
-uint32 CodeSegments::totalCodeSize() const
-{
-	uint32 sz = 0;
-	for (uint i=0; i<count(); i++)
-	{
-		sz += data[i]->outputSize();
-	}
-	return sz;
-}
-
-DataSegment* Segments::find (cstr name) const
-{
-	for (uint i=0; i<count(); i++)
-	{
-		if (auto s = dynamic_cast<DataSegment*>(data[i].ptr()))
-			if (eq(s->name,name)) return s;
-	}
-	return nullptr;
+	return t==TEST;
 }
 
 
@@ -108,6 +59,7 @@ Segment::Segment (SegmentType type, cstr name)
 	name(name),
 	is_data(no),
 	is_code(no),
+	is_test(no),
 	is_tzx(no),
 	dpos()
 {}
@@ -128,12 +80,12 @@ DataSegment::DataSegment (cstr name, SegmentType type, uint8 fillbyte , bool rel
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-DataSegment::DataSegment (cstr name, uint8 fillbyte, bool relocatable, bool resizable)
+DataSegment::DataSegment (cstr name, uint8 fillbyte)
 :
 	Segment(DATA,name),
 	fillbyte(fillbyte),
-	relocatable(relocatable),
-	resizable(resizable),
+	relocatable(yes),
+	resizable(yes),
 	address(),
 	size(),
 	lpos()
@@ -146,9 +98,9 @@ DataSegment::DataSegment (cstr name, uint8 fillbyte, bool relocatable, bool resi
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-CodeSegment::CodeSegment (cstr name, SegmentType type, uint8 fillbyte , bool relocatable, bool resizable)
+CodeSegment::CodeSegment (cstr name, SegmentType type, uint8 fillbyte )
 :
-	DataSegment(name,type,fillbyte,relocatable,resizable),
+	DataSegment(name,type,fillbyte,1,1),
 	flag(),
 	pause(),
 	lastbits(),
@@ -511,6 +463,10 @@ void CodeSegment::setNoFlag()
 	no_flagbyte = yes;
 }
 
+// -------------------------------------------------------
+//			TZX
+// -------------------------------------------------------
+
 void CodeSegment::NoChecksum()
 {
 	no_checksum = yes;
@@ -773,20 +729,24 @@ void CodeSegment::setNumPilotPulses(Value const& v)
 	setPilot(symbol);
 }
 
-static void check_validity(Value old, Value nju, cstr name) // helper
+static void check_validity (Value old, Value nju, cstr name) // helper
 {
-	if (old.is_valid() && nju.is_valid() && old!=nju)
+	if (old.is_valid() && nju.is_valid() && old != nju)
 		throw SyntaxError("%s: value redefined",name);
 	if (nju.validity < old.validity)
 		throw SyntaxError("%s: value decayed",name);
 }
-static void check_value(Value old, Value nju, cstr name, int min, int max) // helper
+static void check_value (Value v, cstr name, int min, int max) // helper
 {
-	check_validity(old,nju,name);
-	if (nju.is_valid() && (nju<min || nju>max))
+	if (v.is_valid() && (v<min || v>max))
 		throw SyntaxError("%s: value not in range[%i .. %i]",name,min,max);
 }
-static void check_uint16_value(Value old, Value nju, cstr name) // helper
+static void check_value (Value old, Value nju, cstr name, int min, int max) // helper
+{
+	check_validity(old,nju,name);
+	check_value(nju,name,min,max);
+}
+static void check_uint16_value (Value old, Value nju, cstr name) // helper
 {
 	check_validity(old,nju,name);
 	if (nju.is_valid() && nju!=uint16(nju))
@@ -969,6 +929,741 @@ void TzxArchiveInfo::addArchiveInfo(uint8 id, cstr text)
 	archinfo.append(ArchInfo(id,text));
 }
 
+
+// -------------------------------------------------------
+//			Test Code
+// -------------------------------------------------------
+
+IoSequence::IoSequence (const uint8* data, uint count, uint repetitions)
+:
+	data(nullptr),
+	count(count),
+	repetitions(repetitions)
+{
+	this->data = new uint8[count];
+	memcpy(this->data,data,count);
+}
+
+IoSequence::IoSequence (IoSequence&& q) noexcept
+:
+	data(q.data),
+	count(q.count),
+	repetitions(q.repetitions)
+{
+	new(&q) IoSequence();
+}
+
+IoSequence& IoSequence::operator= (IoSequence&& q) noexcept
+{
+	std::swap(*this,q);
+	return *this;
+}
+
+IoList::IoList (IoSequence&& q)
+:
+	iomode(IoValues),
+	data(nullptr)
+{
+	data = new IoSequences;
+	data->append(std::move(q));
+}
+
+IoList::IoList (IoMode iomode, cstr filename, uint blocksize)
+:
+	iomode(iomode),
+	fd(-1,filename),
+	blocksize(blocksize)
+{
+	assert(iomode != IoValues);
+}
+
+IoList::~IoList()
+{
+	if (iomode==IoValues) delete data;
+	else fd.~FD();
+}
+
+IoList::IoList (IoList&& q)
+:
+	iomode(q.iomode)
+{
+	if (iomode == IoValues)
+	{
+		data = q.data; q.data = nullptr;
+		sequence_idx = q.sequence_idx;
+		in_sequence_idx = q.in_sequence_idx;
+		repetition = q.repetition;
+	}
+	else
+	{
+		new(&fd) FD(std::move(q.fd));
+		blocksize = q.blocksize;
+		blockstate = q.blockstate;
+		memory_address = q.memory_address;
+		block_idx = q.block_idx;
+	}
+}
+
+IoList& IoList::operator= (IoList&& q)
+{
+	TODO();
+	std::swap(*this,q);		// <-- may not work. tbd.
+	return *this;
+}
+
+void IoList::append (IoSequence&& q)
+{
+	assert(iomode==IoValues);
+
+	data->append(std::move(q));
+}
+
+void IoList::openFile()		// befor test
+{
+	switch(iomode)
+	{
+	case IoStdIn:
+		fd = FD::stdin;
+		break;
+	case IoStdOut:
+		fd = FD::stdout;
+		break;
+	case IoValues:
+		sequence_idx = 0;
+		in_sequence_idx = 0;
+		repetition = 0;
+		break;
+	case IoInFile:
+	case IoCompareFile:
+		fd.open_file_r(fd.filepath());
+		break;
+	case IoOutFile:
+		fd.open_file_w(fd.filepath());
+		break;
+	case IoAppendFile:
+		fd.open_file_a(fd.filepath());
+		break;
+	case IoBlockDevice:
+		fd.open_file_m(fd.filepath());
+		blockstate = 0;
+		break;
+	}
+}
+
+void IoList::closeFile() noexcept // after test
+{
+	switch(iomode)
+	{
+	case IoStdIn:
+	case IoStdOut:
+	case IoValues:
+		break;
+	default:
+		fd.close_file(no); // don't throw
+		break;
+	}
+}
+
+bool IoList::isAtEnd()		// after test
+{
+	switch(iomode)
+	{
+	default:
+		return yes;
+	case IoInFile:
+	case IoCompareFile:
+		return fd.is_at_eof();
+	case IoValues:
+		while (sequence_idx < data->count())
+		{
+			IoSequence& seq = (*data)[sequence_idx];
+
+			if (in_sequence_idx >= seq.count)
+			{
+				in_sequence_idx = 0;
+				if (seq.count == 0) { sequence_idx++; continue; }	// empty sequence!
+				if (seq.repetitions == 0) return yes;				// 0 = '*' = unlimited
+				if (++repetition >= seq.repetitions) { repetition=0; sequence_idx++; continue; }
+			}
+			return no;	// some data left to read
+		}
+		return yes;		// no data left
+	}
+}
+
+uint8 IoList::inputByte()	// during test
+{
+	switch (iomode)
+	{
+	case IoStdOut:
+	case IoBlockDevice:
+	case IoOutFile:
+	case IoAppendFile:
+	case IoCompareFile:
+		IERR();
+	case IoStdIn:
+		return fd.data_available() ? fd.read_uchar() : 0;
+	case IoInFile:
+		return fd.read_uchar();
+	case IoValues:
+		while (sequence_idx < data->count())
+		{
+			IoSequence& seq = (*data)[sequence_idx];
+
+			if (in_sequence_idx >= seq.count)
+			{
+				in_sequence_idx = 0;
+				if (seq.count == 0) { sequence_idx++; continue; } // handle empty sequence!
+				if (seq.repetitions != 0) // 0 = '*' = unlimited
+				{
+					if (++repetition >= seq.repetitions) { repetition=0; sequence_idx++; continue; }
+				}
+			}
+
+			return seq.data[in_sequence_idx++];
+		}
+		throw AnyError("end of input data");
+	}
+	IERR();
+}
+
+void IoList::outputByte (uint8 c, uint8* core) // during test
+{
+	switch(iomode)
+	{
+	case IoStdIn:
+	case IoInFile:
+		IERR();
+	case IoOutFile:
+	case IoAppendFile:
+	case IoStdOut:
+		fd.write_uchar(c);
+		return;
+	case IoCompareFile:
+	{
+		uint8 c2 = fd.read_uchar();
+		if (c == c2) return;
+		throw AnyError("compare failed: expected 0x%02x",c2);
+	}
+	case IoBlockDevice:
+	{
+		switch(blockstate++)
+		{
+		case 0:	block_idx = c; return;
+		case 1: block_idx += uint(c) << 8; return;
+		case 2: memory_address = c; return;
+		case 3: memory_address += uint(c) << 8; return;
+		default:
+			if (c==0xE5) // read
+			{
+				if (memory_address+blocksize > 0x10000)
+					throw AnyError("block end beyond ram end");
+				fd.seek_fpos(block_idx * blocksize);
+				fd.read_bytes(core+memory_address,blocksize);
+				return;
+			}
+			if (c==0xEE) // write
+			{
+				if (memory_address+blocksize > 0x10000)
+					throw AnyError("block end beyond ram end");
+				fd.seek_fpos(block_idx * blocksize);
+				fd.write_bytes(core+memory_address,blocksize);
+				return;
+			}
+			throw AnyError("expected direction flag $E5 or $EE");
+		}
+	}
+	case IoValues:
+		while (sequence_idx < data->count())
+		{
+			IoSequence& seq = (*data)[sequence_idx];
+
+			if (in_sequence_idx >= seq.count)
+			{
+				in_sequence_idx = 0;
+				if (seq.count == 0)
+				{
+					if (seq.repetitions == 0) return;	// '*' at end -> accept any data
+					sequence_idx++; continue;			// empty sequence
+				}
+				if (seq.repetitions != 0) // 0 = '*'
+				{
+					if (++repetition >= seq.repetitions) { repetition=0; sequence_idx++; continue; }
+				}
+			}
+
+			uchar c2 = seq.data[in_sequence_idx++];
+			if (c == c2) return;
+			throw AnyError("compare failed: expected 0x%02x",c2);
+		}
+		throw AnyError("end of output compare data");
+	}
+}
+
+TestSegment::TestSegment (cstr name, uint8 fillbyte)
+:
+	CodeSegment(name,TEST,fillbyte)
+{
+	is_code = false;
+	is_test = true;
+}
+
+TestSegment::~TestSegment ()
+{}
+
+Validity TestSegment::validity () const
+{
+	// check this segment for validity.
+	// must be called before rewind(), because after rewind() the lists all become valid.
+
+	// we also replace some values with their default values if they were not set be the source.
+	// these values are therefore mutable because validity() is a const method.
+	// this will only happen after pass 1.
+
+	// overwrite (invalid) unset values with (valid) defaults: (pass 1 only)
+	if (cpu_clock.value == -1) cpu_clock = cpu_unlimited;
+	if (int_per_sec.value == -1) int_per_sec = no_interrupts;
+	if (int_ack_byte.value == -1) int_ack_byte = floating_bus_byte;
+	if (timeout_ms.value == -1) timeout_ms = no_timeout;
+
+	if (!expectations_valid) return invalid;
+	if (!iodata_valid) return invalid;
+	Validity v = CodeSegment::validity();
+	if (v==invalid) return v;
+
+	v = min(v, cpu_clock.validity);
+	v = min(v, int_per_sec.validity);
+	v = min(v, int_ack_byte.validity);
+	v = min(v, timeout_ms.validity);
+
+	return v;
+}
+
+void TestSegment::rewind()
+{
+	CodeSegment::rewind();
+
+	// rewind the segment for the next compilation pass.
+	// we purge our lists, entries will be added again as in pass 1.
+
+	iodata_valid = yes;
+	inputdata.purge();
+	outputdata.purge();
+
+	expectations_valid = yes;
+	expectations.shrink(0);		// instead of purge: avoid reallocation
+}
+
+void TestSegment::setCpuClock (Value v)
+{
+	// set the cpu clock for the test run.
+	// cpu_clock = 0 means run at unlimited speed, which is the default.
+
+	check_value(cpu_clock, v, ".test-clock", 0, 1000000000);
+	cpu_clock = v;
+}
+
+void TestSegment::setIntPerSec (Value v)
+{
+	// set the timer interrupt frequency during test run.
+	// int_frequ = 0 means no interrupts, which is the default.
+	// int_per_sec stores in_per sec (1..1000) or cc_per_int (1001++)
+
+	check_value(int_per_sec, v, ".test-int", 0, 1000);
+	int_per_sec = v;
+}
+
+void TestSegment::setCcPerInt (Value v)
+{
+	// set the timer interrupt frequency during test run.
+	// int_per_sec stores in_per sec (1..1000) or cc_per_int (1001++)
+
+	check_value(int_per_sec, v, ".test-int", 1001, 99999999);
+	int_per_sec = v;
+}
+
+void TestSegment::setIntAckByte (Value v)
+{
+	// set the bus byte during an interrupt acknowledge cycle
+	// the default value is 255.
+
+	check_value(int_ack_byte, v, ".test-int-ack", 0, 255);
+	int_ack_byte = v;
+}
+
+void TestSegment::setTimeoutMsec (Value v)
+{
+	// set a timeout for the test in milli seconds
+	// if the test is preempted by the timeout an error is set.
+	// timeout = 0 means no timeout, which is the default.
+
+	check_value(timeout_ms, v, ".test-timeout", 0, 1*60*60*1000);	// 1h
+	timeout_ms = v;
+}
+
+void TestSegment::setExpectedCcMin (SourceLine* q, Value v)
+{
+	// set minimum value for the cpu cycle counter.
+	// after running the test code the cc must higher than or equal or an error is set.
+	// cc = 0 indicates no limit, which is the default.
+
+	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
+	check_value(v, "cc", 0, 0x7fffffff);
+	expectations << Expectation("cc_min",v,address+dpos,q);
+}
+
+void TestSegment::setExpectedCcMax (SourceLine* q, Value v)
+{
+	// set maximum value for the cpu cycle counter.
+	// after running the test code the cc must less than or equal or an error is set.
+	// cc = 0 indicates no limit, which is the default.
+
+	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
+	check_value(v, "cc", 0, 0x7fffffff);
+	expectations << Expectation("cc_max",v,address+dpos,q);
+}
+
+void TestSegment::setExpectedCc (SourceLine* q, Value v)
+{
+	// set the expected value for the cpu cycle counter.
+	// after running the test code the cc must match exactly or an error is set.
+	// cc = 0 indicates no limit, which is the default.
+
+	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
+	check_value(v, "cc", 0, 0x7fffffff);
+	expectations << Expectation("cc",v,address+dpos,q);
+}
+
+void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr name, Value v)
+{
+	// set the expected value for register to the current set of expectations.
+	// after running the test code the register value will be compared against
+	// the expected value and an error is added if the value does not match.
+
+	name = lowerstr(name);
+
+	int min,max;
+	Z80Registers::getLimits(name,min,max);
+
+	if (max == 0)
+		throw SyntaxError("%s: not a register name", name);
+
+	if (v.is_valid() && (v.value<min || v.value>max))
+		throw SyntaxError("%s: value is not in range[%i .. %i]", name, min, max);
+
+	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
+	expectations << Expectation(name,v,address+dpos,q);
+}
+
+static const cstr ioModeNames[] = {
+	"list of values", "stdin", "stdout", "input file", "output file",
+	"output file (append)", "output file (compare)", "block device"};
+
+static uint16 validated_io_address (const Value& addr) // helper
+{
+	if (addr != uint16(addr))
+		throw SyntaxError("address not in range[0 .. $ffff]");
+	return uint16(addr);
+}
+
+void TestSegment::setInputData (const Value& ioaddr, IoSequence&& iodata)
+{
+	// set or add input data for input from ioaddr.
+	// while running the test code input data for this port is read from this data.
+	// the data has some control characters for repetitions. see documentation.
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (inputdata.contains(addr))
+	{
+		IoList& list = inputdata[addr];
+
+		if (list.iomode != IoValues)
+			throw SyntaxError("in($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		if (list.data->count()!=0 && (*list.data)[0].repetitions == 0)
+			throw SyntaxError("unexpected data after unlimited repetitions set on previous block");
+
+		list.append(std::move(iodata));
+	}
+	else
+	{
+		inputdata.add(addr,std::move(iodata));
+	}
+}
+
+void TestSegment::setOutputData (const Value& ioaddr, IoSequence&& iodata)
+{
+	// set or add output compare data for output to ioaddr
+	// while running the test code output to ioaddr will be compared with this data.
+	// the test is aborted and an error is added if a value does not match.
+	// the data has some control characters for repetitions. see documentation.
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (outputdata.contains(addr))
+	{
+		IoList& list = outputdata[addr];
+
+		if (list.iomode != IoValues)
+			throw SyntaxError("out($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		if (list.data->count()!=0 && (*list.data)[0].repetitions == 0)
+			throw SyntaxError("unexpected data after unlimited repetitions set on previous block");
+
+		list.append(std::move(iodata));
+	}
+	else
+	{
+		outputdata.add(addr,std::move(iodata));
+	}
+}
+
+void TestSegment::setConsole (const Value& ioaddr)
+{
+	// assign io address to console
+	// in() inputs from stdin
+	// out() writes to stdout
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (inputdata.contains(addr))
+	{
+		IoList& list = inputdata[addr];
+		if (list.iomode != IoStdIn)
+			throw SyntaxError("in($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		return;
+	}
+	if (outputdata.contains(addr))
+	{
+		IoList& list = inputdata[addr];
+		assert(list.iomode != IoStdOut);
+		throw SyntaxError("out($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+	}
+
+	inputdata.add(addr,IoList(IoStdIn,nullptr));
+	outputdata.add(addr,IoList(IoStdOut,nullptr));
+}
+
+void TestSegment::setBlockDevice (const Value& ioaddr, cstr filename, const Value& blocksize)
+{
+	// assign io address to file for block i/o
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (!blocksize.is_valid())
+		throw SyntaxError("blocksize must be valid in pass 1");
+	if (blocksize < 1 || blocksize > 0x8000)
+		throw SyntaxError("invalid block size");
+
+	if (outputdata.contains(addr))
+	{
+		IoList& list = outputdata[addr];
+		if (list.iomode != IoBlockDevice)
+			throw SyntaxError("out($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		if (ne(list.fd.filename(),filename))
+			throw SyntaxError("in($%04x): block file redefined", addr);
+		if (uint(blocksize) != list.blocksize)
+			throw SyntaxError("in($%04x): block size redefined", addr);
+		return;
+	}
+
+	outputdata.add(addr,IoList(IoBlockDevice,filename,uint(blocksize)));
+}
+
+void TestSegment::setInputFile (const Value& ioaddr, cstr filename, IoMode mode)
+{
+	// assign in() address to data file
+	// mode may be File only.
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (inputdata.contains(addr))
+	{
+		IoList& list = inputdata[addr];
+		if (list.iomode != mode)
+			throw SyntaxError("in($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		if (ne(list.fd.filename(),filename))
+			throw SyntaxError("in($%04x): input file redefined", addr);
+		return;
+	}
+
+	inputdata.add(addr,IoList(mode,filename));
+}
+
+void TestSegment::setOutputFile (const Value& ioaddr, cstr filename, IoMode mode)
+{
+	// assign out() address to data file
+	// mode may be File, AppendFile or CompareFile.
+
+	if (!ioaddr.is_valid()) { iodata_valid=no; return; }
+	uint16 addr = validated_io_address(ioaddr);
+
+	if (outputdata.contains(addr))
+	{
+		IoList& list = outputdata[addr];
+		if (list.iomode != mode)
+			throw SyntaxError("out($%04x): mode is already set to %s", addr, ioModeNames[list.iomode]);
+		if (ne(list.fd.filename(),filename))
+			throw SyntaxError("out($%04x): output file redefined", addr);
+		return;
+	}
+
+	outputdata.add(addr,IoList(mode,filename));
+}
+
+void TestSegment::openFiles()	// before test
+{
+	for (uint i = 0; i < inputdata.count(); i++)
+	{
+		try
+		{
+			inputdata.getItems()[i].openFile();
+		}
+		catch (AnyError& e)
+		{
+			throw AnyError(e.error(), usingstr("in($%04x): %s",inputdata.getKeys()[i],e.what()));
+		}
+	}
+	for (uint i = 0; i < outputdata.count(); i++)
+	{
+		try
+		{
+			outputdata.getItems()[i].openFile();
+		}
+		catch (AnyError& e)
+		{
+			throw AnyError(e.error(), usingstr("out($%04x): %s",outputdata.getKeys()[i],e.what()));
+		}
+	}
+}
+
+void TestSegment::closeFiles() noexcept // after test
+{
+	for (uint i = 0; i < inputdata.count(); i++)
+	{
+		inputdata.getItems()[i].closeFile();
+	}
+	for (uint i = 0; i < outputdata.count(); i++)
+	{
+		outputdata.getItems()[i].closeFile();
+	}
+}
+
+void TestSegment::checkAllBytesRead()	// after test
+{
+	cstr e = nullptr;
+
+	for (uint i = 0; i < inputdata.count(); i++)
+	{
+		if (!inputdata.getItems()[i].isAtEnd())
+			e = catstr(e,usingstr(",$%04x",inputdata.getKeys()[i]));
+	}
+	if (!e) return; // ok
+	throw AnyError("in(%s): not all bytes read",e+1);
+}
+
+void TestSegment::checkAllBytesWritten()	// after test
+{
+	cstr e = nullptr;
+
+	for (uint i = 0; i < outputdata.count(); i++)
+	{
+		if (!outputdata.getItems()[i].isAtEnd())
+			e = catstr(e,usingstr(",$%04x",outputdata.getKeys()[i]));
+	}
+	if (!e) return; // ok
+	throw AnyError("out(%s): not all bytes written",e+1);
+}
+
+uint8 TestSegment::inputByte (uint16 addr)	// during test
+{
+	IoList* iolist = inputdata.find(uint8(addr));
+	if (iolist) return iolist->inputByte();
+	iolist = inputdata.find(addr);
+	if (iolist) return iolist->inputByte();
+	else throw AnyError("unexpected io address (no .test-in data)");
+}
+
+void TestSegment::outputByte (uint16 addr, uint8 byte, uint8* memory)	// during test
+{
+	IoList* iolist = outputdata.find(uint8(addr));
+	if (iolist) { iolist->outputByte(byte,memory); return; }
+	iolist = outputdata.find(addr);
+	if (iolist) iolist->outputByte(byte,memory);
+	else throw AnyError("unexpected io address (no .test-out data)");
+}
+
+
+
+// -------------------------------------------------------
+//			Segments[]
+// -------------------------------------------------------
+
+DataSegment* Segments::find (cstr name) const
+{
+	for (uint i=0; i<count(); i++)
+	{
+		if (auto s = dynamic_cast<DataSegment*>(data[i].ptr()))
+			if (eq(s->name,name)) return s;
+	}
+	return nullptr;
+}
+
+
+// -------------------------------------------------------
+//			Collections
+// -------------------------------------------------------
+
+DataSegments::DataSegments (Segments const& segments)
+{
+	// extract Code- and DataSegments from source
+
+	for (uint i=0; i<segments.count(); i++)
+	{
+		if (auto s = dynamic_cast<DataSegment*>(segments[i].ptr()))
+		{
+			append(s);
+		}
+	}
+}
+
+CodeSegments::CodeSegments (Segments const& segments)
+{
+	// extract CODE Segments from source
+	// incl. TZX segments, but excl. TEST
+
+	for (uint i=0; i<segments.count(); i++)
+	{
+		if (auto s = dynamic_cast<CodeSegment*>(segments[i].ptr()))
+		{
+			if (s->isCode()) append(s);
+		}
+	}
+}
+
+void CodeSegments::checkNoFlagsSet () const throws
+{
+	for (uint i=0; i<count(); i++)
+	{
+		auto s = data[i];
+		if (s->has_flag) throw SyntaxError("segment %s must not have flag set", s->name);
+	}
+}
+
+uint32 CodeSegments::totalCodeSize() const
+{
+	uint32 sz = 0;
+	for (uint i=0; i<count(); i++)
+	{
+		sz += data[i]->outputSize();
+	}
+	return sz;
+}
+
 TzxSegments::TzxSegments (Segments const& segments)
 {
 	for (uint i=0; i<segments.count(); i++)
@@ -979,6 +1674,21 @@ TzxSegments::TzxSegments (Segments const& segments)
 		}
 	}
 }
+
+TestSegments::TestSegments (Segments const& segments)
+{
+	for (uint i=0; i<segments.count(); i++)
+	{
+		if( auto s = dynamic_cast<TestSegment*>(segments[i].ptr()))
+		{
+			append(s);
+		}
+	}
+}
+
+
+
+
 
 
 
