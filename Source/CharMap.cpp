@@ -156,7 +156,7 @@ CharMap::CharSet CharMap::charsetFromName (cstr w)
 	return  eq(w,"zx80") ? ZX80 : eq(w,"zx81") ? ZX81 :
 			eq(w,"ascii") ? ASCII : startswith(w,"zxsp") ? ZXSP :
 			startswith(w,"jup") || endswith(w,"ace") ? JUPITER :
-			startswith(w,"jup") && find(w,"inv") ? JUPITER_INVERTED :
+			startswith(w,"jup") && ::find(w,"inv") ? JUPITER_INVERTED :
 			startswith(w,"zx80_i") ? ZX80_INVERTED :
 			startswith(w,"zx81_i") ? ZX81_INVERTED :
 			NONE;
