@@ -2,11 +2,17 @@
 h3	#target TAP or TAPE
 	tap
 
-pre	#target tap
+pre	; ZX Spectrum tape file:
+	#target tap
 	#code <name>, <start>,<len>,<flag>
-	#code <name>, <start>,<len>,<flag>
-	#code <name>, <start>,<len>,<flag>
+	#code <name>, <start>,<len>,flag=<flag>
+	#code <name>, <start>,<len>,FLAG=<flag>
 	...
+
+pre	; Jupiter Ace tape file:
+	#target tap
+	#code <name>, <start>,<len>,flag=none
+	#code <name>, <start>,<len>,none
 
 
 p	This target defines a ZX Spectrum or a Jupiter Ace tape file. This file may and should contain several code segments. Normally each code segment defines one block on the tape. The blocks are written to the file in the uncompressed TAP format.
@@ -15,13 +21,19 @@ p	The tape file format represents programs and data saved to a music compact cas
 
 h5	ZX Spectrum vs. Jupiter Ace tap format
 
-p	Unluckily the tape file formats for the ZX Spectrum and for the Jupiter Ace are only similar, not identical. zasm handles this difference for you, but it has to use a little heuristics to decide in which format to save.
+p	Unluckily the tape file formats for the ZX Spectrum and for the Jupiter Ace are only similar, not identical. <i>zasm</i> handles this difference for you, but it has to use a little heuristics to decide in which format to save.
 
 p	Normally a ZX Spectrum file is written. Except if the following conditions are met, then a Jupiter Ace tape file is written:
 
 ul
-li	The first segment is 25 bytes long (the Jupiter Ace header size)
-li	Block flags start with 0x00 for the first header block and then alternate between 0xFF and 0x00 for all following blocks. This is required for the Jupiter Ace tape file, because they do not store the flag byte.
+li	<s>The first segment is 25 bytes long (the Jupiter Ace header size)</s>
+li	<s>Block flags start with 0x00 for the first header block and then alternate between 0xFF and 0x00 for all following blocks. This is required for the Jupiter Ace tape file, because they do not store the flag byte.</s>
+
+p	Since version 4.2.0 <i>zasm</i> uses a different method to select Jupiter Ace .tap format:
+
+ul
+li	If you set the flag byte in the <tt>#code</tt> directive to <tt>none</tt>, then a Jupiter Ace-style tape block is written. This block does not store the flag byte (therefore 'none') but instead emulators will implicitely assume <tt>$00</tt> and <tt>$FF</tt> for the flag byte in alternating order.
+
 
 p.b	Layout of a block in a ZX Spectrum tape file:
 
@@ -79,27 +91,27 @@ pre	#target tap
 	#code PROG_DATA,0,*,dataflag
 	;
 	; 10 CLEAR 23999
-	        defb    0,10                    ; line number
-	        defb    end10-($+1)             ; line length
-	        defb    0                       ; statement number
-	        defb    tCLEAR                  ; token CLEAR
-	        defm    "23999",$0e0000bf5d00   ; number 23999, ascii & internal format
+			defb    0,10                    ; line number
+			defb    end10-($+1)             ; line length
+			defb    0                       ; statement number
+			defb    tCLEAR                  ; token CLEAR
+			defm    "23999",$0e0000bf5d00   ; number 23999, ascii & internal format
 	end10:  defb    $0d                     ; line end marker
 	;
 	; 20 LOAD "" CODE 24000
-	        defb    0,20                    ; line number
-	        defb    end20-($+1)             ; line length
-	        defb    0                       ; statement number
-	        defb    tLOAD,'"','"',tCODE     ; token LOAD, 2 quotes, token CODE
-	        defm    "24000",$0e0000c05d00   ; number 24000, ascii & internal format
+			defb    0,20                    ; line number
+			defb    end20-($+1)             ; line length
+			defb    0                       ; statement number
+			defb    tLOAD,'"','"',tCODE     ; token LOAD, 2 quotes, token CODE
+			defm    "24000",$0e0000c05d00   ; number 24000, ascii & internal format
 	end20:  defb    $0d                     ; line end marker
 	;
 	; 30 RANDOMIZE USR 24000
-	        defb    0,30                    ; line number
-	        defb    end30-($+1)             ; line length
-	        defb    0                       ; statement number
-	        defb    tRANDOMIZE,tUSR         ; token RANDOMIZE, token USR
-	        defm    "24000",$0e0000c05d00   ; number 24000, ascii & internal format
+			defb    0,30                    ; line number
+			defb    end30-($+1)             ; line length
+			defb    0                       ; statement number
+			defb    tRANDOMIZE,tUSR         ; token RANDOMIZE, token USR
+			defm    "24000",$0e0000c05d00   ; number 24000, ascii & internal format
 	end30:  defb    $0d                     ; line end marker
 	;
 	program_end:
@@ -107,7 +119,7 @@ pre	#target tap
 	; <-- Basic variables -->
 	;
 	variables_end:
-	 
+
 	;
 	; Machine code block, header:
 	;

@@ -294,6 +294,80 @@ OTHER_FILES += \
 	Examples/template_ace.asm \
 
 DISTFILES += \
+	"Documentation/ README.txt" \
+	"Documentation/ zasm.toc" \
+	"Documentation/8080 Assembler.txt" \
+	"Documentation/8080 assembler Z80 instructions.txt" \
+	"Documentation/8080 assembler instructions.txt" \
+	"Documentation/8080 instructions.txt" \
+	"Documentation/Command Line Options.txt" \
+	"Documentation/Compound instructions.txt" \
+	Documentation/Illegals.txt \
+	"Documentation/Including C Sources.txt" \
+	"Documentation/Label definition.txt" \
+	"Documentation/Legal Notes.txt" \
+	"Documentation/List File.txt" \
+	"Documentation/Numeric expressions.txt" \
+	"Documentation/Quick Overview.txt" \
+	"Documentation/String expressions.txt" \
+	"Documentation/Syntax variants.txt" \
+	"Documentation/Target files - Overview.txt" \
+	"Documentation/Version History.txt" \
+	Documentation/_!.txt \
+	Documentation/__casefold.txt \
+	Documentation/__dotnames.txt \
+	Documentation/__flatops.txt \
+	Documentation/__ixcbr2.txt \
+	Documentation/__reqcolon.txt \
+	Documentation/__test.txt \
+	Documentation/_assert.txt \
+	Documentation/_cflags.txt \
+	Documentation/_charset.txt \
+	Documentation/_code.txt \
+	Documentation/_compress.txt \
+	Documentation/_cpath.txt \
+	Documentation/_data.txt \
+	Documentation/_define.txt \
+	Documentation/_end.txt \
+	Documentation/_if.txt \
+	Documentation/_include.txt \
+	Documentation/_insert.txt \
+	Documentation/_local.txt \
+	Documentation/_target.txt \
+	Documentation/align.txt \
+	Documentation/area.txt \
+	Documentation/asciz.txt \
+	Documentation/automate.vs \
+	"Documentation/command line options for c compiler.txt" \
+	"Documentation/defb db.txt" \
+	"Documentation/defl set.txt" \
+	"Documentation/defm dm.txt" \
+	"Documentation/defs ds.txt" \
+	"Documentation/defw dw.txt" \
+	"Documentation/dotnames reqcolon etc.txt" \
+	"Documentation/dup edup.txt" \
+	Documentation/end.txt \
+	Documentation/equ.txt \
+	Documentation/globl.txt \
+	Documentation/if.txt \
+	Documentation/incbin.txt \
+	Documentation/include.txt \
+	Documentation/long.txt \
+	"Documentation/macro endm.txt" \
+	Documentation/org.txt \
+	"Documentation/phase dephase.txt" \
+	"Documentation/rept endm.txt" \
+	"Documentation/target ace.txt" \
+	"Documentation/target bin rom.txt" \
+	"Documentation/target o 80.txt" \
+	"Documentation/target p 81 p81.txt" \
+	"Documentation/target sna.txt" \
+	"Documentation/target tap.txt" \
+	"Documentation/target tzx.txt" \
+	"Documentation/target z80.txt" \
+	"Documentation/z180 instructions.txt" \
+	"Documentation/z80 instructions.txt" \
+	"Documentation/z80 z180 8080.txt" \
 	Test/8080/8080EX1.asm \
 	Test/8080/8080EXER.asm \
 	Test/8080/8080PRE.asm \

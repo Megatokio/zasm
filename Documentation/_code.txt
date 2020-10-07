@@ -18,7 +18,7 @@ pre	#code	_BOOT,0x0000		; segment with Reset, RST and NMI vectors
 	#code 	_CODE				; most code and const data go here
 	#code 	_INITIALIZER		; initializer for initialized data in ram
 
-p	The name can be chosen freely, but must be a valid label name. zasm generates a label for the start address, end address and length (since 4.0.24) of each segment. If you include c source, then the c compiler requires the above code segments to be defined. Names for segments are case sensitive like all labels, except if command line option --casefold was used. 
+p	The name can be chosen freely, but must be a valid label name. zasm generates a label for the start address, end address and length (since 4.0.24) of each segment. If you include c source, then the c compiler requires the above code segments to be defined. Names for segments are case sensitive like all labels, except if command line option --casefold was used.
 
 pre	#code FOO, 100, 1000
 p	will define these labels:
@@ -28,9 +28,14 @@ pre	FOO      = $0064 =    100
 
 p	The start address is required for the first segment only or it will default to 0. Following segments will be automatically assigned start addresses without gap if no address is defined.
 
-p	The start address should define the 'physical' address for the segment, the address where it is visible to the cpu. It also sets the 'logical' address (the org) for the code which can be 'shifted' with .phase and .dephase. 
+p	The start address should define the 'physical' address for the segment, the address where it is visible to the cpu. It also sets the 'logical' address (the org) for the code which can be 'shifted' with .phase and .dephase.
 
 p	If a start address is given and does not exactly match the end address of the previous code segment, then the following segments is still appended without gap in the output file. It is assumed that the code will be moved to this address before it is executed.
+
+p	If the code is written to a .hex or .s19 file, then it depends on the #target, how exactly this 'gap' is handled, because these formats also store the destination address of the contained code.
+ul
+li	For <b>#target rom</b> <i>zasm</i> stores consecutive addresses, suitable for an eprom burner, without gap.
+li	For <b>#target ram</b> <i>zasm</i> stores the 'physical' address, as set in the #code directive, suitable for a ram loader, which will probably load the code to the 'physical' address of the segments.
 
 p	You can use the start address if you have a rom which is paged into the Z80 address space, e.g. a 32k rom which consists of 2 pages might be defined like this:
 
@@ -43,6 +48,8 @@ p	If given, the size defines the size for this segment. If you store less bytes 
 p	If no size is defined, then the segment is exactly as long as the code stored into it.
 
 p	The 3rd argument is not required and actually not allowed in most cases. But some targets require a flag for the code segment, e.g. #target tap requires a flag byte for each tape block.
+
+pre	#code HEADER, 0, 17, $00
 
 p	A code segment can be re-entered by using the #code directive with the name only or by using the .area pseudo opcode:
 

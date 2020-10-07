@@ -10,7 +10,7 @@ p	This feature is also used in the regression selftest of zasm with command line
 
 p	Formerly any line starting with '#!' was ignored by the assembler.
 
-p	Since version 4.3.4 line 1 is also examined by the assembler itself and options which modify the assembly are also applied by zasm <i>as if they were given on the command line</i>. This way they are also applied if the file is assembled normally and not run as a command. The options zasm looks for are:
+p	Since version 4.3.6 line 1 is also examined by the assembler itself and options which modify the assembly are also applied by zasm <i>as if they were given on the command line</i>. This way they are also applied if the file is assembled normally and not run as a command. The options zasm looks for are:
 
 p	--z80, --z180, --8080
 	--asm8080
