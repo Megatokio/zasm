@@ -174,7 +174,7 @@ static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc, CpuID variant
 
 		cc += z80_clock_cycles(op1,op2,op4,variant);
 
-		uint len = z80_opcode_length(bytes);
+		uint len = z80_opcode_length(bytes,variant);
 		assert(len<=count);
 		bytes += len;
 		count -= len;
