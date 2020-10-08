@@ -26,24 +26,26 @@
 
 class Z80
 {
+public:
 	typedef uint8  CoreByte;
 	typedef int32  CpuCycle;		// cpu clock cycle
 	typedef uint16 Address;
 	typedef uint8  Byte;
 	typedef uint16 Word;
+	typedef std::function<uint8(CpuCycle,uint16)> InputHandler;
+	typedef std::function<void(CpuCycle,uint16,uint8)> OutputHandler;
 
-public:
 	Z80Registers registers;
 	CoreByte* core = nullptr;
-	std::function<uint8(CpuCycle,uint16)> input;
-	std::function<void(CpuCycle,uint16,uint8)> output;
+	InputHandler input;
+	OutputHandler output;
 
 	CpuID cpu_type;
 	bool ixcbr2_enabled;	// if std. Z80
 	bool ixcbxh_enabled;	// if std. Z80
 
 	CpuCycle cc;
-	int int_ack_byte = 255;  // RST 7
+	uint int_ack_byte = 255;  // RST 7
 	bool halt;
 	CpuCycle int_start = 0;
 	CpuCycle int_end = 0;
@@ -53,10 +55,7 @@ public:
 	enum RVal { TimeOut=0, BreakPoint, IllegalInstruction };
 
 
-	Z80 (CpuID cpu_type,
-		 CoreByte* core,
-		 std::function<uint8(CpuCycle,uint16)> input,
-		 std::function<void(CpuCycle,uint16,uint8)> output);
+	Z80 (CpuID, CoreByte[0x10000], InputHandler, OutputHandler);
 	~Z80(){}
 
 	void reset() noexcept;

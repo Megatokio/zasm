@@ -144,27 +144,13 @@
 #endif
 
 // output byte to address
-// this calls the Z80 member function handle_output(cc,addr,byte)
-// the default implementation of this function iterates over all other Items 'behind' the Z80.
-// #define Z80_NO_handle_output in Z80options.h to use your own implementation.
 #ifndef OUTPUT
 #define	OUTPUT(ADDR,BYTE) do{ INCR_CC(4); this->handle_output(cc-2,ADDR,BYTE); }while(0)
 #endif
 
 // input byte from address
-// this calls the Z80 member function handle_input(cc,addr)
-// the default implementation of this function iterates over all other Items 'behind' the Z80.
-// #define Z80_NO_handle_input in Z80options.h to use your own implementation.
 #ifndef INPUT
 #define	INPUT(ADDR,DEST) do{ INCR_CC(4); DEST = this->handle_input(cc-2,ADDR); }while(0)
-#endif
-
-// call each item's update(cc) member function.
-// this calls the Z80 member function handle_update(cc).
-// the default implementation of this function iterates over all other Items 'behind' the Z80.
-// #define Z80_NO_handle_update in Z80options.h to use your own implementation.
-#ifndef UPDATE
-#define UPDATE() do{ cc_next_update = this->handle_update(cc, cc_exit); }while(0)
 #endif
 
 

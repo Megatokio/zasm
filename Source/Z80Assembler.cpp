@@ -97,6 +97,7 @@ void Z80Assembler::setError (const AnyError& e)
 	SourceLine* sourceline = current_sourceline_index < source.count() ? &current_sourceline() : nullptr;
 
 	errors.append(Error(e.what(), sourceline));
+	if (verbose >= 2) logline("%s",errors.last().text);
 }
 
 void Z80Assembler::setError (cstr format, ...)
@@ -108,6 +109,18 @@ void Z80Assembler::setError (cstr format, ...)
 	va_list va;
 	va_start(va,format);
 	errors.append( Error(format, sourceline, va) );
+	if (verbose >= 2) logline("%s",errors.last().text);
+	va_end(va);
+}
+
+void Z80Assembler::setError (SourceLine* sourceline, cstr format, ...)
+{
+	// set error for file, line & column
+
+	va_list va;
+	va_start(va,format);
+	errors.append( Error(format, sourceline, va) );
+	if (verbose >= 2) logline("%s",errors.last().text);
 	va_end(va);
 }
 
@@ -471,8 +484,8 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 
 		checkCpuOptions();
 		assemble(source);
-
 		if (errors.count()==0) checkTargetfile();
+		if (errors.count()==0) runTestcode();
 
 		if (errors.count()==0 && deststyle)
 		{
@@ -4398,7 +4411,7 @@ longer:
 	{
 		TestSegment* segment = dynamic_cast<TestSegment*>(current_segment_ptr);
 		if (segment == nullptr) throw SyntaxError("test segment required");
-		if (currentPosition() != 0) throw SyntaxError(".test pseudo instructions must appear before the test code");
+		//if (currentPosition() != 0) throw SyntaxError(".test pseudo instructions must appear before the test code");
 
 		q.expect('-');
 
@@ -4416,9 +4429,11 @@ longer:
 		}
 		else if (q.testWord("int"))	// .test-int value
 		{
-			Value freq = value(q);
-			q.testWord("Hz");
-			segment->setIntPerSec(freq);
+			Value v = value(q);
+			if (q.testWord("Hz")) segment->setIntPerSec(v);
+			else if (q.testWord("cc")) segment->setCcPerInt(v);
+			else if (v.value <= 1000) segment->setIntPerSec(v);
+			else segment->setCcPerInt(v);
 			return;
 		}
 		else if (q.testWord("intack"))	// .test-intack value
@@ -4442,13 +4457,19 @@ longer:
 		else if (q.testWord("in"))		// .test-in addr = xxxxxxx
 		{
 			Value addr = value(q);
-			while(q.testComma()) { segment->setInputData(addr,parseIoSequence(q)); }
+			while(q.testComma())
+			{
+				segment->setInputData(addr,parseIoSequence(q));
+			}
 			return;
 		}
 		else if (q.testWord("out"))		// .test-out addr = xxxxxxx
 		{
 			Value addr = value(q);
-			while(q.testComma()) { segment->setOutputData(addr,parseIoSequence(q)); }
+			while(q.testComma())
+			{
+				segment->setOutputData(addr,parseIoSequence(q));
+			}
 			return;
 		}
 		else if (q.testWord("infile"))	// .test-infile addr = "filename"
@@ -4496,7 +4517,7 @@ longer:
 	{
 		TestSegment* segment = dynamic_cast<TestSegment*>(current_segment_ptr);
 		if (segment == nullptr) throw SyntaxError("test segment required");
-		if (currentPosition() == 0) throw SyntaxError(".test pseudo instructions should appear after the test code");
+		if (currentPosition() == 0) throw SyntaxError(".expect pseudo instructions must appear after the test code");
 
 		if (q.testWord("cc"))	// cycle counter: cc [=,<=,>=] nnnnn
 		{
@@ -4525,6 +4546,7 @@ longer:
 		else // expect register = value
 		{
 			cstr reg = q.nextWord();
+			if (*q.p == '\'') { reg = catstr(reg,"'"); q.p++; }
 			if (!Z80Registers::isaRegisterName(reg)) throw SyntaxError("register name expected");
 			q.expect('=');
 			Value v = value(q);

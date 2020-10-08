@@ -27,6 +27,7 @@ INCLUDEPATH +=          \
 	Libraries           \
 
 SOURCES += \
+	Libraries/Z80/goodies/z80_disass.cpp \
 	Source/Error.cpp \
 	Source/Label.cpp \
 	Source/Z80.cpp \
@@ -45,6 +46,7 @@ SOURCES += \
 	Source/Z80Header.cpp \
 	Source/Macro.cpp \
 	Source/SyntaxError.cpp \
+	Source/runTestcode.cpp \
 	Source/zx7.cpp \
 	Libraries/cstrings/cstrings.cpp \
 	Libraries/kio/exceptions.cpp \
@@ -66,6 +68,7 @@ HEADERS += \
 	Libraries/Templates/relational_operators.h \
 	Libraries/Templates/sort.h \
 	Libraries/Templates/template_helpers.h \
+	Libraries/Z80/goodies/z80_disass.h \
 	Libraries/kio/auto_config.h \
 	Source/Error.h \
 	Source/Label.h \

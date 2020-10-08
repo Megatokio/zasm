@@ -64,9 +64,7 @@ void Z80::push2 (Word n) noexcept
 	poke2(registers.sp, n);
 }
 
-Z80::Z80 (CpuID cpu_type, CoreByte* core,
-		  std::function<uint8(CpuCycle,uint16)> input,
-		  std::function<void(CpuCycle,uint16,uint8)> output)
+Z80::Z80 (CpuID cpu_type, CoreByte* core, InputHandler input, OutputHandler output)
 :
 	core(core),
 	input(input),
@@ -180,7 +178,7 @@ slow_loop:
 			pc = Address(int_ack_byte - RST00);
 			LOOP;
 		default:
-			throw AnyError("interrupt in im0 with unsupported command byte on bus");
+			throw AnyError("interrupt in im0 with unsupported instruction on bus");
 		}
 
 	case 1:  // Mode 1:	RST38

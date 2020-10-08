@@ -41,6 +41,7 @@ extern cstr vcc_library_path;
 extern const char DEFAULT_CODE_SEGMENT[];
 
 class CharMap;
+class Z80;
 
 enum Target
 {
@@ -233,6 +234,7 @@ private:
 
 	void	setError		(const AnyError&);					  // set error for current file, line & column
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
+	void	setError		(SourceLine*, cstr format, ...) __printflike(3,4); // set error for file, line & column
 	void	init_c_flags	();
 	void	init_c_tempdir	()							throws;
 	void	init_c_compiler	(cstr cc = nullptr)			throws;
@@ -258,6 +260,8 @@ public:
 	void	assembleLine	(SourceLine&)			throws;
 	uint	assembleSingleLine(uint address, cstr z80_instruction, char buffer[]);
 	void	convert8080toZ80(cstr source, cstr dest);
+	void	runTestcode		();
+	void	runTestcode		(TestSegment&, class Z80&);
 
 	void	checkTargetfile	()		throws;
 	void	writeListfile	(cstr filepath, int style) throws;
