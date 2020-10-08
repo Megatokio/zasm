@@ -139,6 +139,7 @@ public:
 	void	storeSpace	(Value const&, int)		throws;
 	void	storeSpace	(Value const&)			throws;
 	void	storeSpaceUpToAddress(Value const&)	throws;
+	void	storeSpaceUpToAddress(Value const&, int) throws;
 	void	clearTrailingBytes ()				noexcept;
 
 	void	skipExistingData (int sz)			throws;

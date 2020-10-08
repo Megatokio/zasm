@@ -4205,10 +4205,15 @@ void Z80Assembler::asmPseudoInstr (SourceLine& q, cstr w) throws
 	case '.loc':
 	case '.org':
 	case ' org':
-		// org <value>	; add space up to address
+		// org <value>			 ; add space up to address
+		// org <value>, fillbyte ; add space up to address
 		q.is_data = yes;
-		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-		static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(value(q));
+		{
+			Value n = value(q);
+			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
+			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n,value(q));
+			else static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n);
+		}
 		return;
 
 	case 'data':

@@ -423,7 +423,12 @@ void DataSegment::storeSpace (Value const& sz) throws
 
 void DataSegment::storeSpaceUpToAddress (Value const& addr) throws
 {
-	storeSpace(addr-lpos);
+	storeSpace(addr-lpos, fillbyte);
+}
+
+void DataSegment::storeSpaceUpToAddress(Value const& addr, int c) throws
+{
+	storeSpace(addr-lpos, c);
 }
 
 void DataSegment::clearTrailingBytes () noexcept

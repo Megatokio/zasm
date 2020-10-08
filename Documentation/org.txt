@@ -1,39 +1,40 @@
 
 h3	org, .org or .loc
 	org, loc
-	
+
 pre		org <value>
 		.org <value>
 		.loc <value>
+		org <value>, <fillbyte>
 
 p	The pseudo instruction 'org' has two use cases:
 p	It can define the start address of the assembler code or it can insert some space up to the new address.
 
 
-h5	Define the start address for the code
+h4	Define the start address for the code
 
 p	zasm requires that the source initially defines the address where the code will be stored and run. This can be done in either of two ways:
 
 ul
-li	Define a #target and subsequently some #code and #data segments 
+li	Define a #target and subsequently some #code and #data segments
 li	Just define a code origin with 'org'.
 
-p	Using 'org' is the traditional way for old sources. The code origin must be defined before any real code. When the origin is defined, zasm will silently create a single code segment. If you use 'org' you cannot specify a target or define multiple code segments or any data segments. Then labels for the addresses of variables in ram must be defined like other const values with 'equ' or similar. If you want to create code for a special target or if you want to include c sources then you must use #target, #code and #data and cannot use 'org' to define the start address of your code.
+p	Using 'org' is the traditional way for old sources. The code origin must be defined before any real code. When the origin is defined, zasm will silently create a single code segment. If you use 'org' you cannot specify a target or define multiple code segments or any data segments. Then labels for data and variables in ram must be defined like other const values with 'equ' or similar. If you want to create code for a special target or if you want to include c sources then you must use #target, #code and #data and cannot use 'org' to define the start address of your code.
 
 p	'org' actually defines two kinds of addresses:
 ul
-li	the 'physical' code address 
+li	the 'physical' code address
 li	and the 'logical' code address
 
-p	The logical code address is what you mostly work with. E.g. program labels and '$' refer to the logical code address. The logical code address can be moved with .phase and .dephase. <i class=magenta>(note: in zasm v3 'org' was used for changing the logical origin too)</i>
+p	The logical code address is what you mostly work with. E.g. program labels and '$' refer to the logical code address. The logical code address can be moved with <tt>.phase</tt> and <tt>.dephase</tt>.
 
 p	The physical code address is the address at which the generated code is actually visible to the cpu. (At least it should be.) Because most code is executed at the same address where it is visible to the cpu (which means: it is not copied somewhere else in ram before it is executed there) the physical and the logical address are most times the same. In case you need to access the physical address of the code at a position where you have shifted the logical address with .phase you can use '$$' instead of '$'.
 
 p	Note: the physical code address is biased to the 'org' address resp. to the start address of the current #code or #data segment, not the start of the eprom!
 
-h5	Insert space up to a new address
+h4	Insert space up to a new address
 
-p	The second use case for 'org' – which can also be used if you use #target, #code and #data – is to advance the code position up to the new logical origin, filling the space with the current segment's default fill byte. (0xFF for ROM)
+p	The second use case for 'org' – which can also be used if you use #target, #code and #data – is to advance the code position up to the new logical origin, filling the space with the current segment's default fill byte. The default fill byte is $FF for ROMs and $00 for all other target formats. Since version 4.3.6 the fill byte can be specified as a second argument to 'org'. This is the same as with 'defs'.
 
 p.i	Note: This second behavior of 'org' differs from the behavior in zasm v3. In zasm v3 'org' was solely used to set the logical origin. Use .phase and .dephase for this now!
 
@@ -44,8 +45,6 @@ pre		org	8
 p	is the same as
 
 pre		defs	8-$
-
-p	which was the way it had to be done in zasm v3. 
 
 p	'org' behaves exactly the same if you use it in a #code or #data segment:
 
