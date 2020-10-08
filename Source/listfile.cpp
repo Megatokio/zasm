@@ -38,7 +38,7 @@ static cstr oo_str(uint n)
 }
 
 static uint write_line_with_objcode
-			(FD& fd, uint address, uint8* bytes, uint count, uint offset, bool is_data, cstr text)
+			(FD& fd, uint address, uint8* bytes, uint count, uint offset, bool is_data, cstr text, CpuID variant)
 {
 	// Helper: write one line with address, code and text to log file
 	// address	= base address of opcode
@@ -79,7 +79,7 @@ static uint write_line_with_objcode
 	{
 		for (count=0;;)
 		{
-			uint n = z80_opcode_length(bytes+count,CpuZ180);	// use Z180 in case Z180 opcodes are used
+			uint n = z80_opcode_length(bytes+count,variant);
 			if (count+n>4) break;
 			count += n;
 		}
@@ -141,7 +141,7 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data, CpuID var
 	if (can_branch)
 	{
 		uint a = cc + z80_clock_cycles(op1,op2,0,variant);			// print accumulated time after instruction
-		uint b = op1==0xed ? 21 :											// for ldir etc. print loop time (always 21)
+		uint b = op1==0xed ? z80_clock_cycles_on_branch(op1,op2,variant) : // for ldir etc. print loop time
 				 cc + z80_clock_cycles_on_branch(op1,op2,variant);	// for other instructions print accum. time as for a
 		cc = a;
 
@@ -449,7 +449,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 				// note: real z80 opcodes have max. 4 bytes
 				offset = style&8 ?
 					write_line_with_objcode_and_cycles(fd, address, bytes, count, 0, cc, is_data, sourceline.text, variant)
-				  : write_line_with_objcode(fd, address, bytes, count, 0, is_data, sourceline.text);
+				  : write_line_with_objcode(fd, address, bytes, count, 0, is_data, sourceline.text, variant);
 			}
 
 
@@ -470,7 +470,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 			{
 				offset += style&8 ?
 					write_line_with_objcode_and_cycles(fd, address, bytes, count, offset, cc, is_data, "", variant)
-				  : write_line_with_objcode(fd, address, bytes, count, offset, is_data, "");
+				  : write_line_with_objcode(fd, address, bytes, count, offset, is_data, "", variant);
 			}
 		}
 	}
