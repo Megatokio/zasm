@@ -264,6 +264,29 @@ static int doit( Array<cstr> argv )
 	cstr c_includes	= nullptr;
 	cstr stdlib_dir	= nullptr; // for #include standard library
 
+// work around Linux kernel limitation:
+	if (argv.count() >= 3 && strchr(argv[1],' '))
+	{
+		// split shebang arguments:
+		// argv[] = { "/path/to/zasm", "merged arguments from line 1", "executable/sourcefile/as/invocated", "more", "arguments" }
+		// note: a script can start with "#!" (shebang).
+		// then the Linux kernel takes everything up to the first space as the command,
+		// and everything after that space as ONE SINGLE ARGUMENT.
+		try
+		{
+			FD fd(argv[2]);
+			cstr s = fd.read_str();
+			if (endswith(s,argv[1]))
+			{
+				Array<cstr> multiargs;
+				split_command_line(argv[1],multiargs);
+				argv.removeat(1);
+				argv.insertat(1,multiargs);
+			}
+		}
+		catch (...){}
+	}
+
 //	eval arguments:
 	for (uint i=1; i<argv.count(); )
 	{
