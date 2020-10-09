@@ -1,6 +1,30 @@
 
 
 
+; Jupiter ACE memory map
+;
+; 0000 - 1FFF = ROM 8KB
+; 2000 - 23FF = 768 charmap + 256 PAD (CPU priority)
+; 2400 - 27FF = 768 charmap + 256 PAD (Video priority)
+; 2800 - 2BFF = 1KB charset (CPU priority)
+; 2C00 - 2FFF = 1KB charset (Video priority)
+; 3000 - 3BFF = RAM 1KB x 3 mirrors
+; 3C00 - 3FFF = RAM 1KB
+; 3C00 - FFFF = Expansion RAM (0-48KB)
+;
+; FORTH register usage
+;
+; A, Flags  Temporary
+; BC        Temporary
+; DE        Temporary
+; HL        Temporary
+; IX        System Variables ($3C00)
+; IY        Interpreter Pointer
+; SP        Return Stack Pointer (IP on top)
+; $3C3B     Data Stack Pointer (sys var SPARE)
+; RST n     Used for core stack ops
+
+
 ; ---------------------------------------------------------------
 ;                   THE SYSTEM VARIABLES
 ; ---------------------------------------------------------------
