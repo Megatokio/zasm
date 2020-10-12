@@ -28,6 +28,10 @@
 	2002-01-20	kio	port to unix started
 	2002-01-28	kio	3.0.0 released
 	2014-05-21	kio work on 4.0.0 started
+	4.1.0 2017: included Einar Saukas' ZX7 "optimal" LZ77 compressor
+	4.2.0 2018: new #target TZX: directly write to .tzx tape files
+	4.3.0 2020: new option --convert8080
+	4.4.0 2020: testcode runner
 */
 
 #include "kio/kio.h"

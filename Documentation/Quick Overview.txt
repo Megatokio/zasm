@@ -59,15 +59,15 @@ pre	; my little EMUF
 			org	  0
 	reset:	di
 			jp	  _init
-	 		
+	 
 			org	  8
 	printc:	jp	  _printc
 	 
 			...
-	 		
+	 
 	; pad file to eprom size:
 			ds	0x2000 - $
-			
+
 h5	Basic source file which sets a target and uses code and data segments:
 
 pre	; my little EMUF
@@ -88,14 +88,14 @@ pre	; my little EMUF
 	 
 	reset:	di
 			jp	  _init
-	 		
+	 
 			org	  8
 	printc:	jp	  _printc
 	 
 			...
-			
-			
-			
+
+
+
 // –––––––––––––––––––––––––––––––––––––––––––––––––
 H3  	Differences from v3 to v4
 
@@ -106,16 +106,16 @@ p	See chapter 'Command line options'&nbsp;for details.
 
 
 h5	Include C sources
-	
-p	zasm 4.0 can include <span class=blue>c source files</span>, with the help of <tt class=blue>sdcc</tt>. A trimmed version of sdcc for OSX can be found on the zasm download page. 
 
-p	C source files are #included just like assembler source files. They are compiled using sdcc and the output file is #included into the total source. 
+p	zasm 4.0 can include <span class=blue>c source files</span>, with the help of <tt class=blue>sdcc</tt>. A trimmed version of sdcc for OSX can be found on the zasm download page.
+
+p	C source files are #included just like assembler source files. They are compiled using sdcc and the output file is #included into the total source.
 
 p	After the last included files you can use '#include library' to resolve undefined labels from the system library or any other library directory.
 
 p	See chapter 'Including C source files' for details.
 
-			
+
 h5	Assemble 8080 assembler source
 
 p	zasm 4.0 can assemble native <span class=blue>8080 assembler</span> source files if it is invoced with command line option '--asm8080'.
@@ -123,7 +123,7 @@ p	See chapter '8080 Assembler' for details.
 
 
 h5	#code and #data
-			
+
 p	The syntax for <tt class=blue>#code</tt> and <tt class=blue>#data</tt> has changed. To support the c compiler an additional first argument, the segment name, is now required and multiple code and data segments are allowed. E.g.:
 
 pre	#code _NAME, _start, _size
@@ -151,7 +151,7 @@ p	The required layout of #code segments for some targets has changed and some ta
 
 p	Supported targets in v4:
 
-pre.center	BIN, ROM, SNA, Z80, TAP (ZX Spectrum and Jupiter Ace), O/80, P/81/P81, ACE
+pre.center	BIN, ROM, SNA, Z80, TAP (ZX Spectrum and Jupiter Ace), O/80, P/81/P81, ACE, TZX
 
 p	See chapter 'Targets' for details.
 
@@ -178,4 +178,3 @@ p	Multiple opcodes per line separated with '\'.
 
 
 
-			
