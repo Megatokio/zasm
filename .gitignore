@@ -6,11 +6,9 @@ Distributions
 *.pdf
 *.html
 *.lst
-sdcc/bin
+/sdcc/bin
+/sdcc/lib/OTHER/
 info.vh
-Linux/*.o
-Linux/zasm
-OSX/zasm
 
 #eclipse files and folders
 .cproject
