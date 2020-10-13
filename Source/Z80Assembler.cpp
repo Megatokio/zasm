@@ -2223,18 +2223,9 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 	RCArray<SourceLine> zsource;
 	while (++i < e)
 	{
-		zsource.append(new SourceLine(source[i]));
-		// das übernehmen wir:
-		//	text;						// tempmem / shared
-		//	sourcefile;					// tempmem / shared between all sourcelines of this file
-		//	sourcelinenumber;			// line number in source file; 0-based
-		// die sollten alle noch leer sein, da die Zeilen in der mdef selbst nie assembliert werden:
-		//	s->segment = NULL;			// of object code
-		//	s->byteptr = 0;				// index of object code in segment
-		//	s->bytecount = 0;			// of bytes[]
-		//	s->label = NULL;			// if a label is defined in this line
-		//	s->is_data = 0;				// if generated data is no executable code
-		//	s->p = s->text;				// current position of source parser
+		// add line with text from macro but use line of invocation for source reference
+		// => errors will be printed at the position of the macro call
+		zsource.append(new SourceLine(q.sourcefile, q.sourcelinenumber, source[i]->text));
 	}
 
 	// replace arguments:
