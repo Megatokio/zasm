@@ -33,13 +33,6 @@
 // from kio/c_defines.h:
 #define	RMASK(n)	(~(0xFFFFFFFF<<(n)))	// mask to select n bits from the right
 
-// from Unicode/UTF-8.h:
-inline bool utf8_is_7bit (char c)		{ return c>=0; }
-inline bool utf8_is_fup (char c)		{ return c< char(0xc0);  }
-inline bool utf8_no_fup (char c)		{ return c>=char(0xc0);  }
-inline void UTF8SkipChar (char*& p)		{ while (utf8_is_fup(*++p)) {} }
-
-
 
 static UCS2Char ucs2_from_utf8 (cptr s) throws
 {
@@ -50,17 +43,17 @@ static UCS2Char ucs2_from_utf8 (cptr s) throws
 
 	assert(s);
 
-	if (utf8_is_7bit(*s)) return UCS2Char(*s);	// 7-bit ascii char
-	if (utf8_is_fup(*s)) throw DataError("broken character in map (unexpected UTF-8 fup character)");
+	if (is_ascii(*s)) return UCS2Char(*s);	// 7-bit ascii char
+	if (is_utf8_fup(*s)) throw DataError("broken character in map (unexpected UTF-8 fup character)");
 	UCS4Char n = uchar(*s);					// UCS-4 char code akku
 											// 0x80 … 0xBF: unexpected fups
 // multi-byte character:
 	uint i = 0;								// UTF-8 character size
 	int8 c = int8(n & ~0x02u);				// force stop at i=6
-	while (char(c<<(++i)) < 0)				// loop over fup bytes
+	while (int8(c<<(++i)) < 0)				// loop over fup bytes
 	{
 		char c1 = *(++s);
-		if (utf8_no_fup(c1)) throw DataError("broken character in map (truncated UTF-8 character)");
+		if (!is_utf8_fup(c1)) throw DataError("broken character in map (truncated UTF-8 character)");
 		n = (n<<6) + (c1&0x3F);
 	}
 
@@ -194,7 +187,7 @@ void CharMap::addMappings (cUTF8Str map, uint first_char_in_map) throws
 	while (*p)
 	{
 		add(ucs2_from_utf8(p),uchar(c++));
-		while (utf8_is_fup(*++p)) {}
+		while (is_utf8_fup(*++p)) {}
 	}
 }
 
@@ -203,7 +196,7 @@ void CharMap::removeMappings (cUTF8Str s) throws
 	while (*s)
 	{
 		remove(ucs2_from_utf8(s));
-		while (utf8_is_fup(*++s)) {}
+		while (is_utf8_fup(*++s)) {}
 	}
 }
 
@@ -238,7 +231,7 @@ pstr CharMap::translate (cptr q) throws
 	{
 		cptr q0 = q;
 		UCS2Char key = ucs2_from_utf8(q);
-		while (utf8_is_fup(*++q)) {}
+		while (is_utf8_fup(*++q)) {}
 
 		if (key<128 && charmap[key]!=NC)
 		{

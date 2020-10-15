@@ -224,19 +224,7 @@ void Z80Assembler::init_c_tempdir () throws
 	if (!exists_node(c_tempdir)) create_dir(c_tempdir,0774,yes);
 }
 
-inline bool utf8_is_null (char c) { return c==0; }
-inline bool utf8_is_7bit (char c) { return c>=0; }				// %0xxxxxxx = ascii
-inline bool utf8_no_7bit (char c) { return c<0;  }
-inline bool utf8_is_fup	 (char c) { return c< char(0xc0);  }	// %10xxxxxx = fup
-inline bool utf8_no_fup	 (char c) { return c>=char(0xc0);  }
-inline bool utf8_is_c1	 (char c) { return c>=0; }				// == utf8_is_7bit
-inline bool utf8_is_c2	 (char c) { return (c&0xe0)==0xc0; }	// %110xxxxx
-inline bool utf8_is_c3	 (char c) { return (c&0xf0)==0xe0; }	// %1110xxxx
-inline bool utf8_is_c4	 (char c) { return (c&0xf8)==0xf0; }	// %11110xxx
-inline bool utf8_is_c5	 (char c) { return (c&0xfc)==0xf8; }	// %111110xx
-inline bool utf8_is_c6	 (char c) { return uchar(c)>=0xfc; }	// %1111110x  2005-06-11: full 32 bit
 inline bool utf8_is_ucs4 (char c) { return uchar(c)> 0xf0; }	// 2015-01-02 doesn't fit in ucs2?
-inline bool utf8_req_c4	 (char c) { return uchar(c)>=0xf0; }	// 2015-01-02 requires processing of c4/c5/c6?
 #define     RMASK(n)	 (~(0xFFFFFFFF<<(n)))					// mask to select n bits from the right
 
 static uint charcode_from_utf8 (cptr& s) throws
@@ -247,34 +235,43 @@ static uint charcode_from_utf8 (cptr& s) throws
 	// char(0) is a valid character
 	// note: only doing UCS2 because class charmap is UCS2 only
 
-	uint n; uint i; char c;
-
-	n = uchar(*s++);						// char code akku
-	if (utf8_is_7bit(n)) return n;			// 7-bit ascii char
-	if (utf8_is_fup(n))  throw SyntaxError("broken utf-8 character!");	// unexpected fup
-	if (utf8_is_ucs4(n)) throw SyntaxError("broken utf-8 character!");	// code exceeds UCS-2
+	int8 c = int8(*s++);
+	if (is_ascii(c)) return uint8(c);		// 7-bit ascii char
+	if (is_utf8_fup(c))  throw SyntaxError("broken utf-8 character!");	// unexpected fup
+	if (utf8_is_ucs4(c)) throw SyntaxError("broken utf-8 character!");	// code exceeds UCS-2
 
 	// longish character:
-	i = 0;									// UTF-8 character size
-	c = n;
-	//c = n & ~0x02;						// force stop at i=6
-	while (char(c<<(++i)) < 0)				// loop over fup bytes
+	uint n = uint8(c);						// char code akku
+	uint i = 0;								// UTF-8 character size
+	while (int8(c<<(++i)) < 0)				// loop over fup bytes
 	{
-		uchar c1 = *s++;
-		if (utf8_no_fup(c1)) throw SyntaxError("broken utf-8 character!");
+		char c1 = *s++;
+		if (!is_utf8_fup(c1)) throw SyntaxError("broken utf-8 character!");
 		n = (n<<6) + (c1&0x3F);
 	}
 
 	// simplify error checking for caller:
-	if (utf8_is_fup(*s)) throw SyntaxError("broken utf-8 character!"); // more unexpected fups follows
+	if (is_utf8_fup(*s)) throw SyntaxError("broken utf-8 character!"); // more unexpected fups follows
 
 	// now: i = total number of digits
 	//      n = char code with some of the '1' bits from c0
 	n &= RMASK(2+i*5);
 
 	// ok => return code
-	return n;
+	return UCS2Char(n);
 }
+
+#ifdef DEBUG
+ON_INIT([]{
+	static const char a[] = "A";
+	static const char oe[] = "ö";
+	static const char eu[] = "€";
+	cptr p = a; assert(charcode_from_utf8(p) == 'A' && p==a+1);
+	p=oe; assert(charcode_from_utf8(p) == 0xF6 && p==oe+2);
+	p=eu; assert(charcode_from_utf8(p) == 0x20ac && p==eu+3);
+});
+#endif
+
 
 void Z80Assembler::checkCpuOptions() throws
 {
