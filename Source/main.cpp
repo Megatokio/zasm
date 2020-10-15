@@ -30,6 +30,7 @@
 	2014-05-21	kio work on 4.0.0 started
 */
 
+#include "kio/kio.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -37,7 +38,6 @@
 #include <unistd.h>
 #include "unix/FD.h"
 #include "unix/files.h"
-#include "kio/kio.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
 #include "Z80/goodies/z80_goodies.h"

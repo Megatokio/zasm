@@ -24,14 +24,12 @@
  */
 
 /*	data types modified to integrate with zasm source
-	kio 2017 - 2019
+	kio 2017 - 2020
 */
 
+#include "zx7.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "zx7.h"
-#include "Templates/Array.h"
 
 
 #define MAX_OFFSET  2176  /* range 1..2176 */
