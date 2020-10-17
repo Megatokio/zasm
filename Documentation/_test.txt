@@ -1,0 +1,240 @@
+
+//-----------------------------------------------------------------
+h3	#test
+
+pre	#test <name>,<start>,<size>
+
+p	Define code segment for automated tests after successful assembly.
+
+p	The test code will be loaded on top of the assembled code and executed. During execution i/o addresses are monitored and compared with supplied values. Finally – or at any time during the test – registers and the cpu cycle count can be compared against expected values.
+
+p	There can be any number of tests in a test segment and there can be any number of test segments which are loaded and executed separately. Test errors are handled like assembly errors. Only if all tests pass the assembled code is finally written.
+
+
+h4	Technical Specification of the Test Code Runner
+
+p	The test code is executed by a variant of Kio's Z80 engine.
+	The emulation speed is approx. 800MHz@Z80 per GHz@Host (2.6GHz on 3.2GHz AMD Ryzen5 2400G) or let's say, depending on the emulated system and the speed of your host, the emulated Z80 is running 1000 times faster than the original. <b>:-)</b>
+
+p	The emulation is very precise but i cannot guarantee correctness to the last bit and cycle. If you find any difference please report a bug. Replication of the undefined behavior of flags is 80% exact.
+
+p	The assembled code is loaded into 64kB ram, each segment at the address defined in the #code directive, ignoring possible overlap. Finally the test segment is loaded, again happily overwriting already loaded segments.
+
+ul
+li	Memory mapping is not supported.
+li	Wait states are not supported.
+li	Memory mapped i/o is not supported.
+
+p	The emulation can be run at maximum speed or limited to a fixed frequency.
+
+p	A timer interrupt can be enabled and used in multiple ways:
+ul
+li	A timer interrupt after a fixed number of cpu cycles (cc)
+li	A timer interrupt with a given frequency when the cpu is running at a fixed speed
+li	A timer interrupt with a given frequency when the cpu is running at maximum speed
+li	Other interrupt sources are not supported.
+li	The non-maskable interrupt NMI is not supported.
+
+p	The timer interrupt is active for 48cc.
+
+p	A timeout for a test can be specified in realtime milliseconds.
+
+p	In and Out access is monitored and must be prepared for. Access to an unprepared address immediately terminates the test.
+
+p	I/o addresses can be prepared in multiple ways:
+ul
+li	Assign an address to the console (stdin+stdout)
+li	provide input data for an In address
+li	provide test data for an Out address
+
+p	Not yet supported in zasm v4.4.0
+ul
+li	Loading of a rom file
+li	emulation of the Z180
+li	read/write/compare to file
+
+
+h4	Setting up a test case
+
+pre	#test <name>, <addr>, <size>
+	;
+	.test-clock		<frequency>
+	.test-int		<frequency>
+	.test-int		<cpu_cycles>
+	.test-intack	<int_ack_byte>
+	.test-timeout 	<duration>
+	;
+	.test-in		<addr>, <values>
+	.test-out		<addr>, <expected_values>
+	.test-console	<addr>
+
+
+h5	.test-clock
+
+p	Define a fixed speed for the emulation. The emulation will be throttled to the given frequency.	If <tt>.test-clock</tt> is not specified then the test runs at the fastest possible speed.
+
+pre	.test-clock 4000000 Hz ; run at 4 MHz.   mind the space!
+	.test-clock 3500 kHz   ; run at 3.5 MHz. mind the space!
+	.test-clock 6 MHz      ; run at 6 MHz.   mind the space!
+
+
+h5	.test-int
+
+p	Enable a timer interrupt and define the interrupt frequency.
+	The frequency can be given in cpu cycles 'cc' or in real-world frequency. Depending on whether the cpu is running at a fixed speed or unlimited speed the executed cpu cycles per interrupt are predictable or may vary widely.
+
+pre	.test-int  50 Hz       ; interrupt with real-world frequency
+	.test-int  70000 cc    ; interrupt after 70000 cc (50 Hz at 3.5 MHz: the ZX Spectrum :-)
+	.test-int  50          ; interrupt with 50 Hz
+	.test-int  70000       ; interrupt after 70000 cc
+
+p	The units <i>cc</i> or <i>Hz</i> are optional. If present, a sanity test is included.
+	If the unit is omitted, zasm uses values up to 1000 as Hz and larger values as cc.
+	1000 is the highest value which can be used for frequency.
+
+
+h5	.test-intack
+
+p	Define byte to be read from the bus in an interrupt acknowldge cycle.
+	This byte is 0xFF by default (floating bus on a TTL system) but different values can be defined as provided by some peripheral hardware, to supply a <tt>RST</tt> opcode or an index in the interrupt vector table, depending on the current interrupt mode of the cpu.
+
+pre	.test-intack  255-8            ; this would be a RST 48
+	.test-intack  opcode(rst 48)   ; the same, just readable :-)
+	.test-intack  lo(int_vector)   ; low byte of memory address of an interrupt vector
+	                               ; the high byte would go into the <b>i</b> register.
+
+
+h5	.test-timeout
+
+p	Define a timeout for the test. If the test takes longer it is aborted and fails.
+	The timeout is measured in realtime.
+	If no timeout is set then there is no timeout.
+
+pre	.test-timeout  1 s     ; timeout after 1 second.        mind the space!
+	.test-timeout  500 ms  ; timeout after 500 millisecond. mind the space!
+
+
+h5	.test-console
+
+p	Attach an i/o address to stdin and stdout.
+	This is an easy way to print messages from the running code.
+	A little more effort must be taken to input text, because the input is not blocking.
+	If no input is available, then the port reads as <b>0x00</b>.
+
+pre	.test-console  0xFE    ; use port address 0xFE,   high byte is ignored
+	.test-console  0xFFFE  ; use port address 0xFFFE, you must use in(c) and out(c)
+
+
+h5	.test-in
+
+p	Supply input data for an input port. The supplied data is read by inputs from this port.
+p	The test fails, if the test code reads more data than supplied and it fails if there is some unread data left after the test.
+
+h6	Basic example
+
+pre	.test-in  0xF8, 0,0,0,"Hello world!",13,0,0,0
+
+p	This prepares port 0xF8 to return 3 times 0x00 (probably meaning 'no data'), then a text and finally again 3 times 0x00. All data must be read by the test code.
+
+pre	.test-in  0xF8, 0,0,0,"Hello world!",13,0,0,0
+	.test-in  0xF8, 0,0,0,"Here i go again!",13,0,0,0
+
+p	This prepares port 0xF8 with more data. The input data is combined from multiple definitions.
+
+h6	Repeated data
+
+p	You can repeat blocks of data:
+
+pre .test-in  0xF8, {0}*10, "Hello World!", 13, {0}*10
+pre .test-in  0xF8, {0}*10, {"Hello", 32, "World!", 13} * 5, {0}*10
+
+p	You can add a final block to repeat forever. This won't make the test fail:
+pre .test-in  0xF8, {0}*10, "Hello World!", 13, {0}*
+
+
+h5	.test-out
+
+p	Supply output test data for an output port. The supplied data is compared against data written to this port.
+p	The test fails, if a byte written doesn't match the expectation, if the test code writes more data than supplied and it fails if there is some unwritten data left after the test.
+
+h6	Basic example
+
+pre	.test-out  0xF8, "Hello world!",10
+
+p	This prepares port 0xF8 to expect a text and a linebreak. All data must be written by the test code.
+
+pre	.test-out  0xF8, "Hello world!",10
+	.test-out  0xF8, "Here i go again!",10
+
+p	This prepares port 0xF8 with more data. The output test data is combined from multiple definitions.
+
+h6	Repeated data
+
+p	You can repeat blocks of data:
+
+pre .test-out  0xF8, {'-'}*12, 10, "Hello World!", 10, {'-'}*12, 10
+pre .test-out  0xF8, {'-'}*12, 10, {"Hello World!", 10} * 5, {'-'}*12, 10
+
+p	You can add a final block to repeat forever. This won't make the test fail:
+pre .test-out  0xF8, {"Hello World!",10,}*  ; any number of repetitions of this block
+pre .test-out  0xF8, "Hello World!", 10, *  ; any data whatever after text
+
+
+h4	Run test code and test your expectations
+
+p	After the test segment is setup, you can add your test code. It starts up with all registers set to 0x00 and interrupts disabled. Typically you load some registers and call a function to test. It is recommended to wrap all tests in a #local context so you can reuse label names:
+
+pre	#local
+		ld	sp,0
+		ld	a,3
+		ld	de,7
+		call A_times_DE
+		;
+	.expect a' = 0
+	.expect a = 3
+	.expect de = 7
+	.expect hl = 3*7
+	.expect cc < 1000
+	#endlocal
+
+h5	.expect register
+	expect
+
+p	<i>.expect</i> can be used to test register values.
+
+p	You can compare the value of any register or register pair to match an expected value. Ordered comparisons ('>' or '<')	are not allowed.
+
+p	Recognized register names are:
+
+pre	 a f b c d e h l a2 f2 b2 c2 d2 e2 h2 l2 a' f' b' c' d' e' h' l'
+	xh xl yh yl ixh ixl iyh iyl pch pcl sph spl i r
+	af bc de hl af2 bc2 de2 hl2 af' bc' de' hl' ix iy pc sp
+	im iff1 iff2
+
+h5	.expect cc
+	expect
+
+p	<i>.expect</i> can also test the cpu cycle counter.
+
+p	You can compare the value of the cpu cycle counter to match an expected value or use an ordered comparisons '>' … '<'.
+
+p	The cycle counter is reset after each block of <i>.expect</i>s, either cc or registers.
+
+pre	.expect cc = 456
+	.expect cc >= 400
+	.expect cc > 400
+	.expect cc <= 500
+	.expect cc < 500
+
+
+h4	Tips
+
+p.i	Hint: assemble your source with command line option <i>-uwy</i> to see the generated code and cycle count.
+
+p.i	Hint: run tests with command line option <i>-v</i> to see more interesting output. <b>B-)</b>
+
+
+h4	Example files
+
+p.c	<a href="test.asm.txt">source file</a>
+p.c	<a href="test.lst.txt">listing</a>

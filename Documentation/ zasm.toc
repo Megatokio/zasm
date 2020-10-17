@@ -2,7 +2,7 @@
 //	zasm documentation
 
 
-H0	zasm - Z80 Assembler – Version 4.3
+H0	zasm - Z80 Assembler – Version 4.4
 toc	Table of Contents
 
 p.c	<i>Last updated: %%DATE%%.</i>
@@ -10,6 +10,10 @@ p.c	<i>Last updated: %%DATE%%.</i>
 p	<b class=red>zasm</b> is a multiple pass assembler for the historic 8-bit CPU <i>Zilog Z80</i> and it's variants, e.g. <i>Intel 8080</i> (it's predecessor) or the <i>Z180 / HD64180</i>.
 
 p	<b class=red>zasm</b> is available for Unix-like operating systems like OSX, Linux, BSD.
+
+p.b	New in version 4.4:
+p	#TEST segments to run automated tests on the generated code.
+
 
 p.b	Download page and Git archive:
 p	<https://k1.spdns.de/Develop/Projects/zasm/Distributions/>
@@ -51,6 +55,7 @@ H1	  Assembler directives
 +		_target.txt
 +		_code.txt
 +		_data.txt
++		_test.txt
 +		_if.txt
 +		_end.txt
 +		_include.txt

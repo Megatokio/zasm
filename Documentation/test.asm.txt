@@ -1,0 +1,1 @@
+../Examples/automated_test_example.asm

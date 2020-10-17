@@ -1,0 +1,1102 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "test.asm.txt"
+                        ; date: 2020-10-17 19:54:45
+                        ; --------------------------------------
+
+
+                        ; –––––––––––––––––––––––––––––––––––––––––
+                        ; Examples for using #TEST segments in zasm
+                        ;
+                        ; This file contains some multiplication and division routines.
+                        ; They will be tested using tests in #test segments.
+                        ;
+                        ; Finally the emulation speed is measured and printed using
+                        ; the multiplication and division routines.
+                        ; –––––––––––––––––––––––––––––––––––––––––
+
+
+                        #target ram
+
+
+                        ; CODE segment starting at 0x100:
+0100:                   #code CODE, 0x100
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; mult (A DE -- HL)
+                        ;
+                        ;   mod B
+                        ;   ret z
+
+0100:                   A_times_DE:
+0100: 210000   [10]             ld hl,0
+0103: B7       [14]             or a
+0104: C8       [19|25]          ret z
+0105: 0609     [26]             ld b,9
+0107: 07       [ 4]     3$:     rlca
+0108: 05       [ 8]             dec b
+0109: 30FC     [15|20]          jr nc,3$
+010B: 19       [11]     1$:     add hl,de
+010C: 05       [ 4]     2$:     dec b
+010D: C8       [ 9|15]          ret z
+010E: 29       [20]             add hl,hl
+010F: 07       [24]             rlca
+0110: DA0B01   [34|34]          jp c,1$
+0113: C30C01   [44]             jp 2$
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; div (DEHL C -- DEHL rem A)
+                        ;
+                        ;   mod B=0
+
+0116:                   DEHL_div_C:
+0116: 0620     [ 7]         ld b,32
+0118: AF       [11]         xor a
+0119: 29       [11]     1$: add hl,hl
+011A: CB13     [19]         rl e
+011C: CB12     [27]         rl d
+011E: 17       [31]         rla
+011F: B9       [35]         cp c
+0120: 3802     [42|47]      jr c,2$
+0122: 2C       [46]         inc l
+0123: 91       [50]         sub c
+0124: 10F3     [ 8|13]  2$: djnz 1$
+0126: C9       [18]         ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; mult (DEHL A -- ADEHL)
+                        ;
+                        ; --> z80-heaven.wikidot.com
+                        ;     ***broken!***
+                        ; this routine was first used,
+                        ; but it doesn't work,
+                        ; as could have been proven with a single test.
+
+0127:                   DEHL_times_A_broken:
+0127: E5       [11]         push hl
+0128: B7       [15]         or a
+0129: ED62     [30]         sbc hl,hl
+012B: D9       [34]         exx
+012C: D1       [44]         pop de
+012D: ED62     [59]         sbc hl,hl
+012F: 0608     [66]         ld b,8
+0131:                   mul32loop:
+0131: 29       [11]         add hl,hl
+0132: CB13     [19]         rl e
+0134: CB12     [27]         rl d
+0136: 87       [31]         add a,a
+0137: 3006     [38|43]      jr nc,$+8
+0139: 19       [49]             add hl,de
+013A: D9       [53]             exx
+013B: ED5A     [68]             adc hl,de
+013D: 3C       [72]             inc a
+013E: D9       [76]             exx
+013F: 10F0     [84|89]      djnz mul32loop
+0141: E5       [95]         push hl
+0142: D9       [99]         exx
+0143: D1       [109]        pop de
+0144: EB       [113]        ex hl,de
+0145: C9       [123]        ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; mult (DE A -- AHL)
+                        ;
+                        ;   mod BC=0
+                        ;   --> wikiti.brandonw.net
+
+0146:                   DE_times_A:
+0146: 010008   [10]         ld bc,$0800
+0149: 61       [14]         ld h,c
+014A: 69       [18]         ld l,c
+014B: 29       [11]     1$: add hl,hl
+014C: 17       [15]         rla         ; Check most-significant bit of accumulator
+014D: 3002     [22|27]      jr nc,2$    ; If zero, skip addition
+014F: 19       [33]         add hl,de
+0150: 89       [37]         adc a,c
+0151: 10F8     [ 8|13]  2$: djnz 1$
+0153: C9       [18]         ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; mult (DEHL A -- ADEHL)
+                        ;
+                        ;   mod BC=0 DE' HL'
+                        ;   by kio@little-bat.de
+
+0154:                   DEHL_times_A:
+
+0154: E5       [11]         push hl
+0155: 210000   [21]         ld hl,0
+0158: D9       [25]         exx
+0159: D1       [35]         pop de      ; de = low word, de' = high word
+
+015A: 010008   [45]         ld  bc,$0800      ; b=8, c=0
+015D: 6169     [53]         ld  h,c \ ld l,c  ; hl=0, hl'=0
+
+015F: 29       [11]     1$: add hl,hl
+0160: D9       [15]         exx
+0161: ED6A     [30]         adc hl,hl
+0163: D9       [34]         exx
+
+0164: 17       [38]         rla         ; get most-significant bit of accumulator
+0165: 3006     [45|50]      jr nc,2$    ; If zero, skip addition
+
+0167: 19       [56]         add hl,de
+0168: D9       [60]         exx
+0169: ED5A     [75]         adc hl,de
+016B: D9       [79]         exx
+016C: 89       [83]         adc a,c
+
+016D: 10F0     [ 8|13]  2$: djnz 1$
+
+016F: E5       [19]         push hl
+0170: D9       [23]         exx
+0171: D1       [33]         pop de
+0172: EB       [37]         ex hl,de
+0173: C9       [47]         ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; div10 (HL -- HL rem A)
+                        ;
+                        ; Speed Optimised HL_div_10
+                        ;
+                        ;   mod BC=10
+
+0174:                   HL_div_10:
+0174: 010A0D   [10]         ld  bc,$0D0A
+0177: AF       [14]         xor a
+0178: 2917     [29]         add hl,hl \ rla
+017A: 2917     [44]         add hl,hl \ rla
+017C: 2917     [59]         add hl,hl \ rla
+017E: 2917     [15]     2$: add hl,hl \ rla
+0180: B9       [19]         cp  c
+0181: 3802     [26|31]      jr  c,1$
+0183: 91       [30]         sub c
+0184: 2C       [34]         inc l
+0185: 10F7     [ 8|13]  1$: djnz 2$
+0187: C9       [18]         ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; print_hex (A)
+                        ;
+                        ;   mod A
+
+0188:                   print_hex_byte:
+0188: F5       [11]         push af
+0189: 0F0F0F0F [27]         rrca \ rrca \ rrca \ rrca
+018D: CD9101   [44]         call print_hex_char
+0190: F1       [54]         pop  af
+                            ;jp  print_hex_char
+
+                        ; ––––––––––––––––––––––––––
+                        ; print_hex_nibble (A)
+                        ;
+                        ;   mod A
+
+0191:                   print_hex_char:
+0191: E60F     [ 7]         and 0x0f
+0193: FE0A     [14]         cp  10
+0195: 3802     [21|26]      jr  c,1$
+0197: C607     [28]         add 'A' - ('9'+1)
+
+0199: C630     [ 7]     1$: add '0'
+019B: D7       [18]         rst stdout
+019C: C9       [28]         ret
+
+
+                        ; ––––––––––––––––––––––––––
+                        ; print_number (HL)
+                        ;
+                        ; print HL as a decimal number
+                        ;
+                        ;   mod A BC HL
+
+019D:                   print_hl:
+019D: CD7401   [17]         call HL_div_10      ; -> HL rem A
+01A0: F5       [28]         push af
+01A1: 7C       [32]         ld  a,h
+01A2: B5       [36]         or  l
+01A3: C49D01   [46|53]      call nz,print_hl
+01A6: F1       [56]         pop af
+
+01A7:                   print_decimal_digit:
+01A7: C630     [ 7]         add  a,'0'
+01A9: D7       [18]         rst stdout
+01AA: C9       [28]         ret
+
+
+                        ; -------------------------------------------
+                        ; Segment for the rst vectors:
+
+0000:                   #code RST, 0
+
+00FE:                   CON_IO  equ 0xfe        ; a port address
+
+0000: ED66              reset:  db  0xed,0x66        ; this is an illegal opcode
+0002: F376     [ 8]             di \ halt \ jp reset ; should we ever come here
+0004: C30000   [18]
+
+0007: 00                        .org 8
+0008: DBFE     [11]     stdin:  in a,(CON_IO)
+000A: A7       [15]             and a           ; Z if a=0 (no char available); NZ if char returned
+000B: C9       [25]             ret
+
+000C: 00000000                  .org 16
+0010: D3FE     [11]     stdout: out (CON_IO),a
+0012: C9       [21]             ret
+
+0013: 00000000                  .org 24
+0017: 00
+0018: 7E23     [13]     puts:   ld  a,(hl++)
+001A: A7       [17]             and a
+001B: C8       [22|28]          ret z
+001C: D3FE     [33]             out (CON_IO),a
+001E: 18F8     [45]             jr  puts
+
+                                .org 32
+0020: 00000000                  .org 40
+0024: 00000000
+
+                        ; aux. interrupt entry for special test:
+0028: 00000000                  .org 48
+002C: 00000000
+0030: C30000   [55]             jp  0000
+
+                        ; default interrupt handler:
+0033: 00000000                  .org 56
+0037: 00
+0038: F5       [11]     int38h: push af
+0039: E5       [22]             push hl
+
+003A: 2A4F00   [38]             ld  hl,(systime)    ; increment a system time
+003D: 23       [44]             inc hl
+003E: 224F00   [60]             ld  (systime),hl
+
+0041: CF       [71]             rst stdin
+0042: 2807     [78|83]          jr z,1$         ; $00 => no char available
+
+0044: FE0D     [85]             cp  13
+0046: 2002     [92|97]          jr  nz,2$
+0048: 3E0A     [99]             ld  a,10        ; replace cr with nl
+
+004A: D7       [11]     2$:     rst stdout      ; echo
+
+004B: F1       [10]     1$:     pop af
+004C: E1       [20]             pop hl
+004D: FB       [24]             ei
+004E: C9       [34]             ret
+
+004F: 0000              systime dw  0
+
+
+
+
+                        ; -------------------------------------------
+                        ;
+                        ;       Here the tests start:
+                        ;
+                        ; -------------------------------------------
+
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST1, 0x1000
+
+                        ; test A_times_DE
+
+                        #local
+                            .test-timeout 100 ms
+00CF:                   min = 207
+017E:                   max = 382
+
+1000: 310000   [10]         ld  sp,0
+1003: 3E03     [17]         ld  a,3
+1005: 110700   [27]         ld  de,7
+1008: CD0001   [44]         call A_times_DE
+
+                            .expect a' = 0
+                            .expect a = 3
+                            .expect de = 7
+                            .expect hl = 3*7
+                            .expect cc > 44+min
+                            .expect cc < 44+max
+
+100B: AF       [ 4]     1$: xor a
+100C: 110101   [14]         ld  de,0x0101
+100F: CD0001   [31]         call A_times_DE
+
+                            .expect a = 0
+                            .expect de = 0x0101
+                            .expect hl = 0
+                            .expect cc < 31+min
+
+1012: 3E01     [ 7]     2$: ld  a,1
+1014: CD0001   [24]         call A_times_DE
+
+                            .expect a = 1
+                            .expect de = 0x0101
+                            .expect hl = 0x0101
+                            .expect cc = 24+min
+
+1017: 3EFF     [ 7]     3$: ld  a,0xff
+1019: CD0001   [24]         call A_times_DE
+
+                            .expect a = 0xff
+                            .expect de = 0x0101
+                            .expect hl = 0xFFFF
+                            .expect cc <= 24+max
+
+
+
+                        Lxx = 4
+
+                        .macro test_AxDE &A,&DE
+
+                        Lxx = Lxx+1
+                        {Lxx}$:
+                            ld    a,&A
+                            ld    de,&DE
+                            call  A_times_DE
+
+                            .expect a = &A
+                            .expect de = &DE
+                            .expect hl = &A * &DE
+                            .expect cc >= 34+207
+                            .expect cc <= 34+382
+
+                        .endm
+
+                            test_AxDE 4,5
+
+                        Lxx = Lxx+1
+101C:                   4$:
+101C: 3E04     [ 7]         ld    a,4
+101E: 110500   [17]         ld    de,5
+1021: CD0001   [34]         call  A_times_DE
+
+                            .expect a = 4
+                            .expect de = 5
+                            .expect hl = 4 * 5
+                            .expect cc >= 34+207
+                            .expect cc <= 34+382
+
+                            test_AxDE 44,55
+
+                        Lxx = Lxx+1
+1024:                   5$:
+1024: 3E2C     [ 7]         ld    a,44
+1026: 113700   [17]         ld    de,55
+1029: CD0001   [34]         call  A_times_DE
+
+                            .expect a = 44
+                            .expect de = 55
+                            .expect hl = 44 * 55
+                            .expect cc >= 34+207
+                            .expect cc <= 34+382
+
+                            test_AxDE 114,115
+
+                        Lxx = Lxx+1
+102C:                   6$:
+102C: 3E72     [ 7]         ld    a,114
+102E: 117300   [17]         ld    de,115
+1031: CD0001   [34]         call  A_times_DE
+
+                            .expect a = 114
+                            .expect de = 115
+                            .expect hl = 114 * 115
+                            .expect cc >= 34+207
+                            .expect cc <= 34+382
+
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST1B, 0x1000
+
+                        ; test DEHL_div_C
+
+                        #local
+                            .test-timeout 100 ms
+
+                        .macro DEHL_div_C &N, &D
+                            ld  de,&N >> 16
+                            ld  hl,&N & 0xffff
+                            ld  c,&D
+                            call DEHL_div_C
+                            .expect de = (&N/&D) >> 16
+                            .expect hl = (&N/&D) & 0xffff
+                            .expect a  = (&N%&D)
+                            .expect b  = 0
+                            .expect c  = &D
+                        .endm
+
+                            DEHL_div_C 12345,17
+1000: 110000   [10]         ld  de,12345 >> 16
+1003: 213930   [20]         ld  hl,12345 & 0xffff
+1006: 0E11     [27]         ld  c,17
+1008: CD1601   [44]         call DEHL_div_C
+                            .expect de = (12345/17) >> 16
+                            .expect hl = (12345/17) & 0xffff
+                            .expect a  = (12345%17)
+                            .expect b  = 0
+                            .expect c  = 17
+                            DEHL_div_C 12345678,17
+100B: 11BC00   [54]         ld  de,12345678 >> 16
+100E: 214E61   [64]         ld  hl,12345678 & 0xffff
+1011: 0E11     [71]         ld  c,17
+1013: CD1601   [88]         call DEHL_div_C
+                            .expect de = (12345678/17) >> 16
+                            .expect hl = (12345678/17) & 0xffff
+                            .expect a  = (12345678%17)
+                            .expect b  = 0
+                            .expect c  = 17
+                            DEHL_div_C 6474678,123
+1016: 116200   [98]         ld  de,6474678 >> 16
+1019: 21B6CB   [108]        ld  hl,6474678 & 0xffff
+101C: 0E7B     [115]        ld  c,123
+101E: CD1601   [132]        call DEHL_div_C
+                            .expect de = (6474678/123) >> 16
+                            .expect hl = (6474678/123) & 0xffff
+                            .expect a  = (6474678%123)
+                            .expect b  = 0
+                            .expect c  = 123
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST1C, 0x1000
+
+                        ; test DEHL_times_A
+
+                        #local
+                            .test-timeout 100 ms
+
+1000: 0107B8   [10]         ld  bc,47111
+1003: 110000   [20]         ld  de,0
+1006: 216EB2   [30]         ld  hl,45678
+1009: 3E7B     [37]         ld  a,123
+100B: CD5401   [54]         call DEHL_times_A
+                            .expect de = (45678*123) >> 16
+                            .expect hl = (45678*123) & 0xffff
+                            .expect a  = 0
+                            .expect bc = 47111
+
+
+                        .macro DEHL_times_A &N, &D
+                            ld  bc,4711
+                            ld  de,&N >> 16
+                            ld  hl,&N & 0xffff
+                            ld  a,&D
+                            call DEHL_times_A
+                            .expect de = (&N*&D) >> 16
+                            .expect hl = (&N*&D) & 0xffff
+                            .expect a  = 0          ; zasm can't calculate 40 bit ints => take care for max result!
+                            .expect bc = 4711
+                        .endm
+
+                            DEHL_times_A 12345,17
+100E: 016712   [64]         ld  bc,4711
+1011: 110000   [74]         ld  de,12345 >> 16
+1014: 213930   [84]         ld  hl,12345 & 0xffff
+1017: 3E11     [91]         ld  a,17
+1019: CD5401   [108]        call DEHL_times_A
+                            .expect de = (12345*17) >> 16
+                            .expect hl = (12345*17) & 0xffff
+                            .expect a  = 0          ; zasm can't calculate 40 bit ints => take care for max result!
+                            .expect bc = 4711
+                            DEHL_times_A 12345678,17
+101C: 016712   [118]        ld  bc,4711
+101F: 11BC00   [128]        ld  de,12345678 >> 16
+1022: 214E61   [138]        ld  hl,12345678 & 0xffff
+1025: 3E11     [145]        ld  a,17
+1027: CD5401   [162]        call DEHL_times_A
+                            .expect de = (12345678*17) >> 16
+                            .expect hl = (12345678*17) & 0xffff
+                            .expect a  = 0          ; zasm can't calculate 40 bit ints => take care for max result!
+                            .expect bc = 4711
+                            DEHL_times_A 6474678,123
+102A: 016712   [172]        ld  bc,4711
+102D: 116200   [182]        ld  de,6474678 >> 16
+1030: 21B6CB   [192]        ld  hl,6474678 & 0xffff
+1033: 3E7B     [199]        ld  a,123
+1035: CD5401   [216]        call DEHL_times_A
+                            .expect de = (6474678*123) >> 16
+                            .expect hl = (6474678*123) & 0xffff
+                            .expect a  = 0          ; zasm can't calculate 40 bit ints => take care for max result!
+                            .expect bc = 4711
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST2, 0x1000
+
+                        ; test the test engine
+
+                        #local
+1000: F3       [ 4]         di
+1001: ED5E     [12]         im 2
+1003: 3E03     [19]         ld  a,3
+1005: ED47     [28]         ld  i,a
+1007: 3E80     [35]         ld  a,0x80
+1009: ED4F     [44]         ld  r,a
+
+100B: 311110   [54]         ld  sp,$1011
+100E: 211312E5 [75]         ld  hl,$1213 \ push hl \ pop af
+1012: F1       [85]
+1013: 011514   [95]         ld  bc,$1415
+1016: 111716   [105]        ld  de,$1617
+1019: 211918   [115]        ld  hl,$1819
+101C: DD212120 [129]        ld  ix,$2021
+1020: 08       [133]        ex  af,af'
+1021: D9       [137]        exx
+1022: 212322E5 [158]        ld  hl,$2223 \ push hl \ pop af
+1026: F1       [168]
+1027: 012524   [178]        ld  bc,$2425
+102A: 112726   [188]        ld  de,$2627
+102D: 212928   [198]        ld  hl,$2829
+1030: FD213130 [212]        ld  iy,$3031
+
+                            .expect pc = $
+                            .expect im = 2
+                            .expect i = 3
+                            .expect r = 0x80 + 19
+                            .expect iff1 = 0        ; di
+                            .expect iff2 = 0        ; di
+
+                            .expect sp = $1011
+                            .expect af' = $1213
+                            .expect bc' = $1415
+                            .expect de' = $1617
+                            .expect HL' = 1819h
+                            .expect af2 = $1213
+                            .expect BC2 = $1415
+                            .expect de2 = $1617
+                            .expect hl2 = 1819h
+                            .expect IX  = $2021
+                            .expect af = $2223
+                            .expect bc = $2425
+                            .expect de = $2627
+                            .expect HL = 2829h
+                            .expect iy = $3031
+                            .expect sph = $10
+                            .expect spl = $11
+                            .expect a' = $12
+                            .expect f' = $13
+                            .expect b' = $14
+                            .expect C' = $15
+                            .expect D' = $16
+                            .expect e' = $17
+                            .expect h' = $18
+                            .expect l' = $19
+                            .expect a2 = $12
+                            .expect f2 = $13
+                            .expect b2 = $14
+                            .expect C2 = $15
+                            .expect D2 = $16
+                            .expect e2 = $17
+                            .expect h2 = $18
+                            .expect l2 = $19
+                            .expect ixh = $20
+                            .expect ixl = $21
+                            .expect xh = $20
+                            .expect xl = $21
+                            .expect a = $22
+                            .expect f = $23
+                            .expect b = $24
+                            .expect C = $25
+                            .expect D = $26
+                            .expect e = $27
+                            .expect h = $28
+                            .expect l = $29
+                            .expect iyh = $30
+                            .expect iyl = $31
+                            .expect yh = $30
+                            .expect yl = $31
+
+1034: 3E0A     [219]        ld  a,10
+1036: ED4F     [228]        ld  r,a
+1038: FB       [232]        ei
+
+                            .expect iff1 = 1        ; ei
+                            .expect iff2 = 1        ; ei
+                            .expect r = 10 + 1      ; ei
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST3, 0x1000
+
+                        ; test the test engine
+                        ; run with cc limiter and no interrupts
+
+                        #local
+                            .test-clock 4 MHz
+                            .test-timeout 1 s
+
+1000: 010000   [10]         ld  bc,0
+1003: 10FE     [ 8|13]  1$: djnz 1$
+1005: 0D       [12]         dec c
+1006: 20FB     [19|24]      jr  nz,1$
+
+0B05:                   duration = 10 + 13*$ff00 + 24*$100 - 5  ; 854789
+
+                            .expect cc = duration
+                            .expect cc < 4000000
+                            .expect cc > $10000 * 13    ; ~ 850000
+                            .expect bc = 0
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST4, 0x1000
+
+                        ; test the test engine
+                        ; run with fixed speed and interrupts
+
+                        #local
+                            .test-clock   4 MHz
+                            .test-timeout 1 s
+                            .test-int     100 Hz
+                            .test-console CON_IO        ; read from / dump to console
+
+1000: ED56     [ 8]         im  1       ; rst $38
+1002: FB       [12]         ei
+
+1003: 010000   [22]         ld  bc,0
+1006: 10FE     [ 8|13]  1$: djnz 1$
+1008: 0D       [12]         dec c
+1009: 20FB     [19|24]      jr  nz,1$
+
+0B05:                   duration = 10 + 13*$ff00 + 24*$100 - 5  ; 854789
+009B:                   dur_int  = 13 + 83 + 34 + 25            ; cc per interrupt
+
+                            .expect cc = 12 + duration + 21 * dur_int   ; 858056
+                            .expect bc = 0
+
+100B: 2A4F00   [35]         ld  hl,(systime)
+                            .expect hl = 21     ; irpt 100 Hz => cc/int = 40000 => 858056/40000 = 21
+
+100E: 211910   [45]         ld  hl,msg
+1011: 7E23     [13]     2$: ld  a,(hl++)
+1013: A7       [17]         and a
+1014: 282F     [24|29]      jr  z,msg_end
+1016: D7       [35]         rst stdout
+1017: 18F8     [47]         jr  2$
+1019: 2D2D3E20          msg: dm "--> Hello World, this is Test #4 speaking!",10,0
+101D: 48656C6C
+1021: 6F20576F
+1025: 726C642C
+1029: 20746869
+102D: 73206973
+1031: 20546573
+1035: 74202334
+1039: 20737065
+103D: 616B696E
+1041: 67210A00
+1045:                   msg_end:
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST5, 0x1000
+
+                        ; test the test engine
+                        ; run with fixed speed and interrupts
+
+                        #local
+0001:                   in_addr  equ 1
+0002:                   out_addr equ 2
+
+                            .test-clock   4 MHz
+                            .test-timeout 100 ms
+                            .test-int     10000 cc
+                            .test-intack  opcode(RST 48)
+
+                            .test-in  in_addr,  {'y'}*10, "abcde", 0, "DEFGH", {0}*10    ; 31 bytes
+                            .test-out out_addr, "yyyyyyyyyy", "abcde", "DEFGH"
+
+                            ; make rst 48 jump to my handler
+1000: 211010   [10]         ld  hl,int_handler
+1003: 223100   [26]         ld  (48+1),hl
+
+1006: ED46     [34]         im  0               ; -> read instruction from bus
+1008: 061F     [41]         ld  b,31            ; 31 bytes to read
+100A: FB       [ 4]     3$: ei
+100B: 76       [ 8]         halt
+100C: 10FC     [16|21]      djnz 3$
+100E: 1807     [28]         jr  resume
+
+1010:                   int_handler:
+1010: DB01     [11]         in  a,(in_addr)
+1012: A7       [15]         and a
+1013: C8       [20|26]      ret z               ; $00 => no char available
+1014: D302     [31]         out (out_addr),a    ; echo
+1016: C9       [41]         ret
+
+1017:                   resume:
+1017: 00       [ 4]         nop
+
+                            .expect cc > 31 * 10000
+                            .expect cc < 31 * 10000 + 200
+                            .expect cc = 310026             ; lt. zasm
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST6, 0x1000
+
+                        ; test the test engine
+                        ; run at max. speed and with interrupts
+
+                        #local
+0001:                   in_addr  equ 1
+0002:                   out_addr equ 2
+
+                            .test-timeout 100 ms
+                            .test-int     10000 cc
+
+                            .test-in  in_addr,  "--> ", {"Hello, "}*2, "this is Test #6 queeking", 10, {0}*
+                            .test-console out_addr
+
+                            ; setup interrupt table:
+1000: ED5E     [ 8]         im  2                           ; -> jump via table
+1002: 3E10ED47 [24]         ld  a,hi(int_table) \ ld i,a    ; hi byte in i
+                            .test-intack  lo(int_table)     ; lo byte from bus in int ack cycle
+
+
+1006: 0630     [31]         ld  b,48            ; 48 bytes to read
+1008: FB       [ 4]     3$: ei
+1009: 76       [ 8]         halt
+100A: 10FC     [16|21]      djnz 3$
+100C: 1809     [28]         jr  resume
+
+
+100E:                   int_table:
+100E: 1010                  dw  int_handler
+
+1010:                   int_handler:
+1010: DB01     [11]         in  a,(in_addr)
+1012: A7       [15]         and a
+1013: C8       [20|26]      ret z               ; $00 => no char available
+1014: D302     [31]         out (out_addr),a    ; echo
+1016: C9       [41]         ret
+
+1017:                   resume:
+1017: 00       [ 4]         nop
+
+                            .expect cc > 48 * 10000
+                            .expect cc < 48 * 10000 + 200
+                            .expect cc = 480023             ; lt. zasm
+
+                        #endlocal
+
+
+                        ; -------------------------------------------
+1000:                   #test TEST7, 0x1000
+
+                        ; test the test engine
+                        ; run at max. speed and with interrupts
+                        ; calculate emulation speed
+
+                        #local
+
+                            .test-timeout 105 ms
+                            .test-int     1000 Hz       ; fastest allowed for tests
+                            .test-console CON_IO
+                            ;.test-clock   100 MHz      ; used for reference measurement
+
+
+                            ; setup interrupt table:
+1000: ED5E     [ 8]         im  2                           ; -> jump via table
+1002: 3E10ED47 [24]         ld  a,hi(int_table) \ ld i,a    ; hi byte in i
+                            .test-intack  lo(int_table)     ; lo byte from bus in int ack cycle
+
+1006: 310000   [34]         ld  sp,0
+1009: FB       [38]         ei
+
+100A: AF       [42]         xor a
+100B: 110000   [52]         ld  de,0
+100E: 1806     [64]         jr  2$
+
+1010: D1       [10]     1$: pop de
+1011: F1       [20]         pop af
+1012: 3C       [24]         inc a
+1013: 1B1B1B   [42]         dec de \ dec de \ dec de
+1016: F5       [11]     2$: push af
+1017: D5       [22]         push de
+
+1018: CD0001   [39]         call A_times_DE
+
+101B: 212B10   [49]         ld  hl,counter
+101E: 3423     [17]     3$: inc (hl++)
+1020: 28FC     [24|29]      jr  z,3$
+
+1022: 3A2F10   [37]         ld  a,(systime)
+1025: FE64     [44]         cp  a,100
+1027: 20E7     [51|56]      jr  nz,1$
+
+1029: 1858     [63]         jr  resume
+
+102B:                   counter:
+102B: 00000000              dw  0,0
+
+102F:                   systime:
+102F: 00                    db  0
+
+1030:                   int_table:
+1030: 3210                  dw  int_handler
+
+1032:                   int_handler:
+1032: 08       [ 4]         ex  af,af'
+1033: 3A2F10   [17]         ld  a,(systime)
+1036: 3C       [21]         inc a
+1037: 322F10   [34]         ld  (systime),a
+103A: 08       [38]         ex  af,af'
+103B: FB       [42]         ei
+103C: C9       [52]         ret
+
+
+                        ; divide DEHL by 199.8
+103D:                   div1998:
+103D: 3E05     [ 7]         ld  a,5
+103F: CD5401   [24]         call DEHL_times_A
+1042: 0E09     [31]         ld  c,9
+1044: CD1601   [48]         call DEHL_div_C
+1047: 0E6F     [55]         ld  c,111
+1049: C31601   [65]         jp  DEHL_div_C
+
+104C: 2D2D3E20          msg_loops_done: dm "--> loops done in 100 ms: 0x",0
+1050: 6C6F6F70
+1054: 7320646F
+1058: 6E652069
+105C: 6E203130
+1060: 30206D73
+1064: 3A203078
+1068: 00
+1069: 2D2D3E20          msg_mhz1:       dm "--> Z80 running at ",0
+106D: 5A383020
+1071: 72756E6E
+1075: 696E6720
+1079: 61742000
+107D: 204D487A          msg_mhz2:       dm " MHz",10,0
+1081: 0A00
+
+1083:                   resume:
+1083: 214C10   [10]         ld  hl,msg_loops_done
+1086: DF       [21]         rst puts
+1087: 212F10   [31]         ld  hl,counter+4
+108A: 2B7E     [44]         ld  a,(--hl)
+108C: CD8801   [61]         call print_hex_byte
+108F: 2B7E     [74]         ld  a,(--hl)
+1091: CD8801   [91]         call print_hex_byte
+1094: 2B7E     [104]        ld  a,(--hl)
+1096: CD8801   [121]        call print_hex_byte
+1099: 2B7E     [134]        ld  a,(--hl)
+109B: CD8801   [151]        call print_hex_byte
+109E: 3E0A     [158]        ld  a,10
+10A0: D7       [169]        rst stdout
+
+10A1: 216910   [179]        ld  hl,msg_mhz1
+10A4: DF       [190]        rst puts
+10A5: 2A2B10   [206]        ld  hl,(counter)
+10A8: ED5B2D10 [226]        ld  de,(counter+2)      ; dehl = counter
+10AC: CD3D10   [243]        call div1998            ; divide by 199.8 --> hl = MHz
+10AF: CD9D01   [260]        call print_hl
+10B2: 217D10   [270]        ld  hl,msg_mhz2
+10B5: DF       [281]        rst puts
+
+
+                        ; reference measurements:
+
+                        ; 20 MHz:    $0F93  =  3987 loops  -> 199.35  loops/MHz
+                        ; 40 MHz:    $1F2F  =  7983 loops  -> 199.575 loops/MHz
+                        ; 100 MHz:   $4DFB  = 19963 loops  -> 199.63  loops/MHz
+
+                        ; AMD Ryzen 5 2400G @ 3.6GHz:
+                        ;  clang: max. 1818 MHz
+                        ;  gcc:   max. 2648 MHz --> almost 50% faster!
+
+                        #endlocal
+
+                        #end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; +++ segments +++
+
+#CODE CODE     = $0100 =   256,  size = $00AB =   171
+#CODE RST      = $0000 =     0,  size = $0051 =    81
+#TEST TEST1    = $1000 =  4096,  size = $0034 =    52
+#TEST TEST1B   = $1000 =  4096,  size = $0021 =    33
+#TEST TEST1C   = $1000 =  4096,  size = $0038 =    56
+#TEST TEST2    = $1000 =  4096,  size = $0039 =    57
+#TEST TEST3    = $1000 =  4096,  size = $0008 =     8
+#TEST TEST4    = $1000 =  4096,  size = $0045 =    69
+#TEST TEST5    = $1000 =  4096,  size = $0018 =    24
+#TEST TEST6    = $1000 =  4096,  size = $0018 =    24
+#TEST TEST7    = $1000 =  4096,  size = $00B6 =   182
+
+; +++ global symbols +++
+
+A_times_DE          = $0100 =   256  CODE    :25
+A_times_DE$1        = $010B =   267  CODE    :33
+A_times_DE$2        = $010C =   268  CODE    :34
+A_times_DE$3        = $0107 =   263  CODE    :30
+CODE                = $0100 =   256  CODE    :16 (unused)
+CODE_end            = $01AB =   427  CODE    :16 (unused)
+CODE_size           = $00AB =   171  CODE    :16 (unused)
+CON_IO              = $00FE =   254  RST     :232
+DEHL_div_C          = $0116 =   278  CODE    :47
+DEHL_div_C$1        = $0119 =   281  CODE    :50
+DEHL_div_C$2        = $0124 =   292  CODE    :58
+DEHL_times_A        = $0154 =   340  CODE    :123
+DEHL_times_A$1      = $015F =   351  CODE    :133
+DEHL_times_A$2      = $016D =   365  CODE    :147
+DEHL_times_A_broken = $0127 =   295  CODE    :71 (unused)
+DE_times_A          = $0146 =   326  CODE    :104 (unused)
+DE_times_A$1        = $014B =   331  CODE    :108
+DE_times_A$2        = $0151 =   337  CODE    :113
+HL_div_10           = $0174 =   372  CODE    :163
+HL_div_10$1         = $0185 =   389  CODE    :174
+HL_div_10$2         = $017E =   382  CODE    :169
+RST                 = $0000 =     0  RST     :230 (unused)
+RST_end             = $0051 =    81  RST     :230 (unused)
+RST_size            = $0051 =    81  RST     :230 (unused)
+TEST1               = $1000 =  4096  TEST1   :297 (unused)
+TEST1B              = $1000 =  4096  TEST1B  :363 (unused)
+TEST1B_end          = $1021 =  4129  TEST1B  :363 (unused)
+TEST1B_size         = $0021 =    33  TEST1B  :363 (unused)
+TEST1C              = $1000 =  4096  TEST1C  :365 (unused)
+TEST1C_end          = $1038 =  4152  TEST1C  :365 (unused)
+TEST1C_size         = $0038 =    56  TEST1C  :365 (unused)
+TEST1_end           = $1034 =  4148  TEST1   :297 (unused)
+TEST1_size          = $0034 =    52  TEST1   :297 (unused)
+TEST2               = $1000 =  4096  TEST2   :390 (unused)
+TEST2_end           = $1039 =  4153  TEST2   :390 (unused)
+TEST2_size          = $0039 =    57  TEST2   :390 (unused)
+TEST3               = $1000 =  4096  TEST3   :438 (unused)
+TEST3_end           = $1008 =  4104  TEST3   :438 (unused)
+TEST3_size          = $0008 =     8  TEST3   :438 (unused)
+TEST4               = $1000 =  4096  TEST4   :462 (unused)
+TEST4_end           = $1045 =  4165  TEST4   :462 (unused)
+TEST4_size          = $0045 =    69  TEST4   :462 (unused)
+TEST5               = $1000 =  4096  TEST5   :503 (unused)
+TEST5_end           = $1018 =  4120  TEST5   :503 (unused)
+TEST5_size          = $0018 =    24  TEST5   :503 (unused)
+TEST6               = $1000 =  4096  TEST6   :549 (unused)
+TEST6_end           = $1018 =  4120  TEST6   :549 (unused)
+TEST6_size          = $0018 =    24  TEST6   :549 (unused)
+TEST7               = $1000 =  4096  TEST7   :598 (unused)
+TEST7_end           = $10B6 =  4278  TEST7   :598 (unused)
+TEST7_size          = $00B6 =   182  TEST7   :598 (unused)
+int38h              = $0038 =    56  RST     :262 (unused)
+int38h$1            = $004B =    75  RST     :278
+int38h$2            = $004A =    74  RST     :276
+mul32loop           = $0131 =   305  CODE    :79
+print_decimal_digit = $01A7 =   423  CODE    :221 (unused)
+print_hex_byte      = $0188 =   392  CODE    :183
+print_hex_char      = $0191 =   401  CODE    :195
+print_hex_char$1    = $0199 =   409  CODE    :201
+print_hl            = $019D =   413  CODE    :213
+puts                = $0018 =    24  RST     :247
+reset               = $0000 =     0  RST     :234
+stdin               = $0008 =     8  RST     :238
+stdout              = $0010 =    16  RST     :243
+systime             = $004F =    79  RST     :283
+
+; +++ local symbols +++
+
+Lxx     = $0007 =     7  TEST1   :345
+TEST1$1 = $100B =  4107  TEST1   :318 (unused)
+TEST1$2 = $1012 =  4114  TEST1   :327 (unused)
+TEST1$3 = $1017 =  4119  TEST1   :335 (unused)
+TEST1$4 = $101C =  4124  TEST1   :363 (unused)
+TEST1$5 = $1024 =  4132  TEST1   :364 (unused)
+TEST1$6 = $102C =  4140  TEST1   :365 (unused)
+max     = $017E =   382  TEST1   :304
+min     = $00CF =   207  TEST1   :303
+
+; +++ local symbols +++
+
+
+; +++ local symbols +++
+
+
+; +++ local symbols +++
+
+
+; +++ local symbols +++
+
+TEST3$1  = $1003 =  4099  TEST3   :541
+duration = $0B05 =854789  TEST3   :545
+
+; +++ local symbols +++
+
+TEST4$1  = $1006 =  4102  TEST4   :570
+TEST4$2  = $1011 =  4113  TEST4   :584
+dur_int  = $009B =   155  TEST4   :575
+duration = $0B05 =854789  TEST4   :574
+msg      = $1019 =  4121  TEST4   :589
+msg_end  = $1045 =  4165  TEST4   :590
+
+; +++ local symbols +++
+
+TEST5$3     = $100A =  4106  TEST5   :619
+in_addr     = $0001 =     1  TEST5   :602
+int_handler = $1010 =  4112  TEST5   :624
+out_addr    = $0002 =     2  TEST5   :603
+resume      = $1017 =  4119  TEST5   :631
+
+; +++ local symbols +++
+
+TEST6$3     = $1008 =  4104  TEST6   :664
+in_addr     = $0001 =     1  TEST6   :648
+int_handler = $1010 =  4112  TEST6   :673
+int_table   = $100E =  4110  TEST6   :670
+out_addr    = $0002 =     2  TEST6   :649
+resume      = $1017 =  4119  TEST6   :680
+
+; +++ local symbols +++
+
+TEST7$1        = $1010 =  4112  TEST7   :717
+TEST7$2        = $1016 =  4118  TEST7   :721
+TEST7$3        = $101E =  4126  TEST7   :727
+counter        = $102B =  4139  TEST7   :736
+div1998        = $103D =  4157  TEST7   :756
+int_handler    = $1032 =  4146  TEST7   :745
+int_table      = $1030 =  4144  TEST7   :742
+msg_loops_done = $104C =  4172  TEST7   :764
+msg_mhz1       = $1069 =  4201  TEST7   :765
+msg_mhz2       = $107D =  4221  TEST7   :766
+resume         = $1083 =  4227  TEST7   :768
+systime        = $102F =  4143  TEST7   :739
+
+
+total time: 0.5955 sec.
+no errors
