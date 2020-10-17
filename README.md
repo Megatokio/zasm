@@ -22,7 +22,7 @@ _zasm_ supports
 - **automatic label resolving** from libraries 
 - automatic **compression** using ZX7 
 - well known illegal instructions 
-- multiple instructions per line using '\' separator 
+- multiple instructions per line using '\\' separator 
 
 the source can start with a BOM and with a shebang '#!' in line 1.  
 the source (text literals) must either to be 7-bit clean or utf-8 encoded.
@@ -35,6 +35,6 @@ Run automated tests on the generated code.
 
 Project web page: [k1.spdns.de](https://k1.spdns.de/Develop/Projects/zasm/Distributions/).  
 There you can download Binaries for OSX and Linux and some older versions for other OSes  
-and there you find the [Documentation](https://k1.spdns.de/Develop/Projects/zasm/Documentation/)  
+and there you find the [Documentation](https://k1.spdns.de/Develop/Projects/zasm/Documentation/) 
 and an [online assembler](https://k1.spdns.de/cgi-bin/zasm.cgi).
 
