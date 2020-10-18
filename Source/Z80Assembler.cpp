@@ -240,51 +240,56 @@ void Z80Assembler::init_c_tempdir () throws
 inline bool utf8_is_ucs4 (char c) { return uchar(c)> 0xf0; }	// 2015-01-02 doesn't fit in ucs2?
 #define     RMASK(n)	 (~(0xFFFFFFFF<<(n)))					// mask to select n bits from the right
 
-static UCS2Char charcode_from_utf8 (cptr& s) throws
+uint8 Z80Assembler::charcode_from_utf8 (cptr& s) throws
 {
-	// convert UTF-8 char to UCS-2
-	// stops at next non-fup
-	// throws on error
+	// read next character
+	// decode UTF-8 char
+	// convert to charset
+	// on error try to fallback to ucs1 or throw
 	// char(0) is a valid character
-	// note: only doing UCS2 because class charmap is UCS2 only
+	// note: accepts only UCS2 because CharMap is UCS2 only
 
-	int8 c = int8(*s++);
-	if (is_ascii(c)) return uint8(c);		// 7-bit ascii char
-	if (is_utf8_fup(c))  throw SyntaxError("broken utf-8 character!");	// unexpected fup
-	if (utf8_is_ucs4(c)) throw SyntaxError("broken utf-8 character!");	// code exceeds UCS-2
+	uint8 c = uint8(*s++);
+	if (is_ascii(char(c)))
+	{
+		return charset ? charset->get(c) : c; // 7-bit ascii char
+	}
+
+	cptr s0 = s;
+	if (is_utf8_fup(char(c)) || utf8_is_ucs4(char(c))) // error: unexpected fup or code exceeds UCS2
+	{
+err:	s = s0;
+		// for charset conversion we need to know the character, not only the code:
+		if (charset) throw SyntaxError("invalid utf-8 character! please convert source to UTF8.");
+		// else print warning. TODO: wtore warnings like errors
+		if (verbose && pass == 1)
+			logline("invalid utf-8 character: using UCS1 instead. please convert source to UTF8.");
+		return c;
+	}
 
 	// longish character:
-	uint n = uint8(c);						// char code akku
-	uint i = 0;								// UTF-8 character size
-	while (int8(c<<(++i)) < 0)				// loop over fup bytes
+	uint n = c;							// char code akku
+	uint i = 0;							// UTF-8 character size
+	while (int8(c<<(++i)) < 0)			// loop over fup bytes
 	{
 		char c1 = *s++;
-		if (!is_utf8_fup(c1)) throw SyntaxError("broken utf-8 character!");
+		if (!is_utf8_fup(c1)) goto err;	// error: expected fup
 		n = (n<<6) + (c1&0x3F);
 	}
 
-	// simplify error checking for caller:
-	if (is_utf8_fup(*s)) throw SyntaxError("broken utf-8 character!"); // more unexpected fups follows
+	// look-ahead error checking:
+	if (is_utf8_fup(*s)) goto err;		// error: more unexpected fups follows
 
 	// now: i = total number of digits
 	//      n = char code with some of the '1' bits from c0
 	n &= RMASK(2+i*5);
 
 	// ok => return code
-	return UCS2Char(n);
+
+	if (charset) return charset->get(UCS2Char(n));
+	else if (n>0xFF) throw SyntaxError("character code exceeds byte limit");
+	else return uint8(n);
 }
-
-#ifdef DEBUG
-ON_INIT([]{
-	static const char a[] = "A";
-	static const char oe[] = "ö";
-	static const char eu[] = "€";
-	cptr p = a; assert(charcode_from_utf8(p) == 'A' && p==a+1);
-	p=oe; assert(charcode_from_utf8(p) == 0xF6 && p==oe+2);
-	p=eu; assert(charcode_from_utf8(p) == 0x20ac && p==eu+3);
-});
-#endif
-
 
 void Z80Assembler::checkCpuOptions() throws
 {
@@ -1142,7 +1147,6 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 			if (slen<3||w[slen-1]!=w[0]) goto syntax_error;
 			w = unquotedstr(w);
 			n.value = charcode_from_utf8(w);
-			if (charset) n.value = charset->get(n.value);
 			if (*w) throw SyntaxError("only one character allowed");
 			goto op;
 		}
@@ -4088,6 +4092,9 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 	// segment must exist and must be a special raw data segment TODO
 	// text is always stored in ASCII (no charset translation)
 
+	// clear charset translation and prepare for return or exceptions:
+	struct Fin { CharMap* &p,*v; Fin(CharMap*& p):p(p),v(p){p=nullptr;} ~Fin(){p=v;} } fin(charset);
+
 	w = lowerstr(w);
 	if (macros.contains(w))
 	{
@@ -4126,7 +4133,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 				if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 				cptr depp = w;
-				charcode_from_utf8(depp);	// skip over 1 char; throws on ill. utf8
+				charcode_from_utf8(depp);	// skip over 1 char
 
 				if (*depp==0) goto sv;		// single char => numeric expression
 
@@ -4287,7 +4294,7 @@ db:dm:		q.is_data = yes;
 				if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
 				depp = w;
-				charcode_from_utf8(depp);	// skip over 1 char; throws on ill. utf8
+				charcode_from_utf8(depp);	// skip over 1 char
 
 				if (*depp==0)				// single char => numeric expression
 				{
@@ -4296,8 +4303,7 @@ db:dm:		q.is_data = yes;
 				}
 				else						// multi-char string
 				{
-cb:					if (charset) while(*w) store(charset->get(charcode_from_utf8(w)));
-					else		 while(*w) store(charcode_from_utf8(w));
+cb:					while(*w) store(charcode_from_utf8(w));
 
 					// test for operation on the final char:
 					assert(dynamic_cast<CodeSegment*>(current_segment_ptr));
@@ -4581,8 +4587,7 @@ longer:
 		w = unquotedstr(w);
 		if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
 
-		if (charset) while(*w) store(charset->get(charcode_from_utf8(w)));
-		else		 while(*w) store(charcode_from_utf8(w));
+		while (*w) store(charcode_from_utf8(w));
 		store(0);
 		return;
 	}
@@ -4701,8 +4706,7 @@ void Z80Assembler::parseBytes (SourceLine& q, Array<uint8>& dest) throws
 		if (n<3 || w[n-1] != w[0]) throw SyntaxError("closing quotes expected");
 		w = substr(w+1, w+n-1);
 
-cb:		if (charset) while (*w) dest.append(charset->get(charcode_from_utf8(w)));
-		else		 while (*w) dest.append(validatedByte(Value(charcode_from_utf8(w))));
+cb:		while (*w) dest.append(charcode_from_utf8(w));
 
 		// test for operation on the final char:
 		if (q.testChar ('+'))	{ dest.append(validatedByte(Value(value(q) + dest.pop()))); } else

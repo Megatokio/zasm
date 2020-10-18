@@ -243,6 +243,7 @@ private:
 	cstr	unquotedstr		(cstr);
 	cstr	get_filename	(SourceLine&, bool dir=no)	throws;
 	cstr	get_directory	(SourceLine& q)				throws		{ return get_filename(q,yes); }
+	uint8	charcode_from_utf8 (cptr& s) throws;
 
 public:
 			Z80Assembler	();
