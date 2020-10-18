@@ -10,6 +10,11 @@ Distributions
 /sdcc/lib/OTHER/
 info.vh
 
+#make Makefile:
+tmp/
+*.o
+/zasm
+
 #eclipse files and folders
 .cproject
 .project
