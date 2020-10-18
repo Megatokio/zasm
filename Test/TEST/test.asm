@@ -31,6 +31,9 @@ A_times_DE:
 ; div (DEHL C -- DEHL rem A)
 ;
 ;   mod B=0
+;
+; function originally from z80-heaven.wikidot.com
+; was broken --> corrected!
 
 DEHL_div_C:
     ld b,32
@@ -39,9 +42,10 @@ DEHL_div_C:
     rl e
     rl d
     rla
+    jr c,3$
     cp c
     jr c,2$
-    inc l
+3$: inc l
     sub c
 2$: djnz 1$
     ret
@@ -350,6 +354,26 @@ Lxx = Lxx+1
     DEHL_div_C 12345,17
     DEHL_div_C 12345678,17
     DEHL_div_C 6474678,123
+    DEHL_div_C 37901,149
+    DEHL_div_C 65535,127
+    DEHL_div_C 65536,127
+    DEHL_div_C 65536,128
+    DEHL_div_C 65536,255
+    DEHL_div_C 65535,255
+    DEHL_div_C 0,55
+    DEHL_div_C 1,155
+    DEHL_div_C 2048876234,1
+
+; test division by zero:
+    ld  de,0
+    ld  hl,123
+    ld  c,0
+    call DEHL_div_C
+    .expect de = 0xffff
+    .expect hl = 0xffff
+    .expect a  = 123
+    .expect b  = 0
+    .expect c  = 0
 
 #endlocal
 

@@ -1,3 +1,4 @@
+#!/usr/local/bin/zasm -o original/test.ram
 ; –––––––––––––––––––––––––––––––––––––––––
 ; Examples for using #TEST segments in zasm
 ;
@@ -12,12 +13,10 @@
 ; hint: assemble with "-uvwy"
 
 
+
 #target ram
 
-
-; CODE segment starting at 0x100:
 #code CODE, 0x100
-
 
 ; ––––––––––––––––––––––––––
 ; mult (A DE -- HL)
@@ -41,11 +40,13 @@ A_times_DE:
         jp c,1$
         jp 2$
 
-
 ; ––––––––––––––––––––––––––
 ; div (DEHL C -- DEHL rem A)
 ;
 ;   mod B=0
+;
+; function originally from z80-heaven.wikidot.com
+; was broken --> corrected!
 
 DEHL_div_C:
     ld b,32
@@ -54,22 +55,19 @@ DEHL_div_C:
     rl e
     rl d
     rla
+    jr c,3$
     cp c
     jr c,2$
-    inc l
+3$: inc l
     sub c
 2$: djnz 1$
     ret
-
 
 ; ––––––––––––––––––––––––––
 ; mult (DEHL A -- ADEHL)
 ;
 ; --> z80-heaven.wikidot.com
 ;     ***broken!***
-; this routine was first used,
-; but it doesn't work,
-; as could have been proven with a single test.
 
 DEHL_times_A_broken:
     push hl
@@ -97,7 +95,6 @@ mul32loop:
     ex hl,de
     ret
 
-
 ; ––––––––––––––––––––––––––
 ; mult (DE A -- AHL)
 ;
@@ -116,12 +113,10 @@ DE_times_A:
 2$: djnz 1$
     ret
 
-
-; ––––––––––––––––––––––––––
 ; mult (DEHL A -- ADEHL)
 ;
 ;   mod BC=0 DE' HL'
-;   by kio@little-bat.de
+;   --> kio@little-bat.de
 
 DEHL_times_A:
 
@@ -130,23 +125,20 @@ DEHL_times_A:
     exx
     pop de      ; de = low word, de' = high word
 
-    ld  bc,$0800      ; b=8, c=0
-    ld  h,c \ ld l,c  ; hl=0, hl'=0
+    ld  bc,$0800      ; b=8
+    ld  h,c \ ld l,c  ; c=0, hl=0, hl'=0
 
 1$: add hl,hl
     exx
     adc hl,hl
     exx
-
     rla         ; get most-significant bit of accumulator
     jr nc,2$    ; If zero, skip addition
-
     add hl,de
     exx
     adc hl,de
     exx
     adc a,c
-
 2$: djnz 1$
 
     push hl
@@ -154,7 +146,6 @@ DEHL_times_A:
     pop de
     ex hl,de
     ret
-
 
 ; ––––––––––––––––––––––––––
 ; div10 (HL -- HL rem A)
@@ -176,7 +167,6 @@ HL_div_10:
     inc l
 1$: djnz 2$
     ret
-
 
 ; ––––––––––––––––––––––––––
 ; print_hex (A)
@@ -205,14 +195,12 @@ print_hex_char:
     rst stdout
     ret
 
-
 ; ––––––––––––––––––––––––––
 ; print_number (HL)
 ;
-; print HL as a decimal number
-;
 ;   mod A BC HL
 
+; print HL as a decimal number:
 print_hl:
     call HL_div_10      ; -> HL rem A
     push af
@@ -228,14 +216,13 @@ print_decimal_digit:
 
 
 ; -------------------------------------------
-; Segment for the rst vectors:
-
 #code RST, 0
+; interrupt handler for testing interrupt handling test
 
 CON_IO  equ 0xfe        ; a port address
 
-reset:  db  0xed,0x66        ; this is an illegal opcode
-        di \ halt \ jp reset ; should we ever come here
+reset:  db  0xed,0x66   ; this is an illegal opcode
+        di \ halt \ jp reset
 
         .org 8
 stdin:  in a,(CON_IO)
@@ -256,13 +243,11 @@ puts:   ld  a,(hl++)
         .org 32
         .org 40
 
-; aux. interrupt entry for special test:
         .org 48
-        jp  0000
+        jp  0000        ; aux. interrupt entry for special test
 
-; default interrupt handler:
         .org 56
-int38h: push af
+int38h: push af         ; --- default interrupt handler $FF = RST 38h ---
         push hl
 
         ld  hl,(systime)    ; increment a system time
@@ -287,20 +272,8 @@ systime dw  0
 
 
 
-
-; -------------------------------------------
-;
-;       Here the tests start:
-;
-; -------------------------------------------
-
-
-
 ; -------------------------------------------
 #test TEST1, 0x1000
-
-; test A_times_DE
-
 #local
     .test-timeout 100 ms
 min = 207
@@ -367,14 +340,15 @@ Lxx = Lxx+1
     test_AxDE 44,55
     test_AxDE 114,115
 
+
+
+;   .expect f=0     ; will fail
+
 #endlocal
 
 
 ; -------------------------------------------
 #test TEST1B, 0x1000
-
-; test DEHL_div_C
-
 #local
     .test-timeout 100 ms
 
@@ -393,15 +367,32 @@ Lxx = Lxx+1
     DEHL_div_C 12345,17
     DEHL_div_C 12345678,17
     DEHL_div_C 6474678,123
+    DEHL_div_C 37901,149
+    DEHL_div_C 65535,127
+    DEHL_div_C 65536,127
+    DEHL_div_C 65536,128
+    DEHL_div_C 65536,255
+    DEHL_div_C 65535,255
+    DEHL_div_C 0,55
+    DEHL_div_C 1,155
+    DEHL_div_C 2048876234,1
+
+; test division by zero:
+    ld  de,0
+    ld  hl,123
+    ld  c,0
+    call DEHL_div_C
+    .expect de = 0xffff
+    .expect hl = 0xffff
+    .expect a  = 123
+    .expect b  = 0
+    .expect c  = 0
 
 #endlocal
 
 
 ; -------------------------------------------
 #test TEST1C, 0x1000
-
-; test DEHL_times_A
-
 #local
     .test-timeout 100 ms
 
@@ -437,9 +428,6 @@ Lxx = Lxx+1
 
 ; -------------------------------------------
 #test TEST2, 0x1000
-
-; test the test engine
-
 #local
     di
     im 2
@@ -532,11 +520,8 @@ Lxx = Lxx+1
 
 ; -------------------------------------------
 #test TEST3, 0x1000
-
-; test the test engine
-; run with cc limiter and no interrupts
-
 #local
+; run with cc limiter and no interrupts
     .test-clock 4 MHz
     .test-timeout 1 s
 
@@ -556,11 +541,8 @@ duration = 10 + 13*$ff00 + 24*$100 - 5  ; 854789
 
 ; -------------------------------------------
 #test TEST4, 0x1000
-
-; test the test engine
-; run with fixed speed and interrupts
-
 #local
+; run with cc limiter and interrupts
     .test-clock   4 MHz
     .test-timeout 1 s
     .test-int     100 Hz
@@ -597,11 +579,8 @@ msg_end:
 
 ; -------------------------------------------
 #test TEST5, 0x1000
-
-; test the test engine
-; run with fixed speed and interrupts
-
 #local
+; run with cc limiter and interrupts
 in_addr  equ 1
 out_addr equ 2
 
@@ -610,10 +589,10 @@ out_addr equ 2
     .test-int     10000 cc
     .test-intack  opcode(RST 48)
 
-    .test-in  in_addr,  {'y'}*10, "abcde", 0, "DEFGH", {0}*10    ; 31 bytes
+    .test-in  in_addr,  {'y'}*10, "abcde", 0, "DEFGH", {0}*10       ; 31 bytes
     .test-out out_addr, "yyyyyyyyyy", "abcde", "DEFGH"
 
-    ; make rst 48 jump to my handler
+    ; make rst 48 point to my handler
     ld  hl,int_handler
     ld  (48+1),hl
 
@@ -643,11 +622,8 @@ resume:
 
 ; -------------------------------------------
 #test TEST6, 0x1000
-
-; test the test engine
-; run at max. speed and with interrupts
-
 #local
+; run without cc limiter and with interrupts
 in_addr  equ 1
 out_addr equ 2
 
@@ -692,17 +668,14 @@ resume:
 
 ; -------------------------------------------
 #test TEST7, 0x1000
-
-; test the test engine
-; run at max. speed and with interrupts
-; calculate emulation speed
-
 #local
+; run without cc limiter and with interrupts
+; calculate emulation speed
 
     .test-timeout 105 ms
     .test-int     1000 Hz       ; fastest allowed for tests
     .test-console CON_IO
-    ;.test-clock   100 MHz      ; used for reference measurement
+    ;.test-clock   100 MHz      ; for reference measurement
 
 
     ; setup interrupt table:
@@ -792,14 +765,16 @@ resume:
     ld  hl,msg_mhz2
     rst puts
 
+    ;.expect cc > 100000 * 100
+    ;.expect cc < 100000 * 100 + 10000
+    ;.expect hl=0   ; --> print
+    ;.expect de=0   ; --> print
 
-; reference measurements:
+; 20 MHz:    $0F93  = 3987   loops  -> 199.35  loops/MHz
+; 40 MHz:    $1F2F  = 7983   loops  -> 199.575 loops/MHz
+; 100 MHz:   $4DFB  = 19963  loops  -> 199.63  loops/MHz
 
-; 20 MHz:    $0F93  =  3987 loops  -> 199.35  loops/MHz
-; 40 MHz:    $1F2F  =  7983 loops  -> 199.575 loops/MHz
-; 100 MHz:   $4DFB  = 19963 loops  -> 199.63  loops/MHz
-
-; AMD Ryzen 5 2400G @ 3.6GHz:
+; AMD Ryzen 5 2400G @ 3.2GHz:
 ;  clang: max. 1818 MHz
 ;  gcc:   max. 2648 MHz --> almost 50% faster!
 
