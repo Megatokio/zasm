@@ -4415,12 +4415,11 @@ longer:
 		if (q.testWord("clock"))	// .test-clock value [k|M]
 		{
 			Value freq = value(q);
-			long z = freq.value;
-			if (q.testWord("k") || q.testWord("kHz")) z *= 1000;
-			else if (q.testWord("M") || q.testWord("MHz")) z *= 1000000;
+			int32 z = freq.value; if(z<0) throw SyntaxError("negative clock not supported. try again yesterday.");
+			if (q.testWord("k") || q.testWord("kHz"))      z = z > 0x7fffffff/1000     ? 0x7fffffff : z * 1000;
+			else if (q.testWord("M") || q.testWord("MHz")) z = z > 0x7fffffff/1000000  ? 0x7fffffff : z * 1000000;
 			else q.testWord("Hz");
-			limit(-0x80000000l, z, 0x7fffffffl);
-			freq.value = int32(z);
+			freq.value = z;
 			segment->setCpuClock(freq);
 			return;
 		}
@@ -4442,12 +4441,11 @@ longer:
 		else if (q.testWord("timeout"))	// .test-timeout value [ms|s|m]
 		{
 			Value timeout = value(q);
-			long z = timeout.value;
-			if (q.testWord("s")) z *= 1000;
-			else if (q.testWord("m")) z *= 60*1000;
+			int32 z = timeout.value; if (z<0) z = 0;
+			if (q.testWord("s"))      z = z > 0x7fffffff/1000  ? 0x7fffffff : z * 1000;
+			else if (q.testWord("m")) z = z > 0x7fffffff/60000 ? 0x7fffffff : z * 60000;
 			else q.testWord("ms");
-			limit(-0x80000000l, z, 0x7fffffffl);
-			timeout.value = int(z);
+			timeout.value = z;
 			segment->setTimeoutMsec(timeout);
 			return;
 		}

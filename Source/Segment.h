@@ -259,31 +259,31 @@ struct IoList
 
 	union	// note: extra union for FD, because C++ doesn't allow complex type in anon struct
 	{
-		IoSequences* data = nullptr;	// IoValues
-		FD  fd;							// IoFile
+		IoSequences* data;			// IoValues
+		FD  fd;						// IoFile
 	};
 
 	union
 	{
 		struct	// IoValues
 		{
-			uint sequence_idx = 0;		// during test run
-			uint in_sequence_idx = 0;	// during test run
-			uint repetition = 0; 		// during test run
-			uint filler2 = 0;
+			uint sequence_idx;		// during test run
+			uint in_sequence_idx;	// during test run
+			uint repetition; 		// during test run
+			uint filler2;
 		};
 		struct	// IoFile*
 		{
 			uint blocksize;
-			uint blockstate;			// during io
-			uint memory_address;		// during io
-			uint block_idx;				// during io
+			uint blockstate;		// during io
+			uint memory_address;	// during io
+			uint block_idx;			// during io
 		};
 	};
 
-	IoList(){}
-	IoList(IoSequence&&);	// ctor "Values" from first io sequence
-	IoList(IoMode, cstr filename, uint blocksize=0);	// ctor "File" etc.
+	IoList() = delete;
+	IoList(IoSequence&&);			// ctor for iomode=Values with first IoSequence
+	IoList(IoMode, cstr filename, uint blocksize=0); // ctor iomode=File etc.
 	~IoList();
 	IoList(IoList&&);
 	IoList& operator=(IoList&&);

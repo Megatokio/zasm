@@ -962,7 +962,10 @@ IoSequence& IoSequence::operator= (IoSequence&& q) noexcept
 IoList::IoList (IoSequence&& q)
 :
 	iomode(IoValues),
-	data(nullptr)
+	data(nullptr),
+	sequence_idx(0),		// not strictly required: reset in TestSegment.openFile()
+	in_sequence_idx(0),		// ""
+	repetition(0)			// ""
 {
 	data = new IoSequences;
 	data->append(std::move(q));
