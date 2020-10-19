@@ -379,6 +379,7 @@ static int doit( Array<cstr> argv )
 		// assemble a bunch of sources from a test directory
 		// and compare them to old versions found in the original/ subdirectories.
 		if (verbose) logline("zasm: +++ Regression Test +++");
+		if (verbose) logline("zasm: version " VERSION ", %s, for " _PLATFORM " on " _PROCESSOR ".", compiledatestr());
 
 		// if no path to the $TESTDIR directory is given, then the current working directory is used.
 		// ".asm" source files which start with "#!" will be assembled and compared to the original output file.
