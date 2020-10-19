@@ -20,7 +20,9 @@
 ;		--z180			Z180 / HD64180 additional instructions
 
 
-	org 	0
+#target rom
+#code CODE,0,*
+
 
 
 ; –––––––––––––––––––––––––––––––––––––––––––––––––
@@ -35,7 +37,7 @@ n20	equ 	20
 ; test_fails:
 !anton	equ	20 30		; operator missing
 !n20	equ 	30		; label redefined
-!foo	equ			; value missing
+!foo	equ				; value missing
 
 	db	10
 	db	$10
@@ -242,6 +244,8 @@ n20	equ 	20
 	jr	nz,$
 	jr	c,$
 	jr	nc,$
+!	jr	$+2+128
+!	jr	$+2-129
 	ex	af,af'
 	ld	a,i
 	ld	a,r
@@ -2105,7 +2109,18 @@ loop3:
 #endif
 
 
+#data DATA, 1000,100
+	db	0
+	ds	4
+	dw	0
+	ds	0
+	dm	$000000
+!	db	1
+!	dw	1
+!	dm	"1"
+!	db	0xff
 
+#end
 
 
 
