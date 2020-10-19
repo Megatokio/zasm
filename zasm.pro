@@ -303,7 +303,7 @@ OTHER_FILES += \
 
 DISTFILES += \
 	"Documentation/ README.txt" \
-	"Documentation/ zasm.toc" \
+	"Documentation/zasm.toc" \
 	"Documentation/8080 Assembler.txt" \
 	"Documentation/8080 assembler Z80 instructions.txt" \
 	"Documentation/8080 assembler instructions.txt" \
@@ -342,6 +342,7 @@ DISTFILES += \
 	Documentation/_insert.txt \
 	Documentation/_local.txt \
 	Documentation/_target.txt \
+	Documentation/_test.txt \
 	Documentation/align.txt \
 	Documentation/area.txt \
 	Documentation/asciz.txt \
@@ -376,6 +377,8 @@ DISTFILES += \
 	"Documentation/z180 instructions.txt" \
 	"Documentation/z80 instructions.txt" \
 	"Documentation/z80 z180 8080.txt" \
+	Documentation/test.asm.txt \
+	Documentation/test.lst.txt \
 	Test/8080/8080EX1.asm \
 	Test/8080/8080EXER.asm \
 	Test/8080/8080PRE.asm \

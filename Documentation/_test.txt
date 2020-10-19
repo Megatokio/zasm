@@ -71,7 +71,7 @@ pre	#test <name>, <addr>, <size>
 
 h5	.test-clock
 
-p	Define a fixed speed for the emulation. The emulation will be throttled to the given frequency.	If <tt>.test-clock</tt> is not specified then the test runs at the fastest possible speed.
+p	Define a fixed speed for the emulation. The emulation will be throttled to the given frequency.	If <tt>.test-clock</tt> is not specified or if the clock is set to 0 then the test runs at the fastest possible speed.
 
 pre	.test-clock 4000000 Hz ; run at 4 MHz.   mind the space!
 	.test-clock 3500 kHz   ; run at 3.5 MHz. mind the space!
@@ -101,17 +101,18 @@ p	Define byte to be read from the bus in an interrupt acknowldge cycle.
 pre	.test-intack  255-8            ; this would be a RST 48
 	.test-intack  opcode(rst 48)   ; the same, just readable :-)
 	.test-intack  lo(int_vector)   ; low byte of memory address of an interrupt vector
-	                               ; the high byte would go into the <b>i</b> register.
+								   ; the high byte would go into the <b>i</b> register.
 
 
 h5	.test-timeout
 
 p	Define a timeout for the test. If the test takes longer it is aborted and fails.
 	The timeout is measured in realtime.
-	If no timeout is set then there is no timeout.
+	If no timeout is set or the timeout is set to 0 then there is no timeout.
 
 pre	.test-timeout  1 s     ; timeout after 1 second.        mind the space!
 	.test-timeout  500 ms  ; timeout after 500 millisecond. mind the space!
+	.test-timeout  1 m     ; timeout after 1 minute.        mind the space!
 
 
 h5	.test-console

@@ -1,4 +1,3 @@
-#!/usr/local/bin/zasm -o original/test.ram
 ; –––––––––––––––––––––––––––––––––––––––––
 ; Examples for using #TEST segments in zasm
 ;
