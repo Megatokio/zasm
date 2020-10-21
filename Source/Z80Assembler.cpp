@@ -1084,7 +1084,7 @@ Value Z80Assembler::value (SourceLine& q, int prio) throws
 	// evaluate expression
 	// stops if end of expression reached or
 	// stops if operator with priority equal or less is encountered
-	// any reference to unknown or not-yet-valid label sets argument 'valid' and 'this.final' to false
+	// any reference to unknown or not-yet-valid label sets argument 'validity' and 'this.validity' to invalid
 
 	Value n = N0;					// value of expression, valid
 
@@ -4307,11 +4307,11 @@ cb:					while(*w) store(charcode_from_utf8(w));
 					// test for operation on the final char:
 					assert(dynamic_cast<CodeSegment*>(current_segment_ptr));
 					CodeSegment* s = static_cast<CodeSegment*>(current_segment_ptr);
-					if (q.testChar ('+'))	{ storeByte(Value(s->popLastByte() + value(q))); } else
-					if (q.test_char('-'))	{ storeByte(Value(s->popLastByte() - value(q))); } else
-					if (q.test_char('|'))	{ storeByte(Value(s->popLastByte() | value(q))); } else
-					if (q.test_char('&'))	{ storeByte(Value(s->popLastByte() & value(q))); } else
-					if (q.test_char('^'))	{ storeByte(Value(s->popLastByte() ^ value(q))); }
+					if (q.testChar ('+'))	{ storeByte(Value(s->popLastByte()) + value(q)); } else
+					if (q.test_char('-'))	{ storeByte(Value(s->popLastByte()) - value(q)); } else
+					if (q.test_char('|'))	{ storeByte(Value(s->popLastByte()) | value(q)); } else
+					if (q.test_char('&'))	{ storeByte(Value(s->popLastByte()) & value(q)); } else
+					if (q.test_char('^'))	{ storeByte(Value(s->popLastByte()) ^ value(q)); }
 				}
 				if (q.testComma()) goto dm; else return;
 			}
@@ -4706,11 +4706,11 @@ void Z80Assembler::parseBytes (SourceLine& q, Array<uint8>& dest) throws
 cb:		while (*w) dest.append(charcode_from_utf8(w));
 
 		// test for operation on the final char:
-		if (q.testChar ('+'))	{ dest.append(validatedByte(Value(value(q) + dest.pop()))); } else
-		if (q.test_char('-'))	{ dest.append(validatedByte(Value(value(q) - dest.pop()))); } else
-		if (q.test_char('|'))	{ dest.append(validatedByte(Value(value(q) | dest.pop()))); } else
-		if (q.test_char('&'))	{ dest.append(validatedByte(Value(value(q) & dest.pop()))); } else
-		if (q.test_char('^'))	{ dest.append(validatedByte(Value(value(q) ^ dest.pop()))); }
+		if (q.testChar ('+'))	{ dest.append(validatedByte(Value(dest.pop()) + value(q))); } else
+		if (q.test_char('-'))	{ dest.append(validatedByte(Value(dest.pop()) - value(q))); } else
+		if (q.test_char('|'))	{ dest.append(validatedByte(Value(dest.pop()) | value(q))); } else
+		if (q.test_char('&'))	{ dest.append(validatedByte(Value(dest.pop()) & value(q))); } else
+		if (q.test_char('^'))	{ dest.append(validatedByte(Value(dest.pop()) ^ value(q))); }
 		return;
 	}
 
