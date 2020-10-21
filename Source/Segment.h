@@ -95,9 +95,13 @@ public:
 	Value const& currentPosition ()		{ return dpos; }		// offset in core
 
 // store object code
-	virtual void rewind		()						{}
+	virtual void rewind () {}
+
 	virtual void store		(int)					throws { throw_code_segment_required(); }
 	virtual void storeBlock	(cptr, uint)			throws { throw_code_segment_required(); }
+	virtual void storeSpace	(Value const&, int)		throws { throw_code_segment_required(); }
+	virtual void storeSpace	(Value const&)			throws { throw_data_segment_required(); }
+
 	void	store		(int a,int b)				throws { store(a); store(b); }
 	void	store		(int a,int b,int c)			throws { store(a); store(b); store(c); }
 	void	store		(int a,int b,int c,int d)	throws { store(a); store(b); store(c); store(d); }
@@ -122,7 +126,6 @@ class DataSegment : public Segment
 	// Segment has address, size, deposition pointer like a CodeSegment
 
 public:
-	uint8		fillbyte;		// $FF for ROM else $00
 	bool		relocatable;	// address has not been explicitely set => append to prev. segment
 	bool		resizable;		// size has not been explicitely set    => shrink to fit
 	Value		address;		// "physical" segment start address
@@ -130,7 +133,7 @@ public:
 	Value		lpos;			// logical position ('$') at dpos
 
 public:
-	DataSegment (cstr name, uint8 fillbyte);
+	DataSegment (cstr name);
 
 	//bool	isAtStart	()						{ return dpos.is_valid() && dpos==0; }
 	Value	physicalAddress	()					{ return address + dpos; }		// segment_address + dpos
@@ -143,19 +146,17 @@ public:
 	void	setSize		(Value const&)			throws;
 	void	setOrigin	(Value const&)			throws;
 
-	void	storeSpace	(Value const&, int)		throws;
-	void	storeSpace	(Value const&)			throws;
-	void	storeSpaceUpToAddress(Value const&)	throws;
-	void	storeSpaceUpToAddress(Value const&, int) throws;
-	void	clearTrailingBytes ()				noexcept;
-
-	void	skipExistingData (int sz)			throws;
-
 	void	store		(int)					throws override;
 	void	storeBlock	(cptr data, uint sz)	throws override;
+	void	storeSpace	(Value const& sz, int)	throws override;
+	void	storeSpace	(Value const& sz)		throws override;
+
+	void	storeSpaceUpToAddress(Value const&)	throws;
+	void	storeSpaceUpToAddress(Value const&, int) throws;
+	void	skipExistingData (uint sz)			throws;
 
 protected:
-	DataSegment (cstr name, SegmentType, uint8 fillbyte, bool relocatable, bool resizable);
+	DataSegment (cstr name, SegmentType, bool relocatable, bool resizable);
 };
 
 
@@ -171,6 +172,8 @@ public:
 	Value		flag;			// flag for .z80 and tape code segments
 	Value		pause;			// TZX: pause after block [ms]
 	Value		lastbits;		// TZX: used bits in last byte [1..8]
+	Value		fillbyte;		// $FF for ROM else $00
+	bool		custom_fillbyte;
 	bool		has_flag;		// this is a first segment of a block
 	bool		has_pause;		// TZX: pause was set
 	bool		has_lastbits;	// TZX: lastbits was set
@@ -197,16 +200,22 @@ public:
 	uint8 const* outputData () const	{ return compressed ? ccore.getData() : core.getData(); }
 	Validity validity () const override;
 	void	rewind() override;
+
 	void	store		(int)					throws override;
 	void	storeBlock	(cptr data, uint sz)	throws override;
+	void	storeSpace	(Value const&, int)		throws override;
+	void	storeSpace	(Value const&)			throws override;
+	void	clearTrailingBytes ()				noexcept;
+
 	uint8&	operator[]	(uint32 i)				{ return core[i]; }
-	uint8	popLastByte	()						{ assert(dpos>0); --lpos.value; return core[--dpos.value]; }
+	uint8	popLastByte	()						{ assert(dpos.value>0); --lpos.value; return core[--dpos.value]; }
 
 	void	setFlag		(Value const&)			throws;
 	void	setPause	(Value const&);
 	void	setLastBits	(Value const&);
 	void	setNoFlag ();
-	void	NoChecksum ();
+	void	setNoChecksum ();
+	void	setFillByte	(Value const&);
 
 	void	setNumPilotPulses (Value const&);
 	void	addPilotSymbol (Values);

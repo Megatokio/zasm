@@ -845,7 +845,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 			Value& seg_address = s->isData() ? data_address : s->isCode() ? code_address : test_address;
 
 			if (s->resizable) s->setSize(s->dpos);
-			else s->clearTrailingBytes();
+			else if (auto d = dynamic_cast<CodeSegment*>(s)) { d->clearTrailingBytes(); }
 
 			if (s->relocatable) s->setAddress(seg_address);
 
@@ -967,7 +967,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 		{
 			if (pass>1)
 				if (auto s = dynamic_cast<DataSegment*>(q.segment))
-					s->skipExistingData(int(q.byteptr + q.bytecount) - currentPosition());
+					s->skipExistingData(uint(q.byteptr + q.bytecount) - uint(currentPosition()));
 			throw e;
 		}
 	}
@@ -3416,7 +3416,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		assert(pass==1);
 
 		if (isData(segment_type))
-			segment = new DataSegment(name,0x00/*fillbyte*/);
+			segment = new DataSegment(name);
 		else
 		{
 			assert(isCode(segment_type)||isTest(segment_type));
@@ -3475,126 +3475,124 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 	if (segment->isData()) return;
 	if (segment->isTest()) return;
 	if (!q.testComma()) return;
+
+	// more values follow:
+
 	CodeSegment* cseg = dynamic_cast<CodeSegment*>(segment);
 	assert(cseg);
 
-	if (target == Z80)
+	// flag without keyword "flag" must be first and only value:
+	// flag without keyword should be deprecated!
+	cptr p = q.p;
+	if (!(q.testWord("flag") && q.testChar('=')))  // test both => label named 'flag' can be used
 	{
-		// #code name, address, length, [FLAG=]value
-
-		cptr p = q.p; if (!(q.testWord("flag") && q.testChar('='))) q.p = p;
-		cseg->setFlag(value(q));
-	}
-
-	else if (target == TAP)
-	{
-		// #code name, address, length, [FLAG=]value|NONE
-
-		// if FLAG=NONE then no flagbyte is stored in the tape block
-		// and the checksum does not incorporate the flagbyte.
-		// => this is suitable for Jupiter Ace tape files.
-
-		cptr p = q.p; if (!(q.testWord("flag") && q.testChar('='))) q.p = p;
-		if (q.testWord("none")) cseg->setNoFlag();
-		else cseg->setFlag(value(q));
-	}
-
-	else if (target == TZX)
-	{
-		// CodeSegment: parse flag and dict:
-
-		// <flag>:		( <nothing> | <value> | <dict> )
-		// <dict>:
-		// standard:    FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=pause]
-		// code, turbo:	FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=pause], [LASTBITS=lastbits], [PILOT=count]
-		// pure-data:	FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=pause], [LASTBITS=lastbits], [PILOT=NONE]
-		// generalized:	FLAG=(flag|NONE), [CHECKSUM=NONE|ACE], [PAUSE=pause], [LASTBITS=lastbits], [PILOT=(NONE|count)]
-
-		// flag must be first value:
-		// if flag is not introduced with keyword 'FLAG' then only a flag can follow:
-		cptr p = q.p;
-		if (!(q.testWord("flag") && q.testChar('=')))
-		{
-			q.p = p;
-			cseg->setFlag(value(q));
-			return;
-		}
 		q.p = p;
+		if (target!=Z80 && target!=TAP && target!=TZX) throw SyntaxError("target Z80, TAP or TZX required");
 
-		uint seen = 0;
-		static const uint FLAG=1,CHECKSUM=2,PAUSE=4,PILOT=8,LASTBITS=16;
+		if (target!=Z80 && q.testWord("none")) cseg->setNoFlag();
+		else cseg->setFlag(value(q));
+		return;
+	}
+	q.p = p;
 
-		do
+	// now only key=value pairs expected:
+
+	// all:			SPACE=value
+	// Z80:			FLAG=value
+	// TAP:			FLAG=(value|NONE)
+	// TZX:
+	// standard:    FLAG=(value|NONE), [CHECKSUM=NONE|ACE], [PAUSE=value]
+	// code, turbo:	FLAG=(value|NONE), [CHECKSUM=NONE|ACE], [PAUSE=value], [LASTBITS=value], [PILOT=count]
+	// pure-data:	FLAG=(value|NONE), [CHECKSUM=NONE|ACE], [PAUSE=value], [LASTBITS=value], [PILOT=NONE]
+	// generalized:	FLAG=(value|NONE), [CHECKSUM=NONE|ACE], [PAUSE=value], [LASTBITS=value], [PILOT=(NONE|count)]
+
+	uint seen = 0;
+	constexpr uint FLAG=1, CHECKSUM=2, PAUSE=4, PILOT=8, LASTBITS=16, SPACE=32;
+
+	do
+	{
+		if (q.testWord("flag"))
 		{
-			if (q.testWord("flag"))
-			{
-				if (seen & FLAG) throw SyntaxError("multiple definitions for flag");
-				q.expect(('='));
+			if (seen & FLAG) throw SyntaxError("multiple definitions for flag");
+			if (target!=Z80 && target!=TAP && target!=TZX) throw SyntaxError("target Z80, TAP or TZX required");
 
-				if (q.testWord("none")) cseg->setNoFlag();
-				else cseg->setFlag(value(q));
-				seen |= FLAG;
+			// if FLAG=NONE then no flagbyte is stored in the tape block
+			// and the checksum does not incorporate the flagbyte.
+			// => this is suitable for Jupiter Ace tape files.
+
+			q.expect(('='));
+			if (target!=Z80 && q.testWord("none")) cseg->setNoFlag();
+			else cseg->setFlag(value(q));
+			seen |= FLAG;
+		}
+		else if (q.testWord("space"))
+		{
+			if (seen & SPACE) throw SyntaxError("multiple definitions for space");
+			q.expect(('='));
+			cseg->setFillByte(value(q));
+			seen |= SPACE;
+		}
+		else if (q.testWord("checksum"))
+		{
+			if (seen & CHECKSUM) throw SyntaxError("multiple definitions for checksum");
+			if (target != TZX) throw SyntaxError("target TZX required");
+
+			q.expect(('='));
+			if (q.testWord("none")) cseg->setNoChecksum();
+			else if (q.testWord("ace")) { cseg->checksum_ace = true; cseg->has_flag = true; }
+			else throw SyntaxError("keyword 'none' or 'ace' expected");
+			seen |= CHECKSUM;
+		}
+		else if (q.testWord("pause"))
+		{
+			if (seen & PAUSE) throw SyntaxError("multiple definitions for pause");
+			if (target != TZX) throw SyntaxError("target TZX required");
+
+			q.expect(('='));
+			cseg->setPause(q.testWord("none") ? Value(0) : value(q));
+			seen |= PAUSE;
+		}
+		else if (q.testWord("pilot"))
+		{
+			if (seen & PILOT) throw SyntaxError("multiple definitions for pilot count");
+			if (target != TZX) throw SyntaxError("target TZX required");
+
+			q.expect(('='));
+			if (q.testWord("none"))
+			{
+				if (segment_type!=CODE && segment_type!=TZX_PURE_DATA && segment_type!=TZX_GENERALIZED)
+					throw SyntaxError("TZX pure data or generalized block required");
+
+				cseg->no_pilot = true;
+				seen |= PILOT;
 			}
-			else if (q.testWord("checksum"))
+			else
 			{
-				if (seen & CHECKSUM) throw SyntaxError("multiple definitions for checksum");
-				q.expect(('='));
+				if (segment_type!=CODE && segment_type!=TZX_TURBO && segment_type!=TZX_GENERALIZED)
+					throw SyntaxError("TZX turbo or generalized block required");
 
-				if (q.testWord("none")) cseg->NoChecksum();
-				else if (q.testWord("ace")) { cseg->checksum_ace = true; cseg->has_flag = true; }
-				else throw SyntaxError("keyword 'none' or 'ace' expected");
-				seen |= CHECKSUM;
-			}
-			else if (q.testWord("pause"))
-			{
-				if (seen & PAUSE) throw SyntaxError("multiple definitions for pause");
-				q.expect(('='));
-
-				cseg->setPause(q.testWord("none") ? Value(0) : value(q));
-				seen |= PAUSE;
-			}
-			else if (q.testWord("pilot"))
-			{
-				if (seen & PILOT) throw SyntaxError("multiple definitions for pilot count");
-				q.expect(('='));
-
-				if (q.testWord("none"))
-				{
-					if (segment_type!=CODE && segment_type!=TZX_PURE_DATA && segment_type!=TZX_GENERALIZED)
-						throw SyntaxError("TZX pure data or generalized block required");
-
-					cseg->no_pilot = true;
-					seen |= PILOT;
-				}
-				else
-				{
-					if (segment_type!=CODE && segment_type!=TZX_TURBO && segment_type!=TZX_GENERALIZED)
-						throw SyntaxError("TZX turbo or generalized block required");
-
-					cseg->setNumPilotPulses(value(q));
-					seen |= PILOT;
-				}
-			}
-			else if (q.testWord("lastbits"))
-			{
-				if (seen & LASTBITS) throw SyntaxError("multiple definitions for lastbits");
-				if (segment_type == TZX_STANDARD)
-					throw SyntaxError("TZX pure data, turbo or generalized block required");
-				q.expect(('='));
-
-				cseg->setLastBits(value(q));
-				seen |= LASTBITS;
+				cseg->setNumPilotPulses(value(q));
+				seen |= PILOT;
 			}
 		}
-		while (q.testComma());
+		else if (q.testWord("lastbits"))
+		{
+			if (seen & LASTBITS) throw SyntaxError("multiple definitions for lastbits");
+			if (target != TZX) throw SyntaxError("target TZX required");
+			if (segment_type == TZX_STANDARD)
+				throw SyntaxError("TZX pure data, turbo or generalized block required");
 
-		if (~seen & FLAG) throw SyntaxError("definition for 'flag' missing");
+			q.expect(('='));
+			cseg->setLastBits(value(q));
+			seen |= LASTBITS;
+		}
+		else throw SyntaxError("key expected");
 	}
+	while (q.testComma());
 
-	else
-	{
-		throw SyntaxError("too many arguments");
-	}
+	if (target==TZX && (~seen & FLAG)) throw SyntaxError("definition for 'flag' missing");
+	if (target==Z80) return;	// Z80: no required values
+	if (target==TAP) return;	// TAP: no required values
 }
 
 void Z80Assembler::asmFirstOrg (SourceLine& q) throws

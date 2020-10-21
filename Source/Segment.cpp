@@ -46,6 +46,33 @@ bool isTest(SegmentType t)
 	return t==TEST;
 }
 
+static void check_validity (const Value& old, const Value& nju, cstr name) // helper
+{
+	if (old.is_valid() && nju.is_valid() && old != nju)
+		throw SyntaxError("%s: value redefined",name);
+	if (nju.validity < old.validity)
+		throw SyntaxError("%s: value decayed",name);
+}
+
+static void check_value (const Value& v, cstr name, int min, int max) // helper
+{
+	if (v.is_valid() && (v<min || v>max))
+		throw SyntaxError("%s: value not in range[%i .. %i]",name,min,max);
+}
+
+static void check_value (const Value& old, const Value& nju, cstr name, int min, int max) // helper
+{
+	check_validity(old,nju,name);
+	check_value(nju,name,min,max);
+}
+
+static void check_uint16_value (const Value& old, const Value& nju, cstr name) // helper
+{
+	check_validity(old,nju,name);
+	if (nju.is_valid() && nju!=uint16(nju))
+		throw SyntaxError("%s: value not in range[0 .. $ffff]",name);
+}
+
 
 
 // -------------------------------------------------------
@@ -65,10 +92,9 @@ Segment::Segment (SegmentType type, cstr name)
 {}
 
 // protected:
-DataSegment::DataSegment (cstr _name, SegmentType _type, uint8 fillbyte , bool relocatable, bool resizable)
+DataSegment::DataSegment (cstr _name, SegmentType _type, bool relocatable, bool resizable)
 :
 	Segment(_type,_name),
-	fillbyte(fillbyte),
 	relocatable(relocatable),
 	resizable(resizable),
 	address(),
@@ -80,10 +106,9 @@ DataSegment::DataSegment (cstr _name, SegmentType _type, uint8 fillbyte , bool r
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-DataSegment::DataSegment (cstr _name, uint8 fillbyte)
+DataSegment::DataSegment (cstr _name)
 :
 	Segment(DATA,_name),
-	fillbyte(fillbyte),
 	relocatable(yes),
 	resizable(yes),
 	address(),
@@ -98,12 +123,14 @@ DataSegment::DataSegment (cstr _name, uint8 fillbyte)
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-CodeSegment::CodeSegment (cstr _name, SegmentType _type, uint8 _fillbyte )
+CodeSegment::CodeSegment (cstr _name, SegmentType _type, uint8 _fillbyte)
 :
-	DataSegment(_name,_type,_fillbyte,1,1),
+	DataSegment(_name,_type,1,1),
 	flag(),
 	pause(),
 	lastbits(),
+	fillbyte(_fillbyte),
+	custom_fillbyte(no),
 	has_flag(no),
 	has_pause(no),
 	has_lastbits(no),
@@ -136,7 +163,7 @@ void DataSegment::rewind ()
 	// => preserves size
 	// => preserves segment address
 
-	assert(!resizable || size==dpos || dpos==0 || !dpos.is_valid() || !size.is_valid());
+	assert(!resizable || size.value==dpos.value || dpos.value==0 || !dpos.is_valid() || !size.is_valid());
 
 	dpos = 0;
 	lpos = address;
@@ -228,21 +255,9 @@ void DataSegment::setOrigin (Value const& address) throws
 }
 
 
-
 // -------------------------------------------------------
 //			Store Code
 // -------------------------------------------------------
-
-void CodeSegment::store (int byte) throws
-{
-	if (dpos<0x10000) core[dpos] = uint8(byte);
-
-	dpos.value++;
-	lpos.value++;
-
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
-		throw FatalError("segment overflow");
-}
 
 void Segment::storeOffset (Value const& offset) throws
 {
@@ -251,7 +266,7 @@ void Segment::storeOffset (Value const& offset) throws
 		if (int16(offset) != int8(offset))
 			throw SyntaxError("offset value out of range");
 	}
-	store(offset);
+	store(offset.value);
 }
 
 void Segment::storeByte (Value const& byte) throws
@@ -265,7 +280,7 @@ void Segment::storeByte (Value const& byte) throws
 		if (int16(byte) < -0x80 || int16(byte) > 0xFF)
 			throw SyntaxError("byte value out of range");
 	}
-	store(byte);
+	store(byte.value);
 }
 
 void Segment::storeWord (int n) throws
@@ -274,36 +289,6 @@ void Segment::storeWord (int n) throws
 
 	store(n);
 	store(n>>8);
-}
-
-void CodeSegment::storeBlock (cptr data, uint n) throws
-{
-	// store block of raw bytes
-
-	if (n>0x10000) throw SyntaxError("size > 0x10000");
-
-	if (dpos<0x10000) memcpy(&core[dpos], data, min(n,0x10000u-uint(dpos)));
-
-	lpos.value += n;
-	dpos.value += n;
-
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
-		throw SyntaxError("segment overflow");
-}
-
-void DataSegment::skipExistingData (int n) throws
-{
-	// skip over existing data in pass 2++:
-	// in case of an error
-
-	if (n < 0) throw SyntaxError("size < 0");
-	if (n > 0x10000) throw SyntaxError("size > 0x10000");
-
-	lpos += n;
-	dpos += n;
-
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
-		throw SyntaxError("segment overflow");
 }
 
 void Segment::storeHexBytes (cptr data, uint n) throws
@@ -325,17 +310,49 @@ void Segment::storeHexBytes (cptr data, uint n) throws
 	}
 }
 
-void DataSegment::storeSpace (Value const& sz, int c) throws
+
+
+void DataSegment::skipExistingData (uint n) throws
+{
+	// skip over existing data in pass 2++:
+	// in case of an error
+
+	if (n > 0x10000) throw SyntaxError(int(n)<0 ? "size < 0" : "size > 0x10000");
+
+	lpos.value += n;
+	dpos.value += n;
+
+	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
+		throw SyntaxError("segment overflow");
+}
+
+void DataSegment::store (int byte) throws
+{
+	// store byte
+	// byte must be zero
+
+	if (byte != 0) throw_data_segment_required();
+
+	dpos.value++;
+	lpos.value++;
+
+	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
+		throw FatalError("segment overflow");
+}
+
+void DataSegment::storeBlock (cptr data, uint n) throws
+{
+	// store block of raw bytes which must be all zero
+	// implemented for completeness
+
+	while (n--) DataSegment::store(*data++);
+}
+
+void DataSegment::storeSpace (Value const& sz) throws
 {
 	// store space
 
-	if (sz.is_valid())
-	{
-		if (sz<0) throw SyntaxError("gap size < 0");
-		if (sz>0x10000) throw SyntaxError("gap size > 0x10000");
-	}
-
-	//if (uint8(c)!=fillbyte && is_data) throw syntax_error("illegal fillbyte in data segment");
+	check_value(sz,"size",0,0x10000);
 
 	// sz		dpos
 	// inval	inval	store 0		dpos=inval	lpos=inval
@@ -356,8 +373,75 @@ void DataSegment::storeSpace (Value const& sz, int c) throws
 		return;
 	}
 
-	if (auto s = dynamic_cast<CodeSegment*>(this))
-		if (dpos<0x10000) memset(&s->core[dpos], c, uint32(min(sz.value, 0x10000-dpos.value)));
+	lpos += sz;
+	dpos += sz;
+
+	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
+		throw SyntaxError("segment overflow");
+}
+
+void DataSegment::storeSpace (Value const& sz, int c) throws
+{
+	// store space filled with byte
+	// byte must be zero
+
+	if (c != 0) throw_code_segment_required();
+	DataSegment::storeSpace(sz);
+}
+
+
+void CodeSegment::store (int byte) throws
+{
+	if (dpos<0x10000) core[dpos] = uint8(byte);
+
+	dpos.value++;
+	lpos.value++;
+
+	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
+		throw FatalError("segment overflow");
+}
+
+void CodeSegment::storeBlock (cptr data, uint n) throws
+{
+	// store block of raw bytes
+
+	if (n>0x10000) throw SyntaxError("size > 0x10000");
+
+	if (dpos.value < 0x10000) memcpy(&core[dpos.value], data, min(n,0x10000u-uint(dpos)));
+
+	lpos.value += n;
+	dpos.value += n;
+
+	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
+		throw SyntaxError("segment overflow");
+}
+
+void CodeSegment::storeSpace (Value const& sz, int c) throws
+{
+	// store space
+
+	check_value(sz,"size",0,0x10000);
+
+	// sz		dpos
+	// inval	inval	store 0		dpos=inval	lpos=inval
+	// inval	preli	store 0		dpos=preli	lpos=preli
+	// inval	valid	store 0		dpos=preli	lpos=preli
+
+	// preli	inval	store sz	dpos=inval	lpos=min(lpos,sz)
+	// preli	preli	store sz	dpos=preli	lpos=min(lpos,sz)
+	// preli	valid	store sz	dpos=preli	lpos=min(lpos,sz)
+	// valid	inval	store sz	dpos=inval	lpos=min(lpos,sz)
+	// valid	preli	store sz	dpos=preli	lpos=min(lpos,sz)
+	// valid	valid	store sz	dpos=valid	lpos=min(lpos,sz)
+
+	if (sz.is_invalid())
+	{
+		if (dpos.is_valid()) dpos.validity = preliminary;
+		if (lpos.is_valid()) lpos.validity = preliminary;
+		return;
+	}
+
+	if (dpos.value < 0x10000) memset(&core[dpos.value], c, uint32(min(sz.value, 0x10000-dpos.value)));
 
 	lpos += sz;
 	dpos += sz;
@@ -366,39 +450,38 @@ void DataSegment::storeSpace (Value const& sz, int c) throws
 		throw SyntaxError("segment overflow");
 }
 
-void DataSegment::storeSpace (Value const& sz) throws
+void CodeSegment::storeSpace (Value const& sz) throws
 {
 	// store space with default fillbyte
 
-	storeSpace(sz,fillbyte);
+	CodeSegment::storeSpace(sz,fillbyte.value);
 }
 
 void DataSegment::storeSpaceUpToAddress (Value const& addr) throws
 {
-	storeSpace(addr-lpos, fillbyte);
+	storeSpace(addr-lpos);
+	lpos = addr;	// set value and validity
 }
 
 void DataSegment::storeSpaceUpToAddress(Value const& addr, int c) throws
 {
 	storeSpace(addr-lpos, c);
+	lpos = addr;	// set value and validity
 }
 
-void DataSegment::clearTrailingBytes () noexcept
+void CodeSegment::clearTrailingBytes () noexcept
 {
 	// clear remaining bytes after current write index 'dpos' without moving dpos.
 	// used to clear unused trailing bytes at the end of a fixed-size CodeSegment.
 	// writeHexFile() and writeS19File actually write data up to dpos only
 	// whereas all binary output formats write the whole segment, so it must be cleared.
 
-	if (auto s = dynamic_cast<CodeSegment*>(this))
-	{
-		Value sz = size - dpos;
-		if (sz.is_invalid()) return;
+	Value sz = size - dpos;
+	if (sz.is_invalid()) return;
 
-		assert(dpos.value <= size.value);
+	assert(dpos.value <= size.value);
 
-		if (sz.value) memset(&s->core[dpos], fillbyte, uint32(sz.value));
-	}
+	if (sz.value) memset(&core[dpos.value], fillbyte.value, uint32(sz.value));
 }
 
 Validity DataSegment::validity () const
@@ -411,19 +494,12 @@ Validity DataSegment::validity () const
 	return rval;
 }
 
-void DataSegment::store (int c) throws
+void CodeSegment::setFillByte (Value const& v)
 {
-	if (c != fillbyte) throw_code_segment_required();
-	else storeSpace(Value(1));
-}
-
-void DataSegment::storeBlock (cptr bu, uint n) throws
-{
-	for (cptr p = bu; p<bu+n; p++)
-	{
-		if (*p++ != fillbyte) throw_code_segment_required();
-	}
-	storeSpace(Value(int(n)));
+	if (!custom_fillbyte) fillbyte.validity = invalid;
+	check_value(fillbyte,v,"space",-0x80,0xff);
+	fillbyte = v;
+	custom_fillbyte = yes;
 }
 
 void CodeSegment::setFlag (Value const& v) throws
@@ -467,7 +543,7 @@ void CodeSegment::setNoFlag()
 //			TZX
 // -------------------------------------------------------
 
-void CodeSegment::NoChecksum()
+void CodeSegment::setNoChecksum()
 {
 	no_checksum = yes;
 }
@@ -520,7 +596,7 @@ Validity CodeSegment::validity () const
 	// = address, size, flag
 	// not checked: dpos, lpos, core[]
 
-	Validity v = min(address.validity, size.validity);
+	Validity v = min(min(address.validity, size.validity),fillbyte.validity);
 	if (has_flag && !no_flagbyte && !checksum_ace) v = min(v,flag.validity);
 
 	if (has_flag && v!=invalid)
@@ -727,30 +803,6 @@ void CodeSegment::setNumPilotPulses(Value const& v)
 	Values symbol;
 	symbol << Value(0) << v << Value(1) << Value(1);
 	setPilot(symbol);
-}
-
-static void check_validity (Value old, Value nju, cstr name) // helper
-{
-	if (old.is_valid() && nju.is_valid() && old != nju)
-		throw SyntaxError("%s: value redefined",name);
-	if (nju.validity < old.validity)
-		throw SyntaxError("%s: value decayed",name);
-}
-static void check_value (Value v, cstr name, int min, int max) // helper
-{
-	if (v.is_valid() && (v<min || v>max))
-		throw SyntaxError("%s: value not in range[%i .. %i]",name,min,max);
-}
-static void check_value (Value old, Value nju, cstr name, int min, int max) // helper
-{
-	check_validity(old,nju,name);
-	check_value(nju,name,min,max);
-}
-static void check_uint16_value (Value old, Value nju, cstr name) // helper
-{
-	check_validity(old,nju,name);
-	if (nju.is_valid() && nju!=uint16(nju))
-		throw SyntaxError("%s: value not in range[0 .. $ffff]",name);
 }
 
 void TzxMessageSegment::setDuration (Value v)
