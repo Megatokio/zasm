@@ -333,7 +333,7 @@ inline cstr calc_padding (Labels& labels)
 	return calc_padding(labels.getItems());
 }
 
-static cstr u5str (Value const& n)
+static cstr u5str (cValue& n)
 {
 	if (n.is_invalid()) return "VOID ";
 	str s = spacestr(5);
@@ -341,7 +341,7 @@ static cstr u5str (Value const& n)
 	return s;
 }
 
-static cstr h4u5str (Value const& n)
+static cstr h4u5str (cValue& n)
 {
 	if (n.is_valid())		return usingstr("= $%04X =%6u", n&0xffff, int(n));
 	if (n.is_preliminary())	return usingstr("~ $%04X =%6u", n&0xffff, int(n));

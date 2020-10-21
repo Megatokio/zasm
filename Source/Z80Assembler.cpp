@@ -80,9 +80,9 @@ const char DEFAULT_CODE_SEGMENT[] = "";  // "(DEFAULT)";
 
 // some const values
 //
-static const Value N0(0);
-static const Value N1(1);
-static const Value N2(2);
+static cValue N0(0);
+static cValue N1(1);
+static cValue N2(2);
 
 
 
@@ -539,7 +539,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	}
 }
 
-void Z80Assembler::setLabelValue (Label* label, Value const& value) throws
+void Z80Assembler::setLabelValue (Label* label, cValue& value) throws
 {
 	setLabelValue(label,value.value,value.validity);
 }
@@ -4676,7 +4676,7 @@ IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
 	return IoSequence(&data[0], data.count(), 1);
 }
 
-static uint8 validatedByte (const Value& byte)
+static uint8 validatedByte (cValue& byte)
 {
 	if (byte >= -0x80 && byte <= 0xFF) return uint8(byte);
 	if (byte.is_invalid()) return 0;

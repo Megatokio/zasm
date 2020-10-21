@@ -46,7 +46,7 @@ bool isTest(SegmentType t)
 	return t==TEST;
 }
 
-static void check_validity (const Value& old, const Value& nju, cstr name) // helper
+static void check_validity (cValue& old, cValue& nju, cstr name) // helper
 {
 	if (old.is_valid() && nju.is_valid() && old != nju)
 		throw SyntaxError("%s: value redefined",name);
@@ -54,19 +54,19 @@ static void check_validity (const Value& old, const Value& nju, cstr name) // he
 		throw SyntaxError("%s: value decayed",name);
 }
 
-static void check_value (const Value& v, cstr name, int min, int max) // helper
+static void check_value (cValue& v, cstr name, int min, int max) // helper
 {
 	if (v.is_valid() && (v<min || v>max))
 		throw SyntaxError("%s: value not in range[%i .. %i]",name,min,max);
 }
 
-static void check_value (const Value& old, const Value& nju, cstr name, int min, int max) // helper
+static void check_value (cValue& old, cValue& nju, cstr name, int min, int max) // helper
 {
 	check_validity(old,nju,name);
 	check_value(nju,name,min,max);
 }
 
-static void check_uint16_value (const Value& old, const Value& nju, cstr name) // helper
+static void check_uint16_value (cValue& old, cValue& nju, cstr name) // helper
 {
 	check_validity(old,nju,name);
 	if (nju.is_valid() && nju!=uint16(nju))
@@ -175,7 +175,7 @@ void CodeSegment::rewind ()
 	DataSegment::rewind();
 }
 
-void DataSegment::setAddress (Value const& new_address) throws
+void DataSegment::setAddress (cValue& new_address) throws
 {
 	// set "physical" and "logical" segment start address
 	// should be set between assembly passes
@@ -209,7 +209,7 @@ void DataSegment::setAddress (Value const& new_address) throws
 	dpos = 0;
 }
 
-void DataSegment::setSize (Value const& newsize) throws
+void DataSegment::setSize (cValue& newsize) throws
 {
 	// set segment size
 	// should be set between assembly passes
@@ -238,7 +238,7 @@ void DataSegment::setSize (Value const& newsize) throws
 	size = newsize;
 }
 
-void DataSegment::setOrigin (Value const& address) throws
+void DataSegment::setOrigin (cValue& address) throws
 {
 	// set "logical" code address
 	// valid range: -0x8000 … +0xFFFF
@@ -259,7 +259,7 @@ void DataSegment::setOrigin (Value const& address) throws
 //			Store Code
 // -------------------------------------------------------
 
-void Segment::storeOffset (Value const& offset) throws
+void Segment::storeOffset (cValue& offset) throws
 {
 	if (offset.is_valid())
 	{
@@ -269,7 +269,7 @@ void Segment::storeOffset (Value const& offset) throws
 	store(offset.value);
 }
 
-void Segment::storeByte (Value const& byte) throws
+void Segment::storeByte (cValue& byte) throws
 {
 	// store signed or unsigned byte
 	// validates byte
@@ -348,7 +348,7 @@ void DataSegment::storeBlock (cptr data, uint n) throws
 	while (n--) DataSegment::store(*data++);
 }
 
-void DataSegment::storeSpace (Value const& sz) throws
+void DataSegment::storeSpace (cValue& sz) throws
 {
 	// store space
 
@@ -380,7 +380,7 @@ void DataSegment::storeSpace (Value const& sz) throws
 		throw SyntaxError("segment overflow");
 }
 
-void DataSegment::storeSpace (Value const& sz, int c) throws
+void DataSegment::storeSpace (cValue& sz, int c) throws
 {
 	// store space filled with byte
 	// byte must be zero
@@ -416,7 +416,7 @@ void CodeSegment::storeBlock (cptr data, uint n) throws
 		throw SyntaxError("segment overflow");
 }
 
-void CodeSegment::storeSpace (Value const& sz, int c) throws
+void CodeSegment::storeSpace (cValue& sz, int c) throws
 {
 	// store space
 
@@ -450,20 +450,20 @@ void CodeSegment::storeSpace (Value const& sz, int c) throws
 		throw SyntaxError("segment overflow");
 }
 
-void CodeSegment::storeSpace (Value const& sz) throws
+void CodeSegment::storeSpace (cValue& sz) throws
 {
 	// store space with default fillbyte
 
 	CodeSegment::storeSpace(sz,fillbyte.value);
 }
 
-void DataSegment::storeSpaceUpToAddress (Value const& addr) throws
+void DataSegment::storeSpaceUpToAddress (cValue& addr) throws
 {
 	storeSpace(addr-lpos);
 	lpos = addr;	// set value and validity
 }
 
-void DataSegment::storeSpaceUpToAddress(Value const& addr, int c) throws
+void DataSegment::storeSpaceUpToAddress(cValue& addr, int c) throws
 {
 	storeSpace(addr-lpos, c);
 	lpos = addr;	// set value and validity
@@ -494,7 +494,7 @@ Validity DataSegment::validity () const
 	return rval;
 }
 
-void CodeSegment::setFillByte (Value const& v)
+void CodeSegment::setFillByte (cValue& v)
 {
 	if (!custom_fillbyte) fillbyte.validity = invalid;
 	check_value(fillbyte,v,"space",-0x80,0xff);
@@ -502,7 +502,7 @@ void CodeSegment::setFillByte (Value const& v)
 	custom_fillbyte = yes;
 }
 
-void CodeSegment::setFlag (Value const& v) throws
+void CodeSegment::setFlag (cValue& v) throws
 {
 	// Set segment flag
 	// used for .z80 and .tap files
@@ -548,7 +548,7 @@ void CodeSegment::setNoChecksum()
 	no_checksum = yes;
 }
 
-void CodeSegment::setPause(Value const& v)
+void CodeSegment::setPause(cValue& v)
 {
 	if (v.is_valid())
 	{
@@ -568,7 +568,7 @@ void CodeSegment::setPause(Value const& v)
 	pause = v;
 }
 
-void CodeSegment::setLastBits(Value const& v)
+void CodeSegment::setLastBits(cValue& v)
 {
 	assert(type!=TZX_STANDARD && type!=TZX_GENERALIZED);
 
@@ -647,7 +647,7 @@ void CodeSegment::check_pilot_symbol(uint idx) const
 
 	for (uint i=1; i<symbol.count(); i++)
 	{
-		Value const& v = symbol[i];
+		cValue& v = symbol[i];
 		if (v.is_valid() && v<100)
 			throw SyntaxError("tzx-pilot-sym[%u][%u]: pulse too short", idx, i);
 		if (v.is_valid() && v>0xffff)
@@ -687,7 +687,7 @@ void CodeSegment::check_data_symbol(uint idx) const
 
 	for (uint i=1; i<symbol.count(); i++)
 	{
-		Value const& v = symbol[i];
+		cValue& v = symbol[i];
 		if (v.is_valid() && v<100)
 			throw SyntaxError("tzx-data-sym[%u][%u]: pulse too short", idx, i);
 		if (v.is_valid() && v>0xffff)
@@ -788,7 +788,7 @@ void CodeSegment::setPilot(Values symbol)
 	pilot = std::move(symbol);
 }
 
-void CodeSegment::setNumPilotPulses(Value const& v)
+void CodeSegment::setNumPilotPulses(cValue& v)
 {
 	// set number of pilot pulses
 	// called from Segment definition
@@ -1414,14 +1414,14 @@ static const cstr ioModeNames[] = {
 	"list of values", "stdin", "stdout", "input file", "output file",
 	"output file (append)", "output file (compare)", "block device"};
 
-static uint16 validated_io_address (const Value& addr) // helper
+static uint16 validated_io_address (cValue& addr) // helper
 {
 	if (addr != uint16(addr))
 		throw SyntaxError("address not in range[0 .. $ffff]");
 	return uint16(addr);
 }
 
-void TestSegment::setInputData (const Value& ioaddr, IoSequence&& iodata)
+void TestSegment::setInputData (cValue& ioaddr, IoSequence&& iodata)
 {
 	// set or add input data for input from ioaddr.
 	// while running the test code input data for this port is read from this data.
@@ -1447,7 +1447,7 @@ void TestSegment::setInputData (const Value& ioaddr, IoSequence&& iodata)
 	}
 }
 
-void TestSegment::setOutputData (const Value& ioaddr, IoSequence&& iodata)
+void TestSegment::setOutputData (cValue& ioaddr, IoSequence&& iodata)
 {
 	// set or add output compare data for output to ioaddr
 	// while running the test code output to ioaddr will be compared with this data.
@@ -1474,7 +1474,7 @@ void TestSegment::setOutputData (const Value& ioaddr, IoSequence&& iodata)
 	}
 }
 
-void TestSegment::setConsole (const Value& ioaddr)
+void TestSegment::setConsole (cValue& ioaddr)
 {
 	// assign io address to console
 	// in() inputs from stdin
@@ -1501,7 +1501,7 @@ void TestSegment::setConsole (const Value& ioaddr)
 	outputdata.add(addr,IoList(IoStdOut,nullptr));
 }
 
-void TestSegment::setBlockDevice (const Value& ioaddr, cstr filename, const Value& blocksize)
+void TestSegment::setBlockDevice (cValue& ioaddr, cstr filename, cValue& blocksize)
 {
 	// assign io address to file for block i/o
 
@@ -1528,7 +1528,7 @@ void TestSegment::setBlockDevice (const Value& ioaddr, cstr filename, const Valu
 	outputdata.add(addr,IoList(IoBlockDevice,filename,uint(blocksize)));
 }
 
-void TestSegment::setInputFile (const Value& ioaddr, cstr filename, IoMode mode)
+void TestSegment::setInputFile (cValue& ioaddr, cstr filename, IoMode mode)
 {
 	// assign in() address to data file
 	// mode may be File only.
@@ -1549,7 +1549,7 @@ void TestSegment::setInputFile (const Value& ioaddr, cstr filename, IoMode mode)
 	inputdata.add(addr,IoList(mode,filename));
 }
 
-void TestSegment::setOutputFile (const Value& ioaddr, cstr filename, IoMode mode)
+void TestSegment::setOutputFile (cValue& ioaddr, cstr filename, IoMode mode)
 {
 	// assign out() address to data file
 	// mode may be File, AppendFile or CompareFile.

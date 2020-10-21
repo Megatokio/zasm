@@ -47,7 +47,7 @@ Label::Label (cstr name, Segment* segment, uint sourceline, int32 value, Validit
 	is_reusable(no)
 {}
 
-Label::Label (cstr name, Segment* segment, uint sourceline, Value const& value,
+Label::Label (cstr name, Segment* segment, uint sourceline, cValue& value,
 			  bool is_global, bool is_defined, bool is_used)
 :
 	name(name),

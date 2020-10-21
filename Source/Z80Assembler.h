@@ -206,10 +206,10 @@ private:
 	void	storeBlock		(cstr blk, uint n)			throws	{ current_segment().storeBlock(blk,n); }
 	void	storeHexbytes	(cstr hex, uint n)			throws	{ current_segment().storeHexBytes(hex,n); }
 
-	void	storeByte 		(Value const& n)			throws { current_segment().storeByte(n); }
-	void	storeOffset 	(Value const& n)			throws { current_segment().storeOffset(n); }
+	void	storeByte 		(cValue& n)			throws { current_segment().storeByte(n); }
+	void	storeOffset 	(cValue& n)			throws { current_segment().storeOffset(n); }
 
-	Value const& currentPosition ()						{ return current_segment_ptr->dpos; }
+	cValue& currentPosition ()						{ return current_segment_ptr->dpos; }
 	Value	dollar ()
 			{
 				if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
@@ -230,7 +230,7 @@ private:
 	int		get8080WordRegister	(SourceLine& q, uint)	throws;
 
 	void	setLabelValue(Label*, int32, Validity) throws ;
-	void	setLabelValue(Label*, Value const&) throws ;
+	void	setLabelValue(Label*, cValue&) throws ;
 
 	void	setError		(const AnyError&);					  // set error for current file, line & column
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column

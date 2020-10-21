@@ -21,7 +21,7 @@
 #include "Z80/goodies/z80_opcodes.h"
 
 
-static const Value N2(2);
+static cValue N2(2);
 
 static bool lceq (cptr w, cptr s)
 {

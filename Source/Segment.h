@@ -92,22 +92,22 @@ public:
 	bool	isTzx	() const			{ return is_tzx; }
 	virtual Validity validity () const	{ return Validity::valid; }
 
-	Value const& currentPosition ()		{ return dpos; }		// offset in core
+	cValue& currentPosition ()		{ return dpos; }		// offset in core
 
 // store object code
 	virtual void rewind () {}
 
 	virtual void store		(int)					throws { throw_code_segment_required(); }
 	virtual void storeBlock	(cptr, uint)			throws { throw_code_segment_required(); }
-	virtual void storeSpace	(Value const&, int)		throws { throw_code_segment_required(); }
-	virtual void storeSpace	(Value const&)			throws { throw_data_segment_required(); }
+	virtual void storeSpace	(cValue&, int)		throws { throw_code_segment_required(); }
+	virtual void storeSpace	(cValue&)			throws { throw_data_segment_required(); }
 
 	void	store		(int a,int b)				throws { store(a); store(b); }
 	void	store		(int a,int b,int c)			throws { store(a); store(b); store(c); }
 	void	store		(int a,int b,int c,int d)	throws { store(a); store(b); store(c); store(d); }
 	void	storeWord	(int n)						throws;
-	void	storeOffset (Value const&)				throws;
-	void	storeByte	(Value const&)				throws;
+	void	storeOffset (cValue&)				throws;
+	void	storeByte	(cValue&)				throws;
 	void	storeHexBytes (cptr data, uint sz)		throws;
 
 protected:
@@ -137,22 +137,22 @@ public:
 
 	//bool	isAtStart	()						{ return dpos.is_valid() && dpos==0; }
 	Value	physicalAddress	()					{ return address + dpos; }		// segment_address + dpos
-	Value const& logicalAddress	()				{ return lpos; }				// org + dpos
+	cValue& logicalAddress	()				{ return lpos; }				// org + dpos
 	Value&	getAddress	()						{ return address; }
 
 	Validity validity	() const				override;
 	void	rewind		()						override;
-	void	setAddress	(Value const&)			throws;
-	void	setSize		(Value const&)			throws;
-	void	setOrigin	(Value const&)			throws;
+	void	setAddress	(cValue&)			throws;
+	void	setSize		(cValue&)			throws;
+	void	setOrigin	(cValue&)			throws;
 
 	void	store		(int)					throws override;
 	void	storeBlock	(cptr data, uint sz)	throws override;
-	void	storeSpace	(Value const& sz, int)	throws override;
-	void	storeSpace	(Value const& sz)		throws override;
+	void	storeSpace	(cValue& sz, int)	throws override;
+	void	storeSpace	(cValue& sz)		throws override;
 
-	void	storeSpaceUpToAddress(Value const&)	throws;
-	void	storeSpaceUpToAddress(Value const&, int) throws;
+	void	storeSpaceUpToAddress(cValue&)	throws;
+	void	storeSpaceUpToAddress(cValue&, int) throws;
 	void	skipExistingData (uint sz)			throws;
 
 protected:
@@ -203,21 +203,21 @@ public:
 
 	void	store		(int)					throws override;
 	void	storeBlock	(cptr data, uint sz)	throws override;
-	void	storeSpace	(Value const&, int)		throws override;
-	void	storeSpace	(Value const&)			throws override;
+	void	storeSpace	(cValue&, int)		throws override;
+	void	storeSpace	(cValue&)			throws override;
 	void	clearTrailingBytes ()				noexcept;
 
 	uint8&	operator[]	(uint32 i)				{ return core[i]; }
 	uint8	popLastByte	()						{ assert(dpos.value>0); --lpos.value; return core[--dpos.value]; }
 
-	void	setFlag		(Value const&)			throws;
-	void	setPause	(Value const&);
-	void	setLastBits	(Value const&);
+	void	setFlag		(cValue&)			throws;
+	void	setPause	(cValue&);
+	void	setLastBits	(cValue&);
 	void	setNoFlag ();
 	void	setNoChecksum ();
-	void	setFillByte	(Value const&);
+	void	setFillByte	(cValue&);
 
-	void	setNumPilotPulses (Value const&);
+	void	setNumPilotPulses (cValue&);
 	void	addPilotSymbol (Values);
 	void	addDataSymbol (Values);
 	void	setPilot	(Values);
@@ -354,12 +354,12 @@ public:
 	void setExpectedCcMax (SourceLine* q, Value cc);
 	void setExpectedCc (SourceLine* q, Value cc);
 	void setExpectedRegisterValue (SourceLine* q, cstr reg, Value v);
-	void setInputData (const Value& ioaddr, IoSequence&&);
-	void setInputFile (const Value& ioaddr, cstr filename, IoMode=IoInFile);
-	void setOutputData (const Value& ioaddr, IoSequence&&);
-	void setOutputFile (const Value& ioaddr, cstr filename, IoMode);
-	void setBlockDevice (const Value& ioaddr, cstr filename, const Value& blocksize);
-	void setConsole (const Value& ioaddr);
+	void setInputData (cValue& ioaddr, IoSequence&&);
+	void setInputFile (cValue& ioaddr, cstr filename, IoMode=IoInFile);
+	void setOutputData (cValue& ioaddr, IoSequence&&);
+	void setOutputFile (cValue& ioaddr, cstr filename, IoMode);
+	void setBlockDevice (cValue& ioaddr, cstr filename, cValue& blocksize);
+	void setConsole (cValue& ioaddr);
 
 	void openFiles();					// befor test
 	uint8 inputByte(uint16 addr);		// during test

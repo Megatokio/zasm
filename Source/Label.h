@@ -49,14 +49,14 @@ public:
 
 public:
 	Label (cstr name, Segment*, uint sourceline, int32 value, Validity, bool is_global, bool is_defined, bool is_used);
-	Label (cstr name, Segment*, uint sourceline, Value const&, bool is_global, bool is_defined, bool is_used);
+	Label (cstr name, Segment*, uint sourceline, cValue&, bool is_global, bool is_defined, bool is_used);
 	Label (Label const&);
 	~Label ()				noexcept { assert(cnt==0); }
 
 	int32	get_value()		{ return value.value; }
-	bool	is_invalid()	{ return value.validity == invalid; }
-	bool	is_preliminary(){ return value.validity == preliminary; }
-	bool	is_valid()		{ return value.validity == valid;   }
+	bool	is_invalid()	{ return value.is_invalid(); }
+	bool	is_preliminary(){ return value.is_preliminary(); }
+	bool	is_valid()		{ return value.is_valid(); }
 };
 
 

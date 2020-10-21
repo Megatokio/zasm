@@ -779,7 +779,7 @@ void Z80Assembler::checkTapFile () throws
 }
 
 // Helpers for TZX:
-static const Value v0(0), v1(1);
+static cValue v0(0), v1(1);
 static const Values zxsp_pilot0(std::move(Values()<<v0<<Value(2168)));				// standard zxsp pilot pulses
 static const Values zxsp_pilot1(std::move(Values()<<v0<<Value(667)<<Value(735)));	// standard zxsp syn pulses
 static const Values zxsp_data0(std::move(Values()<<v0<<Value(855)<<Value(855)));
