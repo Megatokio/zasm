@@ -300,7 +300,7 @@ static cstr calc_padding (Array<uint32>& lens)
 
 	lens.sort();
 	uint32 maxlen = max(7u,lens.last());
-	str padding = spacestr(maxlen);
+	str padding = spacestr(int(maxlen));
 	if (maxlen<=19) return padding;
 
 	uint32 bestlen = lens[lens.count()*95/100];
@@ -421,7 +421,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 			uint count   = sourceline.bytecount;			// bytes to print
 			uint offset  = sourceline.byteptr;				// offset from segment start
 			uint8* bytes = codesegment ? codesegment->core.getData() + offset : nullptr;	// ptr -> opcode
-			uint address = segment ? segment->address + offset : 0;				// "physical" address of opcode
+			uint address = segment ? uint(segment->address) + offset : 0;	// "physical" address of opcode
 			bool is_data = sourceline.is_data;
 			Label* label = sourceline.label;
 
@@ -431,7 +431,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 			if (label)
 			{
 				if (is_defl)							// for labels defined with EQU
-					address=sourceline.label->value;	// print label value instead of address
+					address = uint(sourceline.label->value); // print label value instead of address
 				else									// at program labels
 					cc = 0;								// reset cc
 			}

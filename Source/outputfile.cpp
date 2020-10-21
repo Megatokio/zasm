@@ -262,21 +262,21 @@ void Z80Assembler::writeZ80File (FD& fd) throws
 	// subsequent segments are written as compressed memory pages
 	// except if v1.45 is detected and the compressed data bit is not set
 	CodeSegment& hs = segments[i0];
-	fd.write_bytes(hs.getData(),hs.size);
+	fd.write_bytes(hs.getData(), uint32(hs.size));
 
 	if (hs.size == z80v1len)		// write v1.45 single page:
 	{
 		CodeSegment& s = segments[i0+1];
 		if (hs.core[12]!=255 && hs.core[12] & 0x20)	// head.data.bit5
-			 write_compressed_page_z80( fd, -1, s.getData(), s.size );
-		else fd.write_bytes( s.getData(), s.size );
+			 write_compressed_page_z80( fd, -1, s.getData(), uint32(s.size) );
+		else fd.write_bytes( s.getData(), uint32(s.size) );
 	}
 	else // write v2.0++ pages:
 	{
 		for (uint i=i0+1; i<segments.count(); i++)
 		{
 			CodeSegment& s = segments[i];
-			write_compressed_page_z80( fd, s.flag, s.getData(), s.size);
+			write_compressed_page_z80( fd, s.flag, s.getData(), uint32(s.size));
 		}
 	}
 }
@@ -359,13 +359,13 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			{
 				WavFile wf(s->filename);
 				assert(wf.is_valid);
-				wf.seekFramePosition(s->first_frame);
-				wf.readFrames(samples, s->last_frame - s->first_frame, WavFile::FrameFormat::MONO);
+				wf.seekFramePosition(uint32(s->first_frame));
+				wf.readFrames(samples, uint32(s->last_frame) - uint32(s->first_frame), WavFile::FrameFormat::MONO);
 			}
 			else
 			{
 				FD fd(s->filename);
-				fd.seek_fpos(s->header_size + s->first_frame * s->sample_size * s->num_channels);
+				fd.seek_fpos(uint32(s->header_size) + uint32(s->first_frame) * s->sample_size * s->num_channels);
 
 				uint32 num_samples = uint32(s->last_frame - s->first_frame) * s->num_channels;
 
@@ -456,9 +456,9 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			if (verbose>=2) logline("write TZX GROUP START");
 			TzxGroupStartSegment* s = dynamic_cast<TzxGroupStartSegment*>(segments[i].ptr());
 			fd.write_uint8(TZX_GROUP_START);
-			uint8 len = uint8(strlen(s->name));
+			uint8 len = uint8(strlen(s->groupname));
 			fd.write_uint8(len);
-			fd.write_bytes(s->name,len);
+			fd.write_bytes(s->groupname,len);
 			i++; continue;
 		}
 		case TZX_GROUP_END:
@@ -586,7 +586,7 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			//	dm	BYTE[N]	Data as in .TAP files
 			fd.write_uint8(0x10);
 			fd.write_uint16_z(pause);
-			fd.write_uint16_z(sizepp);
+			fd.write_uint16_z(uint16(sizepp));
 			break;
 
 		case TZX_TURBO:
@@ -603,13 +603,13 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			// BYTE[3]	Length of data that follow
 			// BYTE[N]	Data as in .TAP files
 			fd.write_uint8(0x11);
-			fd.write_uint16_z(s->pilotsym[0][1]);		// length of pilote pulse
-			fd.write_uint16_z(s->pilotsym[1][1]);		// length of sync1 pulse
-			fd.write_uint16_z(s->pilotsym[1][2]);		// length of sync2 pulse
-			fd.write_uint16_z(s->datasym[0][1]);		// length of data bit0 pulse
-			fd.write_uint16_z(s->datasym[1][1]);		// length of data bit1 pulse
-			fd.write_uint16_z(s->pilot[1]);				// pilot pulse count
-			fd.write_uint8(s->lastbits);				// used bits in last byte
+			fd.write_uint16_z(uint16(s->pilotsym[0][1]));	// length of pilote pulse
+			fd.write_uint16_z(uint16(s->pilotsym[1][1]));	// length of sync1 pulse
+			fd.write_uint16_z(uint16(s->pilotsym[1][2]));	// length of sync2 pulse
+			fd.write_uint16_z(uint16(s->datasym[0][1]));	// length of data bit0 pulse
+			fd.write_uint16_z(uint16(s->datasym[1][1]));	// length of data bit1 pulse
+			fd.write_uint16_z(uint16(s->pilot[1]));			// pilot pulse count
+			fd.write_uint8(uint8(s->lastbits));				// used bits in last byte
 			fd.write_uint16_z(pause);
 			fd.write_uint24_z(sizepp);
 			break;
@@ -624,9 +624,9 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			// BYTE[3]	Length of data that follow
 			// BYTE[N]	Data as in .TAP files
 			fd.write_uint8(0x14);
-			fd.write_uint16_z(s->datasym[0][1]);		// length of data bit0 pulse
-			fd.write_uint16_z(s->datasym[1][1]);		// length of data bit1 pulse
-			fd.write_uint8(s->lastbits);				// used bits in last byte
+			fd.write_uint16_z(uint16(s->datasym[0][1]));	// length of data bit0 pulse
+			fd.write_uint16_z(uint16(s->datasym[1][1]));	// length of data bit1 pulse
+			fd.write_uint8(uint8(s->lastbits));				// used bits in last byte
 			fd.write_uint16_z(pause);
 			fd.write_uint24_z(sizepp);
 			break;
@@ -659,11 +659,11 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 			fd.write_uint32_z(totl);
 			fd.write_uint16_z(pause);
 			fd.write_uint32_z(totp);
-			fd.write_uint8(npp);
-			fd.write_uint8(asp);
+			fd.write_uint8(uint8(npp));
+			fd.write_uint8(uint8(asp));
 			fd.write_uint32_z(totd);
-			fd.write_uint8(npd);
-			fd.write_uint8(asd);
+			fd.write_uint8(uint8(npd));
+			fd.write_uint8(uint8(asd));
 
 			if (totp)	// SYMDEF[] and PRLE[]
 			{
@@ -671,14 +671,14 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 				{
 					Values& symbol = s->pilotsym[i];
 					uint j=0;
-					fd.write_uint8(symbol[j++]);
-					while (j < symbol.count()) { fd.write_uint16_z(symbol[j++]); }
+					fd.write_uint8(uint8(symbol[j++]));
+					while (j < symbol.count()) { fd.write_uint16_z(uint16(symbol[j++])); }
 					while (j < npp+1) { fd.write_uint16(0); j++; }
 				}
 				for (uint i=0; i<s->pilot.count(); i+=2)
 				{
-					fd.write_uint8(s->pilot[i]);
-					fd.write_uint16_z(s->pilot[i+1]);
+					fd.write_uint8(uint8(s->pilot[i]));
+					fd.write_uint16_z(uint16(s->pilot[i+1]));
 				}
 			}
 
@@ -688,8 +688,8 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 				{
 					Values& symbol = s->datasym[i];
 					uint j=0;
-					fd.write_uint8(symbol[j++]);
-					while (j < symbol.count()) { fd.write_uint16_z(symbol[j++]); }
+					fd.write_uint8(uint8(symbol[j++]));
+					while (j < symbol.count()) { fd.write_uint16_z(uint16(symbol[j++])); }
 					while (j < npd+1) { fd.write_uint16(0); j++; }
 				}
 			}
@@ -959,7 +959,7 @@ void Z80Assembler::checkTzxFile () throws
 					throw SyntaxError("TZX CSW \"%s\": sample-rate, sample-format or channels set", filename);
 
 				s->header_size = int32(wf.data_start);
-				s->sample_rate = int32(wf.frames_per_second);
+				s->sample_rate = wf.frames_per_second;
 				s->sample_size = wf.bits_per_sample / 8;
 				s->num_channels = wf.num_channels;
 				total_frames = int32(wf.total_frames);
@@ -1006,8 +1006,8 @@ void Z80Assembler::checkTzxFile () throws
 		case TZX_GROUP_START:
 		{
 			TzxGroupStartSegment* s = dynamic_cast<TzxGroupStartSegment*>(tzxseg);
-			if (!s->name || !*s->name) throw SyntaxError("TZX group start: no name");
-			blocks.append(s->name);
+			if (!s->groupname || !*s->groupname) throw SyntaxError("TZX group start: no name");
+			blocks.append(s->groupname);
 			break;
 		}
 		case TZX_GROUP_END:
@@ -1287,6 +1287,7 @@ void Z80Assembler::checkSnaFile () throws
 		uint8	border;					// 7	border color: 0=black ... 7=white
 	};
 	static_assert(sizeof(SnaHead)==27,"sizeof(SnaHead) wrong!");
+	typedef SnaHead *SnaHeadPtr;
 
 	const uint i0 = 0;
 
@@ -1299,7 +1300,7 @@ void Z80Assembler::checkSnaFile () throws
 		"target SNA: header segment %s cannot be compressed",hs.name);
 	if (hs.size!=27) throw SyntaxError(
 		"target SNA: header segment %s must be 27 bytes (size=%u)", hs.name, uint(hs.size));
-	SnaHead* head = (SnaHead*)hs.getData();
+	SnaHead* head = SnaHeadPtr(hs.getData());
 
 	// verify some values from header:
 	if ((head->i>>6)==1) setError(
@@ -1344,6 +1345,7 @@ void Z80Assembler::checkAceFile () throws
 		uint32	af,bc,de,hl,ix,iy,sp,pc,af2,bc2,de2,hl2,im,iff1,iff2,i,r,flag_80, z3[0xC0-18];
 	};
 	static_assert(sizeof(AceHead)==0x400,"sizeof(AceHead) wrong!");
+	typedef AceHead *AceHeadPtr;
 
 	CodeSegments segments(this->segments);
 	segments.checkNoFlagsSet();
@@ -1374,7 +1376,7 @@ void Z80Assembler::checkAceFile () throws
 		if (s.size&0x3ff) throw SyntaxError(
 			"segment %s size must be a multiple of 0x400 (size=0x%04X)", s.name, uint(s.size));
 
-		for (int32 offs=0; offs<s.size && addr<0x3C00; offs+=0x400, addr+=0x400)
+		for (uint32 offs=0; offs<uint32(s.size) && addr<0x3C00; offs+=0x400, addr+=0x400)
 		{
 			switch (addr)
 			{
@@ -1388,7 +1390,9 @@ void Z80Assembler::checkAceFile () throws
 				if (!empty) setError("segment %s must be empty except for settings and registers", s.name);
 
 				// check registers:
-				AceHead* head = (AceHead*)&s[offs];
+				void* vp = &s[offs];
+				assert(size_t(vp) % sizeof(uint32) == 0);	// to be really really sure, mr. compiler.
+				AceHead* head = AceHeadPtr(vp);
 				if (peek2Z(&head->flag_8001) != 0x8001) setError("segment %s: segment[0].flag must be 0x8001", s.name);
 				uint ramtop = peek2Z(&head->ramtop);
 				if (ramsize_valid && ramtop!=0x2000+ramsize) setError(
@@ -1425,7 +1429,9 @@ void Z80Assembler::checkAceFile () throws
 			case 0x3400:	// Prog RAM 2nd mirror
 			case 0x3800:	// Prog RAM 3rd mirror
 			{
-				uint32* bu = (uint32*)&s[offs]; bool empty=yes;
+				void* vp = &s[offs];
+				assert(size_t(vp) % sizeof(uint32) == 0);	// to be really really sure, mr. compiler.
+				uint32* bu = u32ptr(vp); bool empty=yes;
 				for (int i=0; i<0x100 && empty; i++) { empty = bu[i]==0; }
 				if (!empty) setError(
 					"segment %s: page 0x%04X-0x%04X must be empty", s.name, uint(addr), uint(addr+0x3ff));
@@ -1474,8 +1480,8 @@ void Z80Assembler::checkZX80File () throws
 	uint8	S_POSN_Y;	//	db	$17		; X1  16421 $4025 IY+$25 Line number for print position.
 	uint16	CH_ADD;		//	dw	$FFFF	; X2  16422 $4026 IY+$26 Address of next character to be interpreted.
 	};
-
 	static_assert(sizeof(ZX80Head)==0x28,"sizeof(ZX80Head) wrong!");
+	typedef ZX80Head *ZX80HeadPtr;
 
 	const uint i0 = 0;
 
@@ -1497,7 +1503,8 @@ void Z80Assembler::checkZX80File () throws
 	if (hs.size<int(sizeof(ZX80Head))) throw SyntaxError(
 		"segment %s: system variables must be at least 40 ($28) bytes (size=%u)",hs.name,uint(hs.size));
 
-	ZX80Head* head = (ZX80Head*)hs.getData();
+	void* vp = hs.getData();
+	ZX80Head* head = ZX80HeadPtr(vp);
 	uint16 E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000+ramsize) setError(
 		"segment %s: E_LINE ($400A) must match ram end address $%04X (E_LINE=$%04X)",
@@ -1510,7 +1517,7 @@ void Z80Assembler::checkZX80File () throws
 		while (segments[--i]->size==0) {}
 		CodeSegment& ls = segments[i];
 		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
-		else if (ls[ls.size-1]!=0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
+		else if (ls[uint(ls.size)-1] != 0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
 	}
 }
 
@@ -1565,8 +1572,8 @@ void Z80Assembler::checkZX81File () throws
 	//MEMBOT ds	30	; Calculator’s memory area; used to store numbers that cannot be put on the calculator stack.
 	//		 dw	0	; not used
 	};
-
 	static_assert(sizeof(ZX81Head)==125 -9 -65, "sizeof(ZX81Head) wrong!");		// 125 == 0x7D
+	typedef ZX81Head *ZX81HeadPtr;
 
 	const uint i0 = 0;
 	uint hi = i0;
@@ -1586,9 +1593,9 @@ a:		CodeSegment& s = segments[hi++];
 		if (s.size>128) throw SyntaxError(
 			"segment %s: program name too long: max=128 bytes (size=%u)",s.name,uint(s.size));
 
-		int i=0;
-		while (i<s.size && s[i]<0x40) i++;
-		if (i==s.size) throw SyntaxError("segment %s: prog name delimiter on last char missing",s.name);
+		uint i = 0;
+		while (i<uint(s.size) && s[i]<0x40) i++;
+		if (i==uint(s.size)) throw SyntaxError("segment %s: prog name delimiter on last char missing",s.name);
 		if (s[i]&0x40) throw SyntaxError("segment %s: ill. character in prog name: (bit6=1)",s.name);
 		ramsize -= i+1;
 	}
@@ -1606,7 +1613,8 @@ a:		CodeSegment& s = segments[hi++];
 	if (hs.size < 125-9) throw SyntaxError(
 		"segment %s must be at least 125-9 ($7D-9) bytes (size=%u)",hs.name,uint(hs.size));
 
-	ZX81Head* head = (ZX81Head*)hs.getData();
+	void* vp = hs.getData();
+	ZX81Head* head = ZX81HeadPtr(vp);
 	uint16 E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000+ramsize) setError(
 		"segment %s: E_LINE must match ram end address $%04X (E_LINE=$%04X)", hs.name, 0x4000+uint(hs.size), E_LINE);
@@ -1618,7 +1626,7 @@ a:		CodeSegment& s = segments[hi++];
 		while (segments[--i]->size==0) {}
 		CodeSegment& ls = segments[i];
 		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
-		else if (ls[ls.size-1]!=0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
+		else if (ls[uint(ls.size)-1]!=0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
 	}
 }
 
@@ -1643,7 +1651,8 @@ void Z80Assembler::checkZ80File () throws
 		if (segments[i]->compressed) throw SyntaxError("zx7 compressed data in z80 files not yet supported. TODO!");
 	}
 
-	Z80Header& head = *(Z80Header*)hs.getData();
+	void* vp = hs.getData();
+	Z80Header& head = *Z80HeaderPtr(vp);
 
 	// handle version 1.45:
 	if (hs.size == z80v1len)
@@ -1709,7 +1718,7 @@ void Z80Assembler::checkZ80File () throws
 	{
 		CodeSegment& s = segments[i];
 		if (!s.has_flag) { setError("segment %s: page ID missing",s.name); continue; }
-		uint page_id = s.flag;
+		uint page_id = uint(s.flag);
 
 		switch (page_id)
 		{
@@ -1738,9 +1747,9 @@ rampage:	page_id -= 3;
 				if (loaded & (1<<page_id)) { setError("segment %s: page ID occured twice",s.name); continue; }
 				loaded |= 1<<page_id;
 				int32 size = 1024 << page_id;
-				if (size!=s.size) { setError("segment %s: page size does not match page ID",s.name); continue; }
-				if (int(addr+size)>s.size) {setError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
-				addr += size;
+				if (size != s.size) { setError("segment %s: page size does not match page ID",s.name); continue; }
+				if (int(addr)+size > s.size) {setError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
+				addr += uint(size);
 			}
 			else	// std. 16k page:
 			{

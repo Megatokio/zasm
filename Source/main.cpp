@@ -336,7 +336,7 @@ static int doit( Array<cstr> argv )
 				}
 			if (startswith(s,"--date="))
 				{
-					timestamp = dateval(s);
+					timestamp = double(dateval(s));
 					continue;
 				}
 			goto h;

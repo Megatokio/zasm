@@ -65,9 +65,9 @@ Segment::Segment (SegmentType type, cstr name)
 {}
 
 // protected:
-DataSegment::DataSegment (cstr name, SegmentType type, uint8 fillbyte , bool relocatable, bool resizable)
+DataSegment::DataSegment (cstr _name, SegmentType _type, uint8 fillbyte , bool relocatable, bool resizable)
 :
-	Segment(type,name),
+	Segment(_type,_name),
 	fillbyte(fillbyte),
 	relocatable(relocatable),
 	resizable(resizable),
@@ -80,9 +80,9 @@ DataSegment::DataSegment (cstr name, SegmentType type, uint8 fillbyte , bool rel
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-DataSegment::DataSegment (cstr name, uint8 fillbyte)
+DataSegment::DataSegment (cstr _name, uint8 fillbyte)
 :
-	Segment(DATA,name),
+	Segment(DATA,_name),
 	fillbyte(fillbyte),
 	relocatable(yes),
 	resizable(yes),
@@ -98,9 +98,9 @@ DataSegment::DataSegment (cstr name, uint8 fillbyte)
 	address, size and flag should be set immediately after this call
 	or at the end of an assembler pass.
 */
-CodeSegment::CodeSegment (cstr name, SegmentType type, uint8 fillbyte )
+CodeSegment::CodeSegment (cstr _name, SegmentType _type, uint8 _fillbyte )
 :
-	DataSegment(name,type,fillbyte,1,1),
+	DataSegment(_name,_type,_fillbyte,1,1),
 	flag(),
 	pause(),
 	lastbits(),
@@ -109,7 +109,7 @@ CodeSegment::CodeSegment (cstr name, SegmentType type, uint8 fillbyte )
 	has_lastbits(no),
 	no_flagbyte(no),
 	no_checksum(no),
-	no_pilot(type==TZX_PURE_DATA),
+	no_pilot(_type==TZX_PURE_DATA),
 	checksum_ace(no),
 	compressed(0),
 	core(0x10000),
@@ -235,7 +235,7 @@ void DataSegment::setOrigin (Value const& address) throws
 
 void CodeSegment::store (int byte) throws
 {
-	if (dpos<0x10000) core[dpos] = byte;
+	if (dpos<0x10000) core[dpos] = uint8(byte);
 
 	dpos.value++;
 	lpos.value++;
@@ -282,10 +282,10 @@ void CodeSegment::storeBlock (cptr data, uint n) throws
 
 	if (n>0x10000) throw SyntaxError("size > 0x10000");
 
-	if (dpos<0x10000) memcpy(&core[dpos], data, min(n,0x10000u-dpos));
+	if (dpos<0x10000) memcpy(&core[dpos], data, min(n,0x10000u-uint(dpos)));
 
-	lpos += n;
-	dpos += n;
+	lpos.value += n;
+	dpos.value += n;
 
 	if (dpos.value > size.value && dpos.is_valid() && size.is_valid())
 		throw SyntaxError("segment overflow");
@@ -321,7 +321,7 @@ void Segment::storeHexBytes (cptr data, uint n) throws
 		char d = *data++;
 		if (!is_hex_digit(d)) throw SyntaxError("only hex characters allowed: '%c'",d);
 
-		store((hex_digit_value(c)<<4) + hex_digit_value(d));
+		store(int(hex_digit_value(c)<<4) + int(hex_digit_value(d)));
 	}
 }
 
@@ -357,7 +357,7 @@ void DataSegment::storeSpace (Value const& sz, int c) throws
 	}
 
 	if (auto s = dynamic_cast<CodeSegment*>(this))
-		if (dpos<0x10000) memset(&s->core[dpos], c, min(sz.value, 0x10000-dpos));
+		if (dpos<0x10000) memset(&s->core[dpos], c, uint32(min(sz.value, 0x10000-dpos.value)));
 
 	lpos += sz;
 	dpos += sz;
@@ -397,7 +397,7 @@ void DataSegment::clearTrailingBytes () noexcept
 
 		assert(dpos.value <= size.value);
 
-		if (sz.value) memset(&s->core[dpos], fillbyte, sz.value);
+		if (sz.value) memset(&s->core[dpos], fillbyte, uint32(sz.value));
 	}
 }
 
@@ -423,7 +423,7 @@ void DataSegment::storeBlock (cptr bu, uint n) throws
 	{
 		if (*p++ != fillbyte) throw_code_segment_required();
 	}
-	storeSpace(Value(n));
+	storeSpace(Value(int(n)));
 }
 
 void CodeSegment::setFlag (Value const& v) throws
@@ -876,7 +876,7 @@ void TzxCswRecording::setLastFrame(Value v)
 	last_frame = v;
 }
 
-void TzxCswRecording::setSampleRate(int32 v)
+void TzxCswRecording::setSampleRate(uint32 v)
 {
 	if(!raw) throw SyntaxError("set sample rate: raw audio file required");
 	if (v < 8000 || v > 200000) throw SyntaxError("sample rate out of range");
@@ -906,14 +906,14 @@ Validity TzxCswRecording::validity () const
 	return (pause+first_frame+last_frame+header_size).validity;
 }
 
-void TzxHardwareInfo::addInfo(uint8 type, uint8 id, uint8 support)
+void TzxHardwareInfo::addInfo(uint8 hwtype, uint8 id, uint8 support)
 {
 	if (hwinfo.count()==255) throw SyntaxError("too many hardware infos (max. 255)");
-	if (type > 0x20) throw SyntaxError("hardware type out of range [0..16]");	// 0..16 used
+	if (hwtype > 0x20) throw SyntaxError("hardware type out of range [0..16]");	// 0..16 used
 	if (id > 0x80) throw SyntaxError("hardware ID out of range [0..45]");	// 0..2D used (type=0 computers)
 	if (support > 3) throw SyntaxError("hardware info out of range [0..3]");
 
-	hwinfo.append(HwInfo(type,id,support));
+	hwinfo.append(HwInfo(hwtype,id,support));
 }
 
 void TzxArchiveInfo::addArchiveInfo(uint8 id, cstr text)
@@ -1007,11 +1007,11 @@ IoList::IoList (IoList&& q)
 	}
 }
 
-IoList& IoList::operator= (IoList&& q)
+IoList& IoList::operator= (IoList&&)
 {
 	TODO();
-	std::swap(*this,q);		// <-- may not work. tbd.
-	return *this;
+	//std::swap(*this,q);		// <-- may not work. tbd.
+	//return *this;
 }
 
 void IoList::append (IoSequence&& q)
@@ -1203,9 +1203,9 @@ void IoList::outputByte (uint8 c, uint8* core) // during test
 	}
 }
 
-TestSegment::TestSegment (cstr name, uint8 fillbyte)
+TestSegment::TestSegment (cstr _name, uint8 _fillbyte)
 :
-	CodeSegment(name,TEST,fillbyte)
+	CodeSegment(_name,TEST,_fillbyte)
 {
 	is_code = false;
 	is_test = true;
@@ -1337,25 +1337,25 @@ void TestSegment::setExpectedCc (SourceLine* q, Value v)
 	expectations << Expectation("cc",v,address+dpos,q);
 }
 
-void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr name, Value v)
+void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr regname, Value v)
 {
 	// set the expected value for register to the current set of expectations.
 	// after running the test code the register value will be compared against
 	// the expected value and an error is added if the value does not match.
 
-	name = lowerstr(name);
+	regname = lowerstr(regname);
 
 	int min,max;
-	Z80Registers::getLimits(name,min,max);
+	Z80Registers::getLimits(regname,min,max);
 
 	if (max == 0)
-		throw SyntaxError("%s: not a register name", name);
+		throw SyntaxError("%s: not a register name", regname);
 
 	if (v.is_valid() && (v.value<min || v.value>max))
-		throw SyntaxError("%s: value is not in range[%i .. %i]", name, min, max);
+		throw SyntaxError("%s: value is not in range[%i .. %i]", regname, min, max);
 
 	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
-	expectations << Expectation(name,v,address+dpos,q);
+	expectations << Expectation(regname,v,address+dpos,q);
 }
 
 static const cstr ioModeNames[] = {

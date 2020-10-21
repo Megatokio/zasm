@@ -307,7 +307,7 @@ struct Expectation
 	int16 padding;
 	RCPtr<SourceLine> sourceline;
 
-	Expectation (cstr name, int v, int pc, SourceLine* q) : name(name), value(v), pc(pc), sourceline(q) {}
+	Expectation (cstr name, int v, int pc, SourceLine* q) : name(name), value(v), pc(uint16(pc)), sourceline(q) {}
 	Expectation (Expectation&& q) = default;
 	~Expectation () = default;
 };
@@ -398,8 +398,8 @@ public:
 class TzxGroupStartSegment : public TzxSegment
 {
 public:
-	cstr	name;	// group name, Ascii, max. 30 char
-	TzxGroupStartSegment(cstr name) :TzxSegment(TZX_GROUP_START),name(name){}
+	cstr	groupname;	// group name, Ascii, max. 30 char
+	TzxGroupStartSegment(cstr groupname) :TzxSegment(TZX_GROUP_START),groupname(groupname){}
 	//Validity validity () const override;
 	//void rewind() override;	nothing to do
 };
@@ -478,7 +478,7 @@ public:
 	Value	header_size;		// may be read from file header
 	Value	first_frame;		// may be read from file header
 	Value	last_frame;			// may be read from file header
-	int32	sample_rate;		// may be read from file header
+	uint32	sample_rate;		// may be read from file header
 	uint	num_channels;		// may be read from file header
 	uint	sample_size;		// may be read from file header
 	bool	signed_samples;		// may be read from file header
@@ -490,7 +490,7 @@ public:
 	void	setHeaderSize(Value);
 	void	setFirstFrame(Value);
 	void	setLastFrame(Value);
-	void	setSampleRate(int32);
+	void	setSampleRate(uint32);
 	void	setNumChannels(uint);
 	void	setSampleFormat(uint,bool,bool);
 
@@ -518,8 +518,8 @@ class TzxArchiveInfo : public TzxSegment
 public:
 	struct ArchInfo
 	{
-		uint8 id; cstr text;
-		ArchInfo(uint id, cstr text) :id(id),text(text){}
+		uint8 id; uint8 padding[7]; cstr text;
+		ArchInfo(uint id, cstr text) :id(uint8(id)),text(text){}
 	};
 	Array<ArchInfo> archinfo;
 

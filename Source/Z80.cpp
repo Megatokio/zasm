@@ -983,6 +983,7 @@ loop_ei:							// LOOP without loop exit test: after EI
 		case 6:			POKE_AND_LOOP(HL,c);
 		case 7:			ra=c;				LOOP;
 		}
+		IERR(); // unreachable
 
 
 	// ==========================================================================

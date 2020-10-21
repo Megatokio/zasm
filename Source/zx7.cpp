@@ -102,7 +102,7 @@ Optimal* optimize(const Array<uint8>& ibu, uint32 skip)
 		best_len = 1;
 		for (match = &matches[match_index]; *match != 0 && best_len < MAX_LEN; match = &match_slots[*match])
 		{
-			offset = i - *match;
+			offset = int(i - *match);
 			if (offset > MAX_OFFSET) { *match = 0; break; }
 
 			for (len = 2; len <= MAX_LEN && i >= skip+len; len++)
@@ -110,12 +110,12 @@ Optimal* optimize(const Array<uint8>& ibu, uint32 skip)
 				if (len > best_len)
 				{
 					best_len = len;
-					bits = optimal[i-len].bits + count_bits(offset, len);
+					bits = optimal[i-len].bits + uint(count_bits(offset, int(len)));
 					if (optimal[i].bits > bits)
 					{
 						optimal[i].bits = bits;
 						optimal[i].offset = offset;
-						optimal[i].len = len;
+						optimal[i].len = int(len);
 					}
 				}
 				else if (max[offset] != 0 && i+1 == max[offset]+len)
@@ -123,7 +123,7 @@ Optimal* optimize(const Array<uint8>& ibu, uint32 skip)
 					len = i-min[offset];
 					if (len > best_len) { len = best_len; }
 				}
-				if (i < offset+len || input_data[i-len] != input_data[i-len-offset]) { break; }
+				if (i < uint(offset)+len || input_data[i-len] != input_data[i-len-uint(offset)]) { break; }
 			}
 			min[offset] = i+1-len;
 			max[offset] = i;
@@ -158,7 +158,7 @@ static void read_bytes(int n, int32* delta)
 
 static void write_byte(int value)
 {
-	output_data[output_index++] = value;
+	output_data[output_index++] = uint8(value);
 	diff--;
 }
 
@@ -210,14 +210,14 @@ Array<uint8> compress(const Array<uint8>& ibu, uint32 skip, int32* delta)
 	output_data = obu.getData();
 
 	/* initialize delta */
-	diff = obu.count() - ibu.count() + skip;
+	diff = int32(obu.count() - ibu.count() + skip);
 	*delta = 0;
 
 	/* un-reverse optimal sequence */
 	optimal[input_index].bits = 0;
 	while (input_index != skip)
 	{
-		input_prev = input_index - (optimal[input_index].len > 0 ? optimal[input_index].len : 1);
+		input_prev = input_index - (optimal[input_index].len > 0 ? uint(optimal[input_index].len) : 1);
 		optimal[input_prev].bits = input_index;
 		input_index = input_prev;
 	}

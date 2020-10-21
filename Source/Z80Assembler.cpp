@@ -502,7 +502,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 				cstr zpath = catstr(zdir,basename,".$");
 				writeTargetfile(zpath,deststyle);
 				if (endswith(destpath,".$"))
-					destpath = catstr(leftstr(destpath,strlen(destpath)-2), extension_from_path(zpath));
+					destpath = catstr(leftstr(destpath,int(strlen(destpath))-2), extension_from_path(zpath));
 				FD old(destpath);	// may throw if n.ex.
 				FD nju(zpath);
 				long ofsz = old.file_size();
@@ -879,7 +879,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 
 	q.rewind();							// if pass 2++
 	if(pass==1) q.segment = current_segment_ptr;	// for Temp Label Resolver
-	q.byteptr = current_segment_ptr ? currentPosition() : 0; // for Temp Label Resolver & Logfile
+	q.byteptr = current_segment_ptr ? uint(currentPosition()) : 0; // for Temp Label Resolver & Logfile
 	//if (pass==1) q.bytecount = 0;		// for Logfile and skip over error in pass 2++
 	if (current_segment_ptr) cmd_dpos = currentPosition();
 
@@ -921,11 +921,11 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 			if (current_segment_ptr)
 			{
 				if (q.segment==current_segment_ptr)
-					q.bytecount = currentPosition() - q.byteptr;
+					q.bytecount = uint(currentPosition()) - q.byteptr;
 				else
 				{
 					q.segment = current_segment_ptr;	// .area instruction
-					q.byteptr = currentPosition();		// Für Temp Label Resolver & Logfile
+					q.byteptr = uint(currentPosition());// Für Temp Label Resolver & Logfile
 					assert(q.bytecount==0);
 				}
 			}
@@ -954,11 +954,11 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 			if(current_segment_ptr)
 			{
 				if (q.segment==current_segment_ptr)
-					q.bytecount = currentPosition() - q.byteptr;
+					q.bytecount = uint(currentPosition()) - q.byteptr;
 				else
 				{
 					q.segment = current_segment_ptr;	// .area instruction
-					q.byteptr = currentPosition();		// Für Temp Label Resolver & Logfile
+					q.byteptr = uint(currentPosition());// Für Temp Label Resolver & Logfile
 					assert(q.bytecount==0);
 				}
 			}
@@ -967,7 +967,7 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 		{
 			if (pass>1)
 				if (auto s = dynamic_cast<DataSegment*>(q.segment))
-					s->skipExistingData(q.byteptr + q.bytecount - currentPosition());
+					s->skipExistingData(int(q.byteptr + q.bytecount) - currentPosition());
 			throw e;
 		}
 	}
@@ -989,8 +989,8 @@ uint Z80Assembler::assembleSingleLine (uint address, cstr instruction, char buff
 
 	if (segment.size>4) setError("resulting code size exceeds size of z80 opcodes");	// defs etc.
 	if (errors.count()) return 0;
-	memcpy(buffer,segment.getData(),segment.size);
-	return segment.size;
+	memcpy(buffer,segment.getData(),uint(segment.size));
+	return uint(segment.size);
 }
 
 void Z80Assembler::skip_expression (SourceLine& q, int prio) throws
@@ -1143,7 +1143,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 		else if (*w=='\'' || *w=='"')// ascii number: due to ambiguity of num vs. str only ONE CHARACTER ALLOWED!
 		{							 // uses utf-8 or charset translation
 									 // also allow "c" as a numeric value (seen in sources!)
-			uint slen = strlen(w);
+			uint slen = uint(strlen(w));
 			if (slen<3||w[slen-1]!=w[0]) goto syntax_error;
 			w = unquotedstr(w);
 			n.value = charcode_from_utf8(w);
@@ -1154,11 +1154,11 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 		{
 			if (w[0]=='0')
 			{
-				if (tolower(w[1])=='x' && w[2]) { w+=2; goto hex_number; }	// 0xABCD
-				if (tolower(w[1])=='b' && w[2] && is_bin_digit(lastchar(w))) // caveat e.g.: 0B0h
+				if (to_lower(w[1])=='x' && w[2]) { w+=2; goto hex_number; }	// 0xABCD
+				if (to_lower(w[1])=='b' && w[2] && is_bin_digit(lastchar(w))) // caveat e.g.: 0B0h
 												{ w+=2; goto bin_number; }	// 0b0101
 			}
-			c = tolower(lastchar(w));
+			c = to_lower(lastchar(w));
 			if (c=='h') goto hex_number;	// hex number     indicated by suffix
 			if (c=='b') goto bin_number;	// binary number  indicated by suffix
 		}
@@ -1182,7 +1182,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 
 	if (*w=='_' && eq(w,"__line__"))
 	{
-		n = q.sourcelinenumber; /* valid = valid && yes; */ goto op;
+		n = int(q.sourcelinenumber); /* valid = valid && yes; */ goto op;
 	}
 
 	if (q.test_char('('))		// test for built-in function
@@ -1270,8 +1270,8 @@ hi:			n = value(q);
 			if (n==0) { if (n.is_valid()) throw SyntaxError("scale value for result must be ≥ 1"); n.value = 128; }
 
 			n.validity = min(n.validity,min(a.validity,b.validity));
-			float32 r  = a.value * 6.2831853f / b.value;
-			n.value    = int32(roundf((eq(w,"sin") ? sinf(r) : cosf(r)) * n.value));
+			double r = a.value * 6.2831853071796 / b.value;
+			n.value  = int32(round((eq(w,"sin") ? sin(r) : cos(r)) * n.value));
 			goto kzop;
 		}
 		else if (eq(w,"opcode"))	// opcode(ld a,N)  or  opcode(bit 7,(hl))  etc.
@@ -1866,7 +1866,7 @@ void Z80Assembler::compressSegments ()
 		if (!s1->compressed) continue;
 		assert(s1->compressed & first_cseg_mask);
 
-		Array<uint8> ucore(s1->getData(),s1->size);
+		Array<uint8> ucore(s1->getData(),uint32(s1->size));
 		Value usize(s1->size);
 		Array<uint8> ccore;
 
@@ -1877,7 +1877,7 @@ void Z80Assembler::compressSegments ()
 			s2 = segments[i++];
 			assert(s2->compressed);
 
-			ucore.append(s2->getData(),s2->size);
+			ucore.append(s2->getData(),uint32(s2->size));
 			usize += s2->size;
 		}
 
@@ -1902,8 +1902,8 @@ void Z80Assembler::compressSegments ()
 		// set labels:
 		if(multiple)
 		setLabelValue( global_labels().find(catstr(name,"_size")),  usize);
-		setLabelValue( global_labels().find(catstr(name,"_csize")), ccore.count(), preliminary);
-		setLabelValue( global_labels().find(catstr(name,"_cgain")), usize - ccore.count(), preliminary);
+		setLabelValue( global_labels().find(catstr(name,"_csize")), int32(ccore.count()), preliminary);
+		setLabelValue( global_labels().find(catstr(name,"_cgain")), usize.value - int32(ccore.count()), preliminary);
 		setLabelValue( global_labels().find(catstr(name,"_cdelta")), delta, preliminary);
 
 		s1->ccore = ccore;
@@ -2064,7 +2064,7 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 
 	if (pass==1)
 	{
-		if (source.count() + n*(e-a-1) > 1000000)
+		if (source.count() + uint32(n)*(e-a-1) > 1000000)
 			throw FatalError("total source exceeds 1,000,000 lines");
 	}
 	else // if (pass>1)	// => just skip the rept macro
@@ -2296,7 +2296,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 		n = value(q);
 		if (n.is_valid() && (n < -0x80 || n > 0xff)) throw SyntaxError("destination char code out of range");
 		if (!charset) charset = new CharMap();
-		charset->addMappings(unquotedstr(w),n);		// throws on illegal utf-8 chars
+		charset->addMappings(unquotedstr(w),uint(n)); // throws on illegal utf-8 chars
 	}
 	else if (lceq(w,"unmap") || lceq(w,"remove"))	// remove mapping
 	{
@@ -2425,21 +2425,21 @@ void Z80Assembler::asmCFlags (SourceLine& q) throws
 			if (eq(s,"$SOURCE"))
 			{
 				if (c_qi >= 0) throw FatalError("$SOURCE redefined");
-				c_qi = c_flags.count();
+				c_qi = int(c_flags.count());
 			}
 
 			if (eq(s,"$DEST"))
 			{
 				if (c_zi >= 0) throw FatalError("$DEST redefined");
-				c_zi = c_flags.count();
+				c_zi = int(c_flags.count());
 			}
 
 			if (eq(s,"$CFLAGS"))
 			{
 				if (old_c_qi >= 0 && c_qi >= 0) throw FatalError("$SOURCE redefined");
 				if (old_c_zi >= 0 && c_zi >= 0) throw FatalError("$DEST redefined");
-				if (old_c_qi >= 0) c_qi = old_c_qi + c_flags.count();
-				if (old_c_zi >= 0) c_zi = old_c_zi + c_flags.count();
+				if (old_c_qi >= 0) c_qi = old_c_qi + int(c_flags.count());
+				if (old_c_zi >= 0) c_zi = old_c_zi + int(c_flags.count());
 				c_flags.append(old_cflags);	// moves contents
 				continue;
 			}
@@ -2518,8 +2518,8 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 	}
 
 	memmove( cond+1, cond, sizeof(cond)-sizeof(*cond) );
-	cond[0] = cond_if + !!f;
-	cond_off = (cond_off<<1) + !f;
+	cond[0] = cond_if + !!f.value;
+	cond_off = (cond_off<<1) + !f.value;
 }
 
 void Z80Assembler::asmElif (SourceLine& q) throws
@@ -2553,8 +2553,8 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 			else if (if_values[if_values_idx++] != f) throw FatalError("condition changed in pass%i",pass);
 		}
 
-		cond_off -= !!f;		// if f==1 then clear bit 0 => enable #elif clause
-		cond[0]  += !!f;		// and switch state to cond_if_dis => disable further elif evaluation
+		cond_off -= !!f.value;	// if f==1 then clear bit 0 => enable #elif clause
+		cond[0]  += !!f.value;	// and switch state to cond_if_dis => disable further elif evaluation
 		break;
 	}
 }
@@ -2655,7 +2655,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 			{
 				if (c_includes && endswith(c_includes,"/include/"))
 				{
-					cstr dir = catstr(leftstr(c_includes,strlen(c_includes)-9),"/lib/");
+					cstr dir = catstr(leftstr(c_includes,int(strlen(c_includes))-9),"/lib/");
 					if (is_dir(dir)) stdlib_dir = dir;
 				}
 			}
@@ -2833,7 +2833,8 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 			c_flags.insertat(2,"-S");			// compile only, don't link
 		}
 
-		execve(c_compiler, (char**)c_flags.getData(), environ);	// exec cmd
+		typedef char **cpp;
+		execve(c_compiler, cpp(c_flags.getData()), environ);	// exec cmd
 		exit(errno);			// exec failed: return errno: will be printed in error msg,
 								//				but is ambiguous with cc exit code
 	}
@@ -2910,9 +2911,9 @@ void Z80Assembler::asmInsert (SourceLine& q) throws
 	off_t sz = fd.file_size();			// file size
 	if (sz>0x10000) throw FatalError("file is larger than $10000 bytes");	// max. possible size in any case
 
-	char bu[sz];
-	fd.read_bytes(bu, uint32(sz));
-	storeBlock(bu,uint32(sz));
+	std::unique_ptr<char[]> bu(new char[sz]);
+	fd.read_bytes(bu.get(), uint32(sz));
+	storeBlock(bu.get(),uint(sz));
 }
 
 void Z80Assembler::asmTzx (SourceLine& q) throws
@@ -3062,7 +3063,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 				q.expect(('='));
 				Value v = value(q);
 				if(!v.is_valid()) throw SyntaxError("sample-rate must be valid in pass 1");
-				segment->setSampleRate(v);
+				segment->setSampleRate(uint32(v));
 				seen |= SAMPLE_RATE;
 			}
 			else if (q.testWord("sample-format"))		// s1|u1|s2|u2|s2x|u2x
@@ -3446,8 +3447,8 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 	if (q.label) reusable_label_basename = name;
 	asmInstr = syntax_8080 ? &Z80Assembler::asm8080Instr : &Z80Assembler::asmZ80Instr;	// TODO
 	current_segment_ptr = segment;
-	q.segment = current_segment_ptr;	// Für Temp Label Resolver
-	q.byteptr = currentPosition();		// Für Temp Label Resolver & Logfile
+	q.segment = current_segment_ptr;		// Für Temp Label Resolver
+	q.byteptr = uint(currentPosition());	// Für Temp Label Resolver & Logfile
 	assert(q.bytecount==0);
 
 	if (q.testComma())	// address
@@ -3861,7 +3862,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 		current_segment_ptr = segment;
 		q.segment = current_segment_ptr;
-		q.byteptr = currentPosition();
+		q.byteptr = uint(currentPosition());
 		assert(q.bytecount==0);
 
 		if (q.testChar('('))
@@ -4082,7 +4083,7 @@ warn:	if (pass>1 || verbose<1) return q.skip_to_eol();
 		while (!q.testEol()) q.nextWord();	// skip to end of line but not behind a comment!
 		cstr linenumber = tostr(q.sourcelinenumber+1);
 		log("%s: %s\n", linenumber, q.text);
-		log("%s%s^ warning: instruction '%s' ignored\n", spacestr(strlen(linenumber)+2), q.whitestr(), w);
+		log("%s%s^ warning: instruction '%s' ignored\n", spacestr(int(strlen(linenumber))+2), q.whitestr(), w);
 }
 
 void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
@@ -4124,7 +4125,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 		do
 		{
 			w = q.nextWord();
-			uint n = strlen(w);
+			uint n = uint(strlen(w));
 
 			if (w[0]=='"' || w[0]=='\'')	// Text string:
 			{
@@ -4149,7 +4150,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 			}
 			else if (n>4 && is_dec_digit(w[0]) && tolower(w[n-1])=='h')
 			{
-				w = leftstr(w,n-1); n -= 1;
+				w = leftstr(w,int(n)-1); n -= 1;
 				goto sh;
 			}
 			else							// anything else:
@@ -4170,7 +4171,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 		w = q.nextWord();
 		if (w[0]!='"' && w[0]!='\'') throw SyntaxError("quoted string expected");
 
-		uint n = strlen(w);
+		int n = int(strlen(w));
 		if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 		w = unquotedstr(w);
 		if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
@@ -4288,7 +4289,7 @@ db:dm:		q.is_data = yes;
 			// Text string:
 			if (w[0]=='"' || w[0]=='\'')
 			{
-				n = strlen(w);
+				n = uint(strlen(w));
 				if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 				w = unquotedstr(w);
 				if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
@@ -4319,7 +4320,7 @@ cb:					while(*w) store(charcode_from_utf8(w));
 
 			// Stuffed Hex:
 			// bytes are stored in order of occurance: in $ABCD byte $AB is stored first!
-			n = strlen(w);
+			n = uint(strlen(w));
 			if (n>3 && w[0]=='$')
 			{
 sx:				w = midstr(w,1); n-=1;
@@ -4330,7 +4331,7 @@ sh:				if (n&1) throw SyntaxError("even number of hex characters expected");
 
 			if (n>4 && is_dec_digit(w[0]) && tolower(w[n-1])=='h')
 			{
-				w = leftstr(w,n-1); n-=1;
+				w = leftstr(w,int(n)-1); n-=1;
 				if (n&1 && w[0]=='0') goto sx; else goto sh;
 			}
 		}//scope for 'n'
@@ -4345,7 +4346,7 @@ sh:				if (n&1) throw SyntaxError("even number of hex characters expected");
 		}
 
 		// anything else:
-		q -= strlen(w);	// put back opcode
+		q -= off_t(strlen(w));	// put back opcode
 		storeByte(value(q));
 		if (q.testComma()) goto dm; else return;
 
@@ -4580,7 +4581,7 @@ longer:
 		w = q.nextWord();
 		if (w[0]!='"' && w[0]!='\'') throw SyntaxError("quoted string expected");
 
-		uint n = strlen(w);
+		int n = int(strlen(w));
 		if (n<3 || w[n-1]!=w[0]) throw SyntaxError("closing quotes expected");
 		w = unquotedstr(w);
 		if (*w==0) throw SyntaxError("closing quotes expected");	// broken '\' etc.
