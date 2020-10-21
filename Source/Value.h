@@ -33,16 +33,25 @@
 
 enum Validity
 {
-	invalid,		// not yet defined or definition based on invalid value
-	preliminary,	// defined but subject to final position/size of code
-	valid			// fully valid
+	invalid = 0,		// not yet defined or definition based on invalid value
+	preliminary = 1,	// defined but subject to final position/size of code
+	valid = 3,			// fully valid
 };
+
+// when testing with relational comparators,
+// then operator '<' means 'worse than':
+// invalid < preliminary < valid
+
+inline Validity min (Validity a, Validity b) { return Validity(a&b); }	// that's the trick! :-)
+inline Validity max (Validity a, Validity b) { return Validity(a|b); }	// probably not useful
+
+
 
 using cValue = const class Value;
 
 class Value
 {
-	void	chkv (Validity v)	{ if(v<validity) validity = v; }
+	void	chkv (Validity v)	{ validity = min(validity,v); }
 
 public:
 	int32	 value;
