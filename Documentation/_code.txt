@@ -2,7 +2,9 @@
 //-----------------------------------------------------------------
 h3	#code
 
-pre	#code <name>,<start>,<size>,<flags>
+pre	#code <name>,<start>,<size> [,FLAG=<flagbyte>] [,SPACE=<fillbyte>]
+	#code <name>,<start>,<size> [,<flags>]    ; old syntax
+	#code <name>,<start>,<size>
 
 p	This defines a code segment where the generated code will be stored. If the assembler directive #target has been used then at least one #code segment must be defined. Depending on the desired target your source must consist of multiple #code segments. See the section about target files.
 
@@ -33,6 +35,7 @@ p	The start address should define the 'physical' address for the segment, the ad
 p	If a start address is given and does not exactly match the end address of the previous code segment, then the following segments is still appended without gap in the output file. It is assumed that the code will be moved to this address before it is executed.
 
 p	If the code is written to a .hex or .s19 file, then it depends on the #target, how exactly this 'gap' is handled, because these formats also store the destination address of the contained code.
+
 ul
 li	For <b>#target rom</b> <i>zasm</i> stores consecutive addresses, suitable for an eprom burner, without gap.
 li	For <b>#target ram</b> <i>zasm</i> stores the 'physical' address, as set in the #code directive, suitable for a ram loader, which will probably load the code to the 'physical' address of the segments.
@@ -43,13 +46,34 @@ pre	#target rom
 	#code	PAGE1,0,0x4000		; boot rom
 	#code	PAGE2,0,0x4000		; basic rom
 
-p	If given, the size defines the size for this segment. If you store less bytes in it, then the segment will be padded up to this size with the default fill byte: 0xff for rom and 0x00 for any other target. If your code exceeds the size, then the assembler will generate an error.
+p	If given, the size defines the size for this segment. If you store less bytes in it, then the segment will be padded up to this size with the default fillbyte: 0xff for rom and 0x00 for any other target. If your code exceeds the size, then the assembler will generate an error.
+
+p	Since version 4.4.2 it is also possible to define a custom fillbyte for code segments by appending a key/value pair <tt>SPACE=<value></tt> after the size. If you want to leave the size unspecified, use '*'.
 
 p	If no size is defined, then the segment is exactly as long as the code stored into it.
 
+
+h4	Flag Byte
+	flag flagbyte
+
 p	The 3rd argument is not required and actually not allowed in most cases. But some targets require a flag for the code segment, e.g. #target tap requires a flag byte for each tape block.
 
-pre	#code HEADER, 0, 17, $00
+p	Since version 4.4 it is recommended to define the flag byte using a key/value pair <tt>FLAG=<value></tt>.
+
+pre	#code HEADER, 0, 17, FLAG = 0x00
+
+
+h4	Fill Byte
+	fillbyte
+
+p	Since version 4.4.2 it is possible to define a custom fillbyte for code segments by appending a key/value pair <tt>SPACE=<value></tt> after the segment size. This fill byte is used to fill the gap in 'defs' and 'org' pseudo instructions, and for the padding at the end of the segment, if a fixed size was specified.
+
+pre	#code _INITIALIZER, *, *, SPACE = 0x00
+
+p	The above example might be used in a rom which incorporates a segment with global data initializers, so that parts of variables, which are set with 'defs' are set to 0x00.
+
+
+h4	Re-enter code segments
 
 p	A code segment can be re-entered by using the #code directive with the name only or by using the .area pseudo opcode:
 
