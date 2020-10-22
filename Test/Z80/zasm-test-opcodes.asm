@@ -854,6 +854,10 @@ loop2:
 	jp   iy
 	jp   (ix)
 	jp   (iy)
+	jp   (ix+0)
+	jp   (iy-0)
+!	jp   (ix+10)
+!	jp   (iy-10)
 
 	ld   sp,ix
 	ld   sp,iy
