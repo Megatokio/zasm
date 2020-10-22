@@ -202,14 +202,13 @@ private:
 	void	storeEDopcode	(int n)						throws;
 	void	storeIYopcode	(int n)						throws;
 
-	void 	storeWord		(int n)						throws	{ current_segment().storeWord(n); }
-	void	storeBlock		(cstr blk, uint n)			throws	{ current_segment().storeBlock(blk,n); }
-	void	storeHexbytes	(cstr hex, uint n)			throws	{ current_segment().storeHexBytes(hex,n); }
+	void 	storeWord		(cValue& n)					throws	{ current_segment().storeWord(n); }
+	void	storeBlock		(cptr blk, uint n)			throws	{ current_segment().storeBlock(blk,n); }
+	void	storeHexbytes	(cptr hex, uint n)			throws	{ current_segment().storeHexBytes(hex,n); }
+	void	storeByte 		(cValue& n)					throws { current_segment().storeByte(n); }
+	void	storeOffset 	(cValue& n)					throws { current_segment().storeOffset(n); }
 
-	void	storeByte 		(cValue& n)			throws { current_segment().storeByte(n); }
-	void	storeOffset 	(cValue& n)			throws { current_segment().storeOffset(n); }
-
-	cValue& currentPosition ()						{ return current_segment_ptr->dpos; }
+	cValue& currentPosition ()							{ return current_segment_ptr->dpos; }
 	Value	dollar ()
 			{
 				if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))

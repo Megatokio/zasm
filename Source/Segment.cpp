@@ -283,12 +283,18 @@ void Segment::storeByte (cValue& byte) throws
 	store(byte.value);
 }
 
-void Segment::storeWord (int n) throws
+void Segment::storeWord (cValue& word) throws
 {
 	// store 2 bytes (z80 byte order: lsb first)
+	// validates word
 
-	store(n);
-	store(n>>8);
+	if (word.is_valid())
+	{
+		if (word < -0x8000 || word > 0xFFFF)
+			throw SyntaxError("word value out of range");
+	}
+	store(word);
+	store(word>>8);
 }
 
 void Segment::storeHexBytes (cptr data, uint n) throws

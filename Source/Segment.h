@@ -92,23 +92,23 @@ public:
 	bool	isTzx	() const			{ return is_tzx; }
 	virtual Validity validity () const	{ return Validity::valid; }
 
-	cValue& currentPosition ()		{ return dpos; }		// offset in core
+	cValue& currentPosition ()			{ return dpos; }		// offset in core
 
 // store object code
 	virtual void rewind () {}
 
-	virtual void store		(int)					throws { throw_code_segment_required(); }
-	virtual void storeBlock	(cptr, uint)			throws { throw_code_segment_required(); }
+	virtual void store		(int)				throws { throw_code_segment_required(); }
+	virtual void storeBlock	(cptr, uint)		throws { throw_code_segment_required(); }
 	virtual void storeSpace	(cValue&, int)		throws { throw_code_segment_required(); }
 	virtual void storeSpace	(cValue&)			throws { throw_data_segment_required(); }
 
-	void	store		(int a,int b)				throws { store(a); store(b); }
-	void	store		(int a,int b,int c)			throws { store(a); store(b); store(c); }
-	void	store		(int a,int b,int c,int d)	throws { store(a); store(b); store(c); store(d); }
-	void	storeWord	(int n)						throws;
+	void	store		(int a,int b)			throws { store(a); store(b); }
+	void	store		(int a,int b,int c)		throws { store(a); store(b); store(c); }
+	void	store		(int a,int b,int c,int d) throws { store(a); store(b); store(c); store(d); }
+	void	storeWord	(cValue&)				throws;
 	void	storeOffset (cValue&)				throws;
 	void	storeByte	(cValue&)				throws;
-	void	storeHexBytes (cptr data, uint sz)		throws;
+	void	storeHexBytes (cptr data, uint sz)	throws;
 
 protected:
 	Segment (SegmentType, cstr name = nullptr);

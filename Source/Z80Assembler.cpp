@@ -4263,7 +4263,7 @@ dw:		q.is_data = yes;
 		// store long words:
 		// .long nn [,nn ..]
 dl:		q.is_data = yes;
-		do { Value n = value(q); storeWord(n); storeWord(n>>16); } while (q.testComma());
+		do { int32 n = value(q); store(n,n>>8,n>>16,n>>24); } while (q.testComma());
 		return;
 
 	case '  db':
