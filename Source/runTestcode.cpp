@@ -58,8 +58,8 @@ void Z80Assembler::runTestcode()
 			for (uint i=0; i<code_segments.count(); i++)
 			{
 				CodeSegment& code_segment = code_segments[i];
-				int address = code_segment.getAddress();
-				int size =  code_segment.size;
+				int address = code_segment.getAddress().value;
+				int size =  code_segment.size.value;
 				assert(address<0x10000);
 				assert(size<=0x10000);
 				if (address+size > 0x10000) throw SyntaxError("segment %s extends beyond address space", code_segment.name);
@@ -67,8 +67,8 @@ void Z80Assembler::runTestcode()
 			}
 
 			// load test code, may overwrite:
-			int address = test_segment.getAddress();
-			int size =  test_segment.size;
+			int address = test_segment.getAddress().value;
+			int size =  test_segment.size.value;
 			assert(address<0x10000);
 			assert(size<=0x10000);
 			if (address+size > 0x10000) throw SyntaxError("segment %s extends beyond address space",test_segment.name);
@@ -132,10 +132,10 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 {
 	if (verbose) logline("\n+++++ running %s +++++", test_segment.name);
 
-	int32 cpu_clock = test_segment.cpu_clock;		// cpu clock
-	int32 cc_per_int  = test_segment.int_per_sec;	// if cc_per_int  >  1000
-	int32 int_per_sec = test_segment.int_per_sec;	// if int_per_sec <= 1000
-	double timeout = test_segment.timeout_ms / 1e3;	// seconds
+	int32 cpu_clock = test_segment.cpu_clock.value;		// cpu clock
+	int32 cc_per_int  = test_segment.int_per_sec.value;	// if cc_per_int  >  1000
+	int32 int_per_sec = test_segment.int_per_sec.value;	// if int_per_sec <= 1000
+	double timeout = test_segment.timeout_ms.value/1e3;	// seconds
 
 	bool with_timeout = timeout > 0.0;
 	bool with_interrupts = int_per_sec > 0;

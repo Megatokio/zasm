@@ -61,8 +61,9 @@ public:
 	explicit Value(int32 n)				:value(n),validity(valid){}
 			 Value(int32 n, Validity v)	:value(n),validity(v){}
 
-	//operator int32() const  	{ return value; }	// auto-cast to int32
-	operator int() const		{ return value; }	// auto-cast to int32
+	//operator int() const		{ return value; }	// auto-cast to int
+	template<typename T>
+	explicit operator T() const	{ return T(value); }
 
 	void	set	(int32 n, Validity v) { value = n; validity = v; }
 
@@ -157,7 +158,37 @@ public:
 	Value	operator >  (cValue& q) const { return Value(value >  q.value, min(validity,q.validity)); }
 	Value	operator <  (cValue& q) const { return Value(value <  q.value, min(validity,q.validity)); }
 	Value	operator != (cValue& q) const { return Value(value != q.value, min(validity,q.validity)); }
+
+//	Value	operator +  (int q) const { return Value(value +  q, validity); }
+//	Value	operator -  (int q) const { return Value(value -  q, validity); }
+//	Value	operator &  (int q) const { return Value(value &  q, validity); }
+//	Value	operator |  (int q) const { return Value(value |  q, validity); }
+//	Value	operator ^  (int q) const { return Value(value ^  q, validity); }
+//	Value	operator *  (int q) const { return Value(value *  q, validity); }
+//	Value	operator /  (int q) const { return Value(value /  q, validity); }
+//	Value	operator %  (int q) const { return Value(value %  q, validity); }
+//	Value	operator << (int q) const { return Value(value << q, validity); }
+//	Value	operator >> (int q) const { return Value(value >> q, validity); }
+//	Value	operator == (int q) const { return Value(value == q, validity); }
+//	Value	operator >= (int q) const { return Value(value >= q, validity); }
+//	Value	operator <= (int q) const { return Value(value <= q, validity); }
+//	Value	operator >  (int q) const { return Value(value >  q, validity); }
+//	Value	operator <  (int q) const { return Value(value <  q, validity); }
+//	Value	operator != (int q) const { return Value(value != q, validity); }
 };
+
+//__attribute__((deprecated))
+inline Value operator +  (cValue& v, int q) { return Value(v.value + q, v.validity); }
+inline Value operator -  (cValue& v, int q) { return Value(v.value - q, v.validity); }
+inline Value operator &  (cValue& v, int q) { return Value(v.value & q, v.validity); }
+inline Value operator |  (cValue& v, int q) { return Value(v.value | q, v.validity); }
+inline Value operator ^  (cValue& v, int q) { return Value(v.value ^ q, v.validity); }
+
+inline Value operator +  (int q, cValue& v) { return Value(q + v.value, v.validity); }
+inline Value operator -  (int q, cValue& v) { return Value(q - v.value, v.validity); }
+inline Value operator &  (int q, cValue& v) { return Value(q & v.value, v.validity); }
+inline Value operator |  (int q, cValue& v) { return Value(q | v.value, v.validity); }
+inline Value operator ^  (int q, cValue& v) { return Value(q ^ v.value, v.validity); }
 
 
 inline Value min (cValue& a, cValue& b)
@@ -183,6 +214,20 @@ public:
 	}
 
 	Values& operator << (Value q) throws { append(std::move(q)); return *this; }
+
+	// compare 2 Arrays of Values:
+	// -> ATTN: only compares values, ignores validity
+	// -> operator== and operator!= are used BOTH in outputfile.cpp to compare array for equality ...
+	bool operator!= (const Array<Value>& q) const noexcept { return !operator==(q); }
+	bool operator== (const Array<Value>& q) const noexcept
+	{
+		if (count() != q.count()) return no;
+		for (uint i=0; i<count(); i++)
+		{
+			if ((*this)[i].value != q[i].value) return no;
+		}
+		return yes;
+	}
 };
 
 

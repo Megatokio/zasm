@@ -198,7 +198,7 @@ void Z80Assembler::writeTapFile (FD& fd) throws
 	//		db	checksum		; simple xor of blocktype + data bytes
 
 	CodeSegments segments(this->segments);
-	while (!segments[0]->has_flag) { assert(segments[0]->size==0); segments.remove(0u); }
+	while (!segments[0]->has_flag) { assert(segments[0]->size.value==0); segments.remove(0u); }
 
 	// OLD until 4.1.6:
 	// Jupiter Ace tape files were detected by analyzing the blocks:
@@ -264,7 +264,7 @@ void Z80Assembler::writeZ80File (FD& fd) throws
 	CodeSegment& hs = segments[i0];
 	fd.write_bytes(hs.getData(), uint32(hs.size));
 
-	if (hs.size == z80v1len)		// write v1.45 single page:
+	if (hs.size.value == z80v1len)		// write v1.45 single page:
 	{
 		CodeSegment& s = segments[i0+1];
 		if (hs.core[12]!=255 && hs.core[12] & 0x20)	// head.data.bit5
@@ -276,7 +276,7 @@ void Z80Assembler::writeZ80File (FD& fd) throws
 		for (uint i=i0+1; i<segments.count(); i++)
 		{
 			CodeSegment& s = segments[i];
-			write_compressed_page_z80( fd, s.flag, s.getData(), uint32(s.size));
+			write_compressed_page_z80( fd, s.flag.value, s.getData(), uint32(s.size));
 		}
 	}
 }
@@ -757,7 +757,7 @@ void Z80Assembler::checkTapFile () throws
 	// This is similar to concatenating segments with non-consecutive physical address in bin and rom files.
 
 	CodeSegments segments(this->segments);
-	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
+	while (segments[0]->size.value==0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
 		throw SyntaxError("tape block %s: flag byte missing (argument #4)", segments[0]->name);
@@ -769,7 +769,7 @@ void Z80Assembler::checkTapFile () throws
 		size += s->outputSize();
 		if (!s->has_flag) continue;	// not first segment
 
-		if (!s->no_flagbyte && (s->flag > 255 || s->flag < -128))
+		if (!s->no_flagbyte && (s->flag.value > 255 || s->flag.value < -128))
 			throw SyntaxError("tape block %s: flag byte out of range", s->name);
 
 		if (size == 0) throw SyntaxError("tape block %s: size = 0", s->name);
@@ -792,7 +792,7 @@ static Values simple_pilot(int num_pulses)
 
 static bool is_simple_data_symbol(Values const& symbol)
 {
-	return symbol.count() == 3 && symbol[0] == 0 && symbol[1] == symbol[2];
+	return symbol.count() == 3 && symbol[0].value == 0 && symbol[1].value == symbol[2].value;
 }
 static bool is_simple_data_symbols(Array<Values> const& symbols)
 {
@@ -801,14 +801,14 @@ static bool is_simple_data_symbols(Array<Values> const& symbols)
 }
 static bool is_simple_pilot(Values const& pilot)
 {
-	return pilot.count() == 0 || (pilot.count() == 4 && pilot == simple_pilot(pilot[1]));
+	return pilot.count() == 0 || (pilot.count() == 4 && pilot == simple_pilot(pilot[1].value));
 }
 static bool is_simple_pilot_symbols(Array<Values> const& symbols)
 {
 	return symbols.count() == 0 ||
 		(symbols.count() == 2 &&
-		(symbols[0].count() == 2 && symbols[0][0] == 0) &&	// pilot pulse
-		(symbols[1].count() == 3 && symbols[1][0] == 0));	// sync pulses
+		(symbols[0].count() == 2 && symbols[0][0].value == 0) &&	// pilot pulse
+		(symbols[1].count() == 3 && symbols[1][0].value == 0));		// sync pulses
 }
 static bool is_simple_pilot_scheme(Values const& pilot, Array<Values> const& symbols)
 {
@@ -833,13 +833,13 @@ static void	set_default_pilot(CodeSegment* s)
 		static const Values pilot0(std::move(Values()<<v0<<Value(2011)));				// pilot pulse
 		static const Values pilot1(std::move(Values()<<v0<<Value(601)<<Value(793)));	// sync pulses
 
-		if (s->pilot.count() == 0) s->pilot = simple_pilot(s->flag&0x80 ? 1024 : 8192);
+		if (s->pilot.count() == 0) s->pilot = simple_pilot(s->flag.value & 0x80 ? 1024 : 8192);
 		if (s->pilotsym.count() == 0) s->pilotsym << pilot0;
 		if (s->pilotsym.count() == 1) s->pilotsym << pilot1;
 	}
 	else	// zx spectrum
 	{
-		if (s->pilot.count() == 0) s->pilot = simple_pilot(s->flag&0x80 ? 3223 : 8063);
+		if (s->pilot.count() == 0) s->pilot = simple_pilot(s->flag.value & 0x80 ? 3223 : 8063);
 		if (s->pilotsym.count() == 0) s->pilotsym << zxsp_pilot0;
 		if (s->pilotsym.count() == 1) s->pilotsym << zxsp_pilot1;
 	}
@@ -910,9 +910,9 @@ void Z80Assembler::checkTzxFile () throws
 		case TZX_PURE_TONE:
 		{
 			TzxPureToneSegment* s = dynamic_cast<TzxPureToneSegment*>(tzxseg);
-			if (s->num_pulses <= 0 || s->num_pulses > 0xffff )
+			if (s->num_pulses.value <= 0 || s->num_pulses.value > 0xffff )
 				throw SyntaxError("TZX pure tone: invalid num pulses");
-			if (s->pulse_length <= 0 || s->pulse_length > 0xffff )
+			if (s->pulse_length.value <= 0 || s->pulse_length.value > 0xffff )
 				throw SyntaxError("TZX pure tone: invalid pulse length");
 			break;
 		}
@@ -922,7 +922,7 @@ void Z80Assembler::checkTzxFile () throws
 			if (s->count == 0 || s->count > 255)
 				throw SyntaxError("TZX pulses: invalid num pulses");
 			for (uint i=0; i<s->count; i++)
-				if (s->pulses[i] <= 0 || s->pulses[i] > 0xffff)
+				if (s->pulses[i].value <= 0 || s->pulses[i].value > 0xffff)
 					throw SyntaxError("TZX pulses: invalid pulse");
 			break;
 		}
@@ -980,26 +980,26 @@ void Z80Assembler::checkTzxFile () throws
 				if (s->num_channels!=1 && s->num_channels!=2)
 					throw SyntaxError("TZX CSW %s: illegal number of channels", filename);
 
-				if (s->header_size < 0 || s->header_size > (1<<30))
+				if (s->header_size.value < 0 || s->header_size.value > (1<<30))
 					throw SyntaxError("TZX CSW %s: header size out of range", filename);
 
-				total_frames = int32(filesize - s->header_size) / int32(s->sample_size * s->num_channels);
+				total_frames = int32(filesize - s->header_size.value) / int32(s->sample_size * s->num_channels);
 				if(total_frames < 0) throw SyntaxError("TZX CSW %s: file too short", filename);
 			}
 
 			s->last_frame.value = min(total_frames, s->last_frame.value);
 
-			if(s->pause < 0 || s->pause > 0xffff) throw SyntaxError("TZX CSW %s: pause out of range", filename);
-			if (s->first_frame < 0) throw SyntaxError("TZX CSW %s: start < 0", filename);
-			if (s->first_frame >= total_frames) throw SyntaxError("TZX CSW %s: start ≥ file end", filename);
-			if (s->first_frame >= s->last_frame) throw SyntaxError("TZX CSW %s: start ≥ end", filename);
+			if(s->pause.value < 0 || s->pause.value > 0xffff) throw SyntaxError("TZX CSW %s: pause out of range", filename);
+			if (s->first_frame.value < 0) throw SyntaxError("TZX CSW %s: start < 0", filename);
+			if (s->first_frame.value >= total_frames) throw SyntaxError("TZX CSW %s: start ≥ file end", filename);
+			if (s->first_frame.value >= s->last_frame.value) throw SyntaxError("TZX CSW %s: start ≥ end", filename);
 
 			break;
 		}
 		case TZX_PAUSE:
 		{
 			TzxPauseSegment* s = dynamic_cast<TzxPauseSegment*>(tzxseg);
-			if (s->duration < 0 || s->duration > 0xffff)
+			if (s->duration.value < 0 || s->duration.value > 0xffff)
 				throw SyntaxError("TZX pause: illegal duration");
 			break;
 		}
@@ -1019,7 +1019,8 @@ void Z80Assembler::checkTzxFile () throws
 		case TZX_LOOP_START:
 		{
 			TzxLoopStartSegment* s = dynamic_cast<TzxLoopStartSegment*>(tzxseg);
-			if (s->repetitions<2 || s->repetitions>0xffff) throw SyntaxError("TZX loop start: illegal repetitions");
+			if (s->repetitions.value < 2 || s->repetitions.value > 0xffff)
+				throw SyntaxError("TZX loop start: illegal repetitions");
 			blocks.append(s->name);
 			break;
 		}
@@ -1036,7 +1037,8 @@ void Z80Assembler::checkTzxFile () throws
 		case TZX_POLARITY:
 		{
 			TzxPolaritySegment* s = dynamic_cast<TzxPolaritySegment*>(tzxseg);
-			if (s->polarity != 0 && s->polarity != 1) throw SyntaxError("TZX polarity: illegal value");
+			if (s->polarity.value != 0 && s->polarity.value != 1)
+				throw SyntaxError("TZX polarity: illegal value");
 			break;
 		}
 		case TZX_INFO:
@@ -1120,7 +1122,7 @@ void Z80Assembler::checkTzxFile () throws
 	// Check code segments:
 
 	CodeSegments segments(this->segments);
-	while (segments[0]->size==0 && !segments[0]->has_flag) { segments.remove(0u); }
+	while (segments[0]->size.value == 0 && !segments[0]->has_flag) { segments.remove(0u); }
 
 	if (!segments[0]->has_flag)
 		throw SyntaxError("tape block %s: flag byte missing (argument #4)", segments[0]->name);
@@ -1134,7 +1136,7 @@ void Z80Assembler::checkTzxFile () throws
 
 		if (!s->has_lastbits) s->lastbits = 8;
 		if (s->no_flagbyte) s->flag = s->core[0];
-		if (!s->has_pause) s->setPause(Value(s->flag & 0x80 ? 2000 :		// data block
+		if (!s->has_pause) s->setPause(Value(s->flag.value & 0x80 ? 2000 :	// data block
 											 s->checksum_ace ? 2 : 1000));	// header
 
 		// choose best TZX block for CODE segments:
@@ -1149,7 +1151,7 @@ void Z80Assembler::checkTzxFile () throws
 					s->type = TZX_TURBO;	// then TZX_TURBO uses an approximation of the Jupiter ACE timing
 				else
 					s->type = is_zxsp_data_symbols(s->datasym) &&
-							  is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag) ?
+							  is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag.value) ?
 						TZX_STANDARD : TZX_TURBO;
 			}
 			else
@@ -1165,17 +1167,17 @@ void Z80Assembler::checkTzxFile () throws
 			if (size > minsz+0xfeff) throw SyntaxError("size = %u (max = 0xfeff)", size-minsz);
 			size = 0;
 
-			assert(s->lastbits>=1 && s->lastbits<=8);
-			if (s->flag > 255 || s->flag < -128) throw SyntaxError("flag byte out of range");
+			assert(s->lastbits.value >= 1 && s->lastbits.value <= 8);
+			if (s->flag.value > 255 || s->flag.value < -128) throw SyntaxError("flag byte out of range");
 			if (uint(s->pause) > 0xffff) throw SyntaxError("pause out of range");
 
 			// check pilot and data pulses:
 			if (s->type == TZX_STANDARD)
 			{
 				if (s->no_pilot) throw SyntaxError("invalid pilot=none");
-				if (s->lastbits != 8) throw SyntaxError("invalid lastbits=%i",int(s->lastbits));
+				if (s->lastbits.value != 8) throw SyntaxError("invalid lastbits=%i",int(s->lastbits));
 				if (!is_zxsp_data_symbols(s->datasym)) throw SyntaxError("invalid data pulses");
-				if (!is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag)) throw SyntaxError("invalid pilot pulses");
+				if (!is_zxsp_pilot_scheme(s->pilot,s->pilotsym,s->flag.value)) throw SyntaxError("invalid pilot pulses");
 			}
 			else if (s->type == TZX_TURBO)
 			{
@@ -1202,7 +1204,7 @@ void Z80Assembler::checkTzxFile () throws
 				if (n==0 && !(size==0 && s->no_flagbyte && s->no_checksum))
 					set_default_data_symbols(s);
 
-				if (n > 2 && s->lastbits % (n==4 ? 2 : n==16 ? 4 : 8))
+				if (n > 2 && s->lastbits.value % (n==4 ? 2 : n==16 ? 4 : 8))
 					throw SyntaxError("invalid lastbits=%u for %u data symbols", uint(s->lastbits), n);
 
 				// check data symbols:
@@ -1234,7 +1236,7 @@ void Z80Assembler::checkTzxFile () throws
 						if (idx < s->pilotsym.count()) used[idx] = true;
 						else throw SyntaxError("pilot symbol #%u used but not defined", idx);
 
-						int rep = s->pilot[i+1];				// repetitions
+						int rep = s->pilot[i+1].value;			// repetitions
 						if (uint(rep) > 0xffff) throw SyntaxError("pilot #%u: too many repetitions %i", i/2, rep);
 					}
 
@@ -1298,7 +1300,7 @@ void Z80Assembler::checkSnaFile () throws
 	CodeSegment& hs = segments[i0];
 	if (hs.compressed) throw SyntaxError(
 		"target SNA: header segment %s cannot be compressed",hs.name);
-	if (hs.size!=27) throw SyntaxError(
+	if (hs.size.value != 27) throw SyntaxError(
 		"target SNA: header segment %s must be 27 bytes (size=%u)", hs.name, uint(hs.size));
 	SnaHead* head = SnaHeadPtr(hs.getData());
 
@@ -1367,13 +1369,13 @@ void Z80Assembler::checkAceFile () throws
 	for (uint i=0; addr<0x3C00; i++)
 	{
 		CodeSegment& s = segments[i];
-		if (s.size==0) continue;		// skip & don't check address
+		if (s.size.value == 0) continue;	// skip & don't check address
 
 		if (s.address.value!=addr) setError(
 			"segment %s must start at 0x%04X (address=0x%04X)", s.name, uint(addr), uint(s.address));
 		if (s.compressed) throw SyntaxError(
 			"segment %s cannot be compressed",s.name);
-		if (s.size&0x3ff) throw SyntaxError(
+		if (s.size.value & 0x3ff) throw SyntaxError(
 			"segment %s size must be a multiple of 0x400 (size=0x%04X)", s.name, uint(s.size));
 
 		for (uint32 offs=0; offs<uint32(s.size) && addr<0x3C00; offs+=0x400, addr+=0x400)
@@ -1496,11 +1498,11 @@ void Z80Assembler::checkZX80File () throws
 	if (ramsize<sizeof(ZX80Head)) return;
 
 	CodeSegment& hs = segments[i0];
-	if (hs.address != 0x4000) throw SyntaxError(
+	if (hs.address.value != 0x4000) throw SyntaxError(
 		"segment %s: first segment must start at $4000",hs.name);
 	if (hs.compressed) throw SyntaxError(
 		"segment %s: system variables cannot be compressed",hs.name);
-	if (hs.size<int(sizeof(ZX80Head))) throw SyntaxError(
+	if (size_t(hs.size) < sizeof(ZX80Head)) throw SyntaxError(
 		"segment %s: system variables must be at least 40 ($28) bytes (size=%u)",hs.name,uint(hs.size));
 
 	void* vp = hs.getData();
@@ -1514,7 +1516,7 @@ void Z80Assembler::checkZX80File () throws
 	{
 		uint i=0;
 		while (i<segments.count()) { i++; }
-		while (segments[--i]->size==0) {}
+		while (segments[--i]->size.value == 0) {}
 		CodeSegment& ls = segments[i];
 		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 		else if (ls[uint(ls.size)-1] != 0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
@@ -1589,8 +1591,8 @@ void Z80Assembler::checkZX81File () throws
 
 a:		CodeSegment& s = segments[hi++];
 		if (s.compressed) throw SyntaxError("segment %s: program name cannot be compressed",s.name);
-		if (s.size==0) goto a;
-		if (s.size>128) throw SyntaxError(
+		if (s.size.value == 0) goto a;
+		if (s.size.value > 128) throw SyntaxError(
 			"segment %s: program name too long: max=128 bytes (size=%u)",s.name,uint(s.size));
 
 		uint i = 0;
@@ -1606,11 +1608,11 @@ a:		CodeSegment& s = segments[hi++];
 		"total ram size out of range: must be ≥125+1 ($7D+1) and ≤16k (size=$%04X)",ramsize);
 
 	CodeSegment& hs = segments[hi];
-	if (hs.address != 0x4009) throw SyntaxError(
+	if (hs.address.value != 0x4009) throw SyntaxError(
 		"segment %s: first segment must start at $4009",hs.name);
 	if (hs.compressed)
 		throw SyntaxError("segment %s: system variables cannot be compressed",hs.name);
-	if (hs.size < 125-9) throw SyntaxError(
+	if (hs.size.value < 125-9) throw SyntaxError(
 		"segment %s must be at least 125-9 ($7D-9) bytes (size=%u)",hs.name,uint(hs.size));
 
 	void* vp = hs.getData();
@@ -1623,7 +1625,7 @@ a:		CodeSegment& s = segments[hi++];
 	{
 		uint i=0;
 		while (i<segments.count()) { i++; }
-		while (segments[--i]->size==0) {}
+		while (segments[--i]->size.value == 0) {}
 		CodeSegment& ls = segments[i];
 		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 		else if (ls[uint(ls.size)-1]!=0x80) logline("segment %s: last byte (last byte of VARS) is not $80",ls.name);
@@ -1655,7 +1657,7 @@ void Z80Assembler::checkZ80File () throws
 	Z80Header& head = *Z80HeaderPtr(vp);
 
 	// handle version 1.45:
-	if (hs.size == z80v1len)
+	if (hs.size.value == z80v1len)
 	{
 		// check header:
 		if (!head.pch && !head.pcl) setError("header v1.45: PC at offset 6 must not be 0");
@@ -1663,7 +1665,7 @@ void Z80Assembler::checkZ80File () throws
 		// check segments:
 		if (segments.count()>2) setError("v1.45: only one ram page allowed");
 		CodeSegment& s = segments[i0+1];
-		if (s.size!=0xc000) setError("segment %s: v1.45: page size must be 0xC000",s.name);
+		if (s.size.value != 0xc000) setError("segment %s: v1.45: page size must be 0xC000",s.name);
 		if (s.has_flag) setError("segment %s: v1.45: no page ID allowed",s.name);
 
 		// comfort: clear compression flag if size increases:
@@ -1674,17 +1676,17 @@ void Z80Assembler::checkZ80File () throws
 	// v2.0++
 	// check header:
 
-	if (hs.size < z80v3len && hs.size!=z80v2len)
+	if (hs.size.value < z80v3len && hs.size.value != z80v2len)
 		throw SyntaxError("header: length must be 30 (v1.45), 55 (v2.01) or 86++ (v3++)");
 	if (head.pch || head.pcl) throw SyntaxError("header v2++: PC at offset 6 must be 0");
 
 	int n = head.h2lenl + 256 * head.h2lenh;	// length of header extension
-	if (32+n != hs.size) throw SyntaxError(
+	if (32+n != hs.size.value) throw SyntaxError(
 		"header v2++: wrong header extension length at offset 30: %u + 32 != %u", n, hs.size.value);
 
 	Model model = head.getZxspModel();
 	if (model==unknown_model) throw SyntaxError("header: illegal model");
-	if (model>=zxplus3 && model<=zxplus2a_span && hs.size<z80v3len+1)
+	if (model>=zxplus3 && model<=zxplus2a_span && hs.size.value < z80v3len+1)
 		throw SyntaxError("header: size must be ≥ 87 for +3/+2A for port_1ffd byte (warajewo/xzx extension)");
 
 	//uint32 cc = head.getCpuCycle(model_info->cpu_cycles_per_frame);
@@ -1693,7 +1695,7 @@ void Z80Assembler::checkZ80File () throws
 	bool spectra_used = head.isVersion300() && (head.rldiremu & 0x08);
 	if (spectra_used && model>inves)
 		throw SyntaxError("header: SPECTRA extension can only be attached to ZX Spectrum 16/48k (rldiremu&8)");
-	if (spectra_used && hs.size<89)
+	if (spectra_used && hs.size.value < 89)
 		throw SyntaxError("header: size must be ≥ 89 bytes for SPECTRA extension (rldiremu&8)");
 
 	// v2.0++
@@ -1747,8 +1749,8 @@ rampage:	page_id -= 3;
 				if (loaded & (1<<page_id)) { setError("segment %s: page ID occured twice",s.name); continue; }
 				loaded |= 1<<page_id;
 				int32 size = 1024 << page_id;
-				if (size != s.size) { setError("segment %s: page size does not match page ID",s.name); continue; }
-				if (int(addr)+size > s.size) {setError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
+				if (size != s.size.value) { setError("segment %s: page size does not match page ID",s.name); continue; }
+				if (int(addr)+size > s.size.value) {setError("segment %s: sum of page sizes exceeds ram size",s.name);continue;}
 				addr += uint(size);
 			}
 			else	// std. 16k page:
@@ -1757,7 +1759,7 @@ rampage:	page_id -= 3;
 				if (loaded & (1<<page_id)) { setError("segment %s: page ID occured twice",s.name); continue; }
 				loaded |= 1<<page_id;
 				addr += 16 kB;
-anypage:		if (s.size!=16 kB) { setError("segment %s: page size must be 16 kB",s.name); continue; }
+anypage:		if (s.size.value != 16 kB) { setError("segment %s: page size must be 16 kB",s.name); continue; }
 			}
 			continue;
 		}

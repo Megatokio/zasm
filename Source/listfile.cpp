@@ -337,14 +337,14 @@ static cstr u5str (cValue& n)
 {
 	if (n.is_invalid()) return "VOID ";
 	str s = spacestr(5);
-	sprintf(s,"%u",n&0xffff); if (n<10000) *strchr(s,0)=' ';
+	sprintf(s, "%u", n.value&0xffff); if (n.value<10000) *strchr(s,0)=' ';
 	return s;
 }
 
 static cstr h4u5str (cValue& n)
 {
-	if (n.is_valid())		return usingstr("= $%04X =%6u", n&0xffff, int(n));
-	if (n.is_preliminary())	return usingstr("~ $%04X =%6u", n&0xffff, int(n));
+	if (n.is_valid())		return usingstr("= $%04X =%6u", n.value & 0xffff, int(n));
+	if (n.is_preliminary())	return usingstr("~ $%04X =%6u", n.value & 0xffff, int(n));
 	else					return "=  ***VOID***  ";
 }
 
@@ -523,7 +523,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style) throws /*AnyError*/
 		for (uint i=0; i<segments.count(); i++)
 		{
 			DataSegment& s = segments[i];
-			if (i==0 && s.size==0 && segments.count()>1) continue;
+			if (i==0 && s.size.value==0 && segments.count()>1) continue;
 			if (s.isCode() && static_cast<CodeSegment&>(s).has_flag)
 				fd.write_fmt("#CODE %s %s %s,  size %s,  flag = %s\n",
 					s.name,spadding+strlen(s.name),

@@ -167,7 +167,7 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 				if (q.testWord("iy")) { if (target_8080) goto no_8080; r = XIY; if (q.testChar(')')) return r; }
 				if (q.testWord("c"))  { if (target_8080) goto no_8080; q.expect(')'); return XC; }
 
-				n = value(q); if (r!=XNN && n!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
+				n = value(q); if (r!=XNN && n.value!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
 				q.expectClose();
 				return r;
 			}
@@ -213,7 +213,7 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 	if (target_8080 || !q.testChar('(')) return NN;
 
 	// SDASZ80 syntax: n(IX)
-	if (n!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
+	if (n.value!=int8(n) && n.is_valid()) throw SyntaxError("offset out of range");
 	if (q.testWord("ix")) { q.expectClose(); return XIX; }
 	if (q.testWord("iy")) { q.expectClose(); return XIY; }
 	throw SyntaxError("syntax error");
@@ -292,10 +292,12 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 		// jp (rr)	hl ix iy
 		r2 = getCondition(q,yes);
 		r  = getRegister(q,n);
-		if (r==NN)				  return store(r2==NIX ? JP : JP_NZ+(r2-NZ)*8, n, n>>8);
-		if (r==HL||r==XHL)		  return store(JP_HL);
-		if (r==IX||(r==XIX&&n==0)) return store(PFX_IX,JP_HL);
-		if (r==IY||(r==XIY&&n==0)) return store(PFX_IY,JP_HL);
+		if (r==NN)				{ store(r2==NIX ? JP : JP_NZ+(r2-NZ)*8); storeWord(n); return; }
+		if (r==HL || r==XHL)	{ store(JP_HL); return; }
+		// note: getRegister() returns XIX|XIY and n=0 for jp (ix|iy):
+		// validity test not required: 'jp (ix+dis) will fail when 'dis' becomes valid.
+		if (r==IX || (r==XIX && n.value==0)) { store(PFX_IX,JP_HL); return; }
+		if (r==IY || (r==XIY && n.value==0)) { store(PFX_IY,JP_HL); return; }
 		goto ill_dest;
 
 	case ' ret':
@@ -309,15 +311,15 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 		// call cc,nn
 		r2 = getCondition(q,yes);
 		r  = getRegister(q,n);
-		if (r==NN) return store(r2==NIX ? CALL : CALL_NZ+(r2-NZ)*8, n, n>>8);
+		if (r==NN) { store(r2==NIX ? CALL : CALL_NZ+(r2-NZ)*8); storeWord(n); return; }
 		goto ill_dest;
 
 	case ' rst':
 		// rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
-		if (n%8==0) n.value>>=3;
-		if (n.is_valid() && n>>3) throw SyntaxError( "illegal vector number" );
-		else return store(RST00+n*8);
+		if (n.value%8 == 0) n.value>>=3;
+		if (n.is_valid() && n.value>>3) throw SyntaxError( "illegal vector number" );
+		else return store(RST00+n.value*8);
 
 	case 'push':	instr = PUSH_HL; goto pop;
 	case ' pop':	instr = POP_HL;  goto pop;
@@ -331,8 +333,8 @@ pop:
 		if (r==IY) return store(PFX_IY,instr);
 		if (instr==POP_HL) goto ill_target; else goto ill_source;
 
-	case ' dec':	n2 = 1;	goto inc;
-	case ' inc':	n2 = 0;	goto inc;
+	case ' dec':	r2 = 1;	goto inc;
+	case ' inc':	r2 = 0;	goto inc;
 
 		// inc r	a b c d e h l (hl) (ix+d)
 		// inc xh
@@ -340,17 +342,17 @@ pop:
 inc:
 		r = getRegister(q,n);
 
-		instr = INC_xHL + n2;	// inc (hl)  or  dec (hl)
-		if (r<=RA)   return store(        instr+(r-XHL)*8);
-		if (r==XIX)  return store(PFX_IX, instr, n);
-		if (r==XIY)  return store(PFX_IY, instr, n);
-		if (r<=XL)   return store(PFX_IX, instr+(r+RH-XH-XHL)*8);
-		if (r<=YL)   return store(PFX_IY, instr+(r+RH-YH-XHL)*8);
+		instr = INC_xHL + r2;	// inc (hl)  or  dec (hl)
+		if (r<=RA)   { store(instr+(r-XHL)*8); return; }
+		if (r==XIX)  { store(PFX_IX, instr, n.value); return; }	// note: offset tested by getRegister()
+		if (r==XIY)  { store(PFX_IY, instr, n.value); return; }	// ""
+		if (r<=XL)   { store(PFX_IX, instr+(r+RH-XH-XHL)*8); return; }
+		if (r<=YL)   { store(PFX_IY, instr+(r+RH-YH-XHL)*8); return; }
 
 		if (r==XMMHL)return store(DEC_HL, instr);
 		if (r==XHLPP)return store(instr, INC_HL);
 
-		instr = INC_HL + n2*8;	// inc hl or dec hl
+		instr = INC_HL + r2*8;	// inc hl or dec hl
 		if (r>=BC && r<=SP) return store(instr+(r-HL)*16);
 		if (r==IX) return store(PFX_IX, instr);
 		if (r==IY) return store(PFX_IY, instr);
@@ -427,8 +429,8 @@ cp_a:	depp=q.p; if (q.testComma()) { if (r!=RA) goto ill_target; else r = getReg
 
 		if (r<=RA)    { store(instr+r-RB); return; }
 		if (r==NN)    { store(instr+CP_N-CP_B); storeByte(n); return; }
-		if (r==XIX)   { store(PFX_IX, instr+XHL-RB, n); return; }
-		if (r==XIY)   { store(PFX_IY, instr+XHL-RB, n); return; }
+		if (r==XIX)   { store(PFX_IX, instr+XHL-RB, n.value); return; }
+		if (r==XIY)   { store(PFX_IY, instr+XHL-RB, n.value); return; }
 		if (r<=XL)    { store(PFX_IX, instr+r+RH-XH-RB); return; }
 		if (r<=YL)    { store(PFX_IY, instr+r+RH-YH-RB); return; }
 		if (r==XHLPP) { store(instr+XHL-RB, INC_HL); return; }
@@ -466,8 +468,8 @@ cp_a:	depp=q.p; if (q.testComma()) { if (r!=RA) goto ill_target; else r = getReg
 			// ld iy,(NN)
 			// ld iy,NN
 			instr = PFX_IY;
-ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
-			if (r2==XNN) return store(instr, LD_HL_xNN, n2, n2>>8);
+ld_iy:		if (r2==NN)  { store(instr, LD_HL_NN);  storeWord(n2); return; }
+			if (r2==XNN) { store(instr, LD_HL_xNN); storeWord(n2); return; }
 			if (r2==BC)  { if (target_z180) goto ill_opcode; return store(instr, LD_H_B, instr, LD_L_C); }
 			if (r2==DE)  { if (target_z180) goto ill_opcode; return store(instr, LD_H_D, instr, LD_L_E); }
 			goto ill_source;
@@ -479,10 +481,10 @@ ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
 			// ld hl,NN
 			if (r2==BC)  { store(LD_H_B, LD_L_C); return; }
 			if (r2==DE)  { store(LD_H_D, LD_L_E); return; }
-			if (r2==NN)  { store(LD_HL_NN,  n2, n2>>8); return; }
-			if (r2==XNN) { store(LD_HL_xNN, n2, n2>>8); return; }
-			if (r2==XIX) { store(PFX_IX, LD_L_xHL, n2); store(PFX_IX, LD_H_xHL, n2+1); return; }
-			if (r2==XIY) { store(PFX_IY, LD_L_xHL, n2); store(PFX_IY, LD_H_xHL, n2+1); return; }
+			if (r2==NN)  { store(LD_HL_NN);  storeWord(n2); return; }
+			if (r2==XNN) { store(LD_HL_xNN); storeWord(n2); return; }
+			if (r2==XIX) { store(PFX_IX, LD_L_xHL, n2.value); store(PFX_IX, LD_H_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
+			if (r2==XIY) { store(PFX_IY, LD_L_xHL, n2.value); store(PFX_IY, LD_H_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
 			goto ill_source;
 
 		case BC:
@@ -492,15 +494,15 @@ ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
 			// ld bc,(hl)					Goodie
 			// ld bc,(ix+d)					Goodie
 			// ld bc,(hl++)					Goodie
-			if (r2==NN)  { store(LD_BC_NN, n2, n2>>8); return; }
+			if (r2==NN)  { store(LD_BC_NN); storeWord(n2); return; }
 			if (r2==XNN) { storeEDopcode(LD_BC_xNN); storeWord(n2); return; }
 			if (r2==DE)  { store(LD_B_D, LD_C_E); return; }
 			if (r2==HL)  { store(LD_B_H, LD_C_L); return; }
 			if (r2==IX)  { if (target_z180) goto ill_opcode; store(PFX_IX, LD_B_H, PFX_IX, LD_C_L); return; }
 			if (r2==IY)  { if (target_z180) goto ill_opcode; store(PFX_IY, LD_B_H, PFX_IY, LD_C_L); return; }
 			if (r2==XHL) { store(LD_C_xHL, INC_HL, LD_B_xHL, DEC_HL); return; }
-			if (r2==XIX) { store(PFX_IX, LD_C_xHL, n2); store(PFX_IX, LD_B_xHL, n2+1); return; }
-			if (r2==XIY) { store(PFX_IY, LD_C_xHL, n2); store(PFX_IY, LD_B_xHL, n2+1); return; }
+			if (r2==XIX) { store(PFX_IX, LD_C_xHL, n2.value); store(PFX_IX, LD_B_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
+			if (r2==XIY) { store(PFX_IY, LD_C_xHL, n2.value); store(PFX_IY, LD_B_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
 			if (r2==XHLPP) { store(LD_C_xHL, INC_HL, LD_B_xHL, INC_HL); return; }
 			if (r2==XMMHL) { store(DEC_HL, LD_B_xHL, DEC_HL, LD_C_xHL); return; }
 			goto ill_source;
@@ -512,15 +514,15 @@ ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
 			// ld de,(hl)					Goodie
 			// ld de,(ix+d)					Goodie
 			// ld de,(hl++)					Goodie
-			if (r2==NN)    { store(LD_DE_NN, n2, n2>>8); return; }
+			if (r2==NN)    { store(LD_DE_NN); storeWord(n2); return; }
 			if (r2==XNN)   { storeEDopcode(LD_DE_xNN); storeWord(n2); return; }
 			if (r2==BC)    { store(LD_D_B, LD_E_C); return; }
 			if (r2==HL)    { store(LD_D_H, LD_E_L); return; }
 			if (r2==IX)    { if (target_z180) goto ill_opcode; store(PFX_IX, LD_D_H, PFX_IX, LD_E_L); return; }
 			if (r2==IY)    { if (target_z180) goto ill_opcode; store(PFX_IY, LD_D_H, PFX_IY, LD_E_L); return; }
 			if (r2==XHL)   { store(LD_E_xHL, INC_HL, LD_D_xHL, DEC_HL); return; }
-			if (r2==XIX)   { store(PFX_IX, LD_E_xHL, n2); store(PFX_IX, LD_D_xHL, n2+1); return; }
-			if (r2==XIY)   { store(PFX_IY, LD_E_xHL, n2); store(PFX_IY, LD_D_xHL, n2+1); return; }
+			if (r2==XIX)   { store(PFX_IX, LD_E_xHL, n2.value); store(PFX_IX, LD_D_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
+			if (r2==XIY)   { store(PFX_IY, LD_E_xHL, n2.value); store(PFX_IY, LD_D_xHL, n2.value+1); return; } // ignored: n2+1 may wrap!
 			if (r2==XHLPP) { store(LD_E_xHL,INC_HL,LD_D_xHL,INC_HL); return; }
 			if (r2==XMMHL) { store(DEC_HL, LD_D_xHL, DEC_HL, LD_E_xHL); return; }
 			goto ill_source;
@@ -532,7 +534,7 @@ ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
 			if (r2==HL)  { store(LD_SP_HL); return; }
 			if (r2==IX)  { store(PFX_IX, LD_SP_HL); return; }
 			if (r2==IY)  { store(PFX_IY, LD_SP_HL); return; }
-			if (r2==NN)  { store(LD_SP_NN, n2, n2>>8); return; }
+			if (r2==NN)  { store(LD_SP_NN); storeWord(n2); return; }
 			if (r2==XNN) { storeEDopcode(LD_SP_xNN); storeWord(n2); return; }
 			goto ill_source;
 
@@ -548,11 +550,11 @@ ld_iy:		if (r2==NN)  return store(instr, LD_HL_NN,  n2, n2>>8);
 			// ld (iy+d),n
 			// ld (iy+d),rr		bc de hl		Goodie
 			instr = PFX_IY;
-ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n); return; }
-			if (r2==NN) { store(instr, LD_xHL_N, n); storeByte(n2); return; }
-			if (r2==HL) { store(instr, LD_xHL_L, n); store(instr, LD_xHL_H, n+1); return; }
-			if (r2==DE) { store(instr, LD_xHL_E, n); store(instr, LD_xHL_D, n+1); return; }
-			if (r2==BC) { store(instr, LD_xHL_C, n); store(instr, LD_xHL_B, n+1); return; }
+ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n.value); return; }
+			if (r2==NN) { store(instr, LD_xHL_N, n.value); storeByte(n2); return; }
+			if (r2==HL) { store(instr, LD_xHL_L, n.value); store(instr, LD_xHL_H, n.value+1); return; } // ignored: n+1 may wrap!
+			if (r2==DE) { store(instr, LD_xHL_E, n.value); store(instr, LD_xHL_D, n.value+1); return; } // ignored: n+1 may wrap!
+			if (r2==BC) { store(instr, LD_xHL_C, n.value); store(instr, LD_xHL_B, n.value+1); return; } // ignored: n+1 may wrap!
 			goto ill_source;
 
 		case XHL:
@@ -569,10 +571,10 @@ ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n); return; }
 			// ld (NN),a
 			// ld (NN),hl	hl ix iy
 			// ld (NN),rr	bc de sp
-			if (r2==RA) { store(		LD_xNN_A,  n, n>>8 ); return; }
-			if (r2==HL) { store(		LD_xNN_HL, n, n>>8 ); return; }
-			if (r2==IX) { store(PFX_IX, LD_xNN_HL, n, n>>8 ); return; }
-			if (r2==IY) { store(PFX_IY, LD_xNN_HL, n, n>>8 ); return; }
+			if (r2==RA) { store(		LD_xNN_A ); storeWord(n); return; }
+			if (r2==HL) { store(		LD_xNN_HL); storeWord(n); return; }
+			if (r2==IX) { store(PFX_IX, LD_xNN_HL); storeWord(n); return; }
+			if (r2==IY) { store(PFX_IY, LD_xNN_HL); storeWord(n); return; }
 			if (r2==BC) { storeEDopcode(LD_xNN_BC); storeWord(n); return; }
 			if (r2==DE) { storeEDopcode(LD_xNN_DE); storeWord(n); return; }
 			if (r2==SP) { storeEDopcode(LD_xNN_SP); storeWord(n); return; }
@@ -651,15 +653,15 @@ ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n); return; }
 			// ld i,a
 			// ld a,(rr)	bc de
 			// ld a,(NN)
-			if (r2==XBC)   return store(LD_A_xBC);
-			if (r2==XDE)   return store(LD_A_xDE);
-			if (r2==XNN)   return store(LD_A_xNN, n2, n2>>8);
-			if (r2==RI)    return storeEDopcode(LD_A_I);
-			if (r2==RR)    return storeEDopcode(LD_A_R);
-			if (r2==XBCPP) return store(LD_A_xBC, INC_BC);
-			if (r2==XDEPP) return store(LD_A_xDE, INC_DE);
-			if (r2==XMMBC) return store(DEC_BC, LD_A_xBC);
-			if (r2==XMMDE) return store(DEC_DE, LD_A_xDE);
+			if (r2==XBC)   { store(LD_A_xBC); return; }
+			if (r2==XDE)   { store(LD_A_xDE); return; }
+			if (r2==XNN)   { store(LD_A_xNN); storeWord(n2); return; }
+			if (r2==RI)    { storeEDopcode(LD_A_I);	  return; }
+			if (r2==RR)    { storeEDopcode(LD_A_R);	  return; }
+			if (r2==XBCPP) { store(LD_A_xBC, INC_BC); return; }
+			if (r2==XDEPP) { store(LD_A_xDE, INC_DE); return; }
+			if (r2==XMMBC) { store(DEC_BC, LD_A_xBC); return; }
+			if (r2==XMMDE) { store(DEC_DE, LD_A_xDE); return; }
 			goto ld_r;
 
 		case RH:
@@ -679,8 +681,8 @@ ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n); return; }
 ld_r:		assert(r<=RA && r!=XHL);
 			if (r2<=RA)		    { store(LD_B_B + (r-RB)*8 + (r2-RB)); return; }
 			if (r2==NN)		    { store(LD_B_N + (r-RB)*8); storeByte(n2); return; }
-			if (r2==XIX)	    { store(PFX_IX, LD_B_xHL+(r-RB)*8, n2); return; }
-			if (r2==XIY)	    { store(PFX_IY, LD_B_xHL+(r-RB)*8, n2); return; }
+			if (r2==XIX)	    { store(PFX_IX, LD_B_xHL+(r-RB)*8, n2.value); return; }
+			if (r2==XIY)	    { store(PFX_IY, LD_B_xHL+(r-RB)*8, n2.value); return; }
 			if (r2==XH||r2==XL) { store(PFX_IX,LD_B_H+(r2-XH)+(r-RB)*8); return; }
 			if (r2==YH||r2==YL) { store(PFX_IY,LD_B_H+(r2-YH)+(r-RB)*8); return; }
 			if (r2==XHLPP)	    { store(LD_B_xHL + (r-RB)*8, INC_HL); return; }
@@ -723,7 +725,7 @@ ld_r:		assert(r<=RA && r!=XHL);
 	case '  im':
 		// im n		0 1 2
 		r = getRegister(q,n);
-		if (r==NN && uint(n)<=2) return storeEDopcode( n==0 ? IM_0 : n==1 ? IM_1 : IM_2);
+		if (r==NN && uint(n)<=2) return storeEDopcode( n.value==0 ? IM_0 : n.value==1 ? IM_1 : IM_2);
 		throw SyntaxError("illegal interrupt mode");
 
 	case '  in':
@@ -771,13 +773,13 @@ ld_r:		assert(r<=RA && r!=XHL);
 		if (r==XC || r==XBC)
 		{
 			if (r2<=RA && r2!=XHL) return storeEDopcode(OUT_xC_B+(r2-RB)*8);
-			if (r2==NN && (n2==0||n2==255)) return storeEDopcode(OUT_xC_0);
+			if (r2==NN && (n2.value==0||n2.value==255||n2.is_invalid())) return storeEDopcode(OUT_xC_0);
 			goto ill_source;
 		}
 		if (r==XNN || r==NN)
 		{
 			if (r2!=RA) goto ill_source;
-			if (n<-128||n>255) q.p=depp; 	// storeByte() will throw
+			if ((n.value<-128 || n.value>255) && n.is_valid()) q.p=depp; 	// storeByte() will throw
 			store(OUTA); storeByte(n); return;
 		}
 		goto ill_dest;
@@ -791,7 +793,7 @@ ld_r:		assert(r<=RA && r!=XHL);
 
 bit:	n = value(q);
 		if (uint(n)>7) throw SyntaxError("illegal bit number");
-		instr += 8*n;
+		instr += 8*n.value;
 		q.expectComma();
 		goto rr;
 
@@ -842,7 +844,7 @@ rr:		if (target_8080) goto ill_8080;
 				r = getRegister(q,n);
 				if (r>RA || r==XHL) throw SyntaxError("illegal secondary destination");
 			}
-			return store(r2==XIX?PFX_IX:PFX_IY, PFX_CB, n2, instr+r-RB);
+			return store(r2==XIX?PFX_IX:PFX_IY, PFX_CB, n2.value, instr+r-RB);
 		}
 
 		if (r2==XHLPP) return store(PFX_CB, instr + XHL-RB, INC_HL);
@@ -892,7 +894,7 @@ rr:		if (target_8080) goto ill_8080;
 		r2 = getRegister(q,n2);
 		if (r2<=RA && r2!=XHL)
 		{
-			if (n<-128||n>255) q.p=depp;		// storeByte() will throw
+			if ((n.value<-128 || n.value>255)&&n.is_valid()) q.p=depp;		// storeByte() will throw
 			store(PFX_ED, 0x01+8*(r2-RB)); storeByte(n);
 			return;
 		}

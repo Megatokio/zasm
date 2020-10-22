@@ -56,7 +56,7 @@ static void check_validity (cValue& old, cValue& nju, cstr name) // helper
 
 static void check_value (cValue& v, cstr name, int min, int max) // helper
 {
-	if (v.is_valid() && (v<min || v>max))
+	if (v.is_valid() && (v.value<min || v.value>max))
 		throw SyntaxError("%s: value not in range[%i .. %i]",name,min,max);
 }
 
@@ -69,7 +69,7 @@ static void check_value (cValue& old, cValue& nju, cstr name, int min, int max) 
 static void check_uint16_value (cValue& old, cValue& nju, cstr name) // helper
 {
 	check_validity(old,nju,name);
-	if (nju.is_valid() && nju!=uint16(nju))
+	if (nju.is_valid() && nju.value!=uint16(nju))
 		throw SyntaxError("%s: value not in range[0 .. $ffff]",name);
 }
 
@@ -195,7 +195,7 @@ void DataSegment::setAddress (cValue& new_address) throws
 			throw SyntaxError("segment %s address out of range: %i", name, int(new_address));
 		}
 
-		if (size.is_valid() && size + new_address > 0x10000)
+		if (size.is_valid() && size.value + new_address.value > 0x10000)
 		{
 			throw SyntaxError(	"segment %s: address+size out of range: %i + %i = %i",
 								name, int(new_address), int(size), int(size+new_address) );
@@ -227,7 +227,7 @@ void DataSegment::setSize (cValue& newsize) throws
 		if (dpos.is_valid() && dpos > newsize)
 			throw SyntaxError("segment %s overflow",name);
 
-		if (address.is_valid() && address + newsize > 0x10000 )
+		if (address.is_valid() && address.value + newsize.value > 0x10000 )
 			throw SyntaxError( "segment %s: address+size out of range: %i + %i = %i",
 								name, int(address), int(newsize), int(address+newsize) );
 	}
@@ -247,7 +247,7 @@ void DataSegment::setOrigin (cValue& address) throws
 
 	if (address.is_valid())
 	{
-		if (address < -0x8000 || address > 0xFFFF)
+		if (address.value < -0x8000 || address.value > 0xFFFF)
 			throw SyntaxError("address out of range");
 	}
 
@@ -290,11 +290,11 @@ void Segment::storeWord (cValue& word) throws
 
 	if (word.is_valid())
 	{
-		if (word < -0x8000 || word > 0xFFFF)
+		if (word.value < -0x8000 || word.value > 0xFFFF)
 			throw SyntaxError("word value out of range");
 	}
-	store(word);
-	store(word>>8);
+	store(word.value);
+	store(word.value>>8);
 }
 
 void Segment::storeHexBytes (cptr data, uint n) throws
@@ -358,7 +358,11 @@ void DataSegment::storeSpace (cValue& sz) throws
 {
 	// store space
 
-	check_value(sz,"size",0,0x10000);
+	if (sz.is_valid())
+	{
+		if (sz.value < 0) throw SyntaxError("size < 0");
+		if (sz.value > 0x10000) throw SyntaxError("size > 0x10000");
+	}
 
 	// sz		dpos
 	// inval	inval	store 0		dpos=inval	lpos=inval
@@ -398,7 +402,7 @@ void DataSegment::storeSpace (cValue& sz, int c) throws
 
 void CodeSegment::store (int byte) throws
 {
-	if (dpos<0x10000) core[dpos] = uint8(byte);
+	if (dpos.value < 0x10000) core[dpos.value] = uint8(byte);
 
 	dpos.value++;
 	lpos.value++;
@@ -520,10 +524,10 @@ void CodeSegment::setFlag (cValue& v) throws
 
 	if (v.is_valid())
 	{
-		if (v != uint8(v))
+		if (v.value != uint8(v))
 			throw SyntaxError("value out of range");
 
-		if (flag.is_valid() && v != flag)
+		if (flag.is_valid() && v.value != flag.value)
 			throw SyntaxError("segment %s flag redefined",name);
 	}
 	else
@@ -545,6 +549,7 @@ void CodeSegment::setNoFlag()
 	no_flagbyte = yes;
 }
 
+
 // -------------------------------------------------------
 //			TZX
 // -------------------------------------------------------
@@ -558,10 +563,10 @@ void CodeSegment::setPause(cValue& v)
 {
 	if (v.is_valid())
 	{
-		if (v != uint16(v))
+		if (v.value != uint16(v))
 			throw SyntaxError("value out of range");
 
-		if (pause.is_valid() && v != pause)
+		if (pause.is_valid() && v.value != pause.value)
 			throw SyntaxError("pause redefined");
 	}
 	else
@@ -580,10 +585,10 @@ void CodeSegment::setLastBits(cValue& v)
 
 	if (v.is_valid())
 	{
-		if (v < 1 || v > 8)
+		if (v.value < 1 || v.value > 8)
 			throw SyntaxError("value must be in range 1 .. 8");
 
-		if (lastbits.is_valid() && v != lastbits)
+		if (lastbits.is_valid() && v.value != lastbits.value)
 			throw SyntaxError("lastbits redefined");
 	}
 	else
@@ -639,7 +644,7 @@ void CodeSegment::check_pilot_symbol(uint idx) const
 		if (idx == 1 && symbol.count() != 3)
 			throw SyntaxError("tzx-pilot-sym[1]: 3 values required: toggle type + 2 pulses");
 
-		if (symbol[0].is_valid() && symbol[0] != 0)
+		if (symbol[0].is_valid() && symbol[0].value != 0)
 			throw SyntaxError("tzx-pilot-sym[%u][0]: toggle type must be 0", idx);
 	}
 	else // GENERALIZED:
@@ -647,16 +652,16 @@ void CodeSegment::check_pilot_symbol(uint idx) const
 		if (symbol.count() < 2)
 			throw SyntaxError("tzx-pilot-sym[%u]: at least 2 values required: toggle type + pulse length", idx);
 
-		if (symbol[0].is_valid() && symbol[0] > 3)
+		if (symbol[0].is_valid() && symbol[0].value > 3)
 			throw SyntaxError("tzx-pilot-sym[%u][0]: toggle type must be in range 0 .. 3", idx);
 	}
 
 	for (uint i=1; i<symbol.count(); i++)
 	{
 		cValue& v = symbol[i];
-		if (v.is_valid() && v<100)
+		if (v.is_valid() && v.value < 100)
 			throw SyntaxError("tzx-pilot-sym[%u][%u]: pulse too short", idx, i);
-		if (v.is_valid() && v>0xffff)
+		if (v.is_valid() && v.value > 0xffff)
 			throw SyntaxError("tzx-pilot-sym[%u][%u]: pulse too long", idx, i);
 	}
 }
@@ -675,7 +680,7 @@ void CodeSegment::check_data_symbol(uint idx) const
 		if (symbol.count() != 3)
 			throw SyntaxError("tzx-data-sym[%u]: 3 values required: toggle type + 2 pulses", idx);
 
-		if (symbol[0].is_valid() && symbol[0] != 0)
+		if (symbol[0].is_valid() && symbol[0].value != 0)
 			throw SyntaxError("tzx-data-sym[%u][0]: toggle type must be 0", idx);
 
 		Value equal = symbol[1] == symbol[2];
@@ -694,9 +699,9 @@ void CodeSegment::check_data_symbol(uint idx) const
 	for (uint i=1; i<symbol.count(); i++)
 	{
 		cValue& v = symbol[i];
-		if (v.is_valid() && v<100)
+		if (v.is_valid() && v.value < 100)
 			throw SyntaxError("tzx-data-sym[%u][%u]: pulse too short", idx, i);
-		if (v.is_valid() && v>0xffff)
+		if (v.is_valid() && v.value > 0xffff)
 			throw SyntaxError("tzx-data-sym[%u][%u]: pulse too long", idx, i);
 	}
 }
@@ -753,9 +758,9 @@ void CodeSegment::setPilot(Values symbol)
 	if (type==TZX_TURBO)
 	{
 		if (symbol.count() != 4 ||
-			(symbol[0] != 0 && symbol[0].is_valid()) ||
-			(symbol[2] != 1 && symbol[2].is_valid()) ||
-			(symbol[3] != 1 && symbol[3].is_valid()))
+			(symbol[0].value != 0 && symbol[0].is_valid()) ||
+			(symbol[2].value != 1 && symbol[2].is_valid()) ||
+			(symbol[3].value != 1 && symbol[3].is_valid()))
 			throw SyntaxError("TZX turbo block: exactly 4 values required: 0, pilot_count, 1, 1");
 	}
 	else // GENERALIZED
@@ -801,8 +806,8 @@ void CodeSegment::setNumPilotPulses(cValue& v)
 
 	assert (no_pilot==false);
 
-	if (v<0  && v.is_valid()) throw SyntaxError("number of pilot pulses negative");
-	if (v==0 && v.is_valid()) throw SyntaxError(type==CODE || type==TZX_GENERALIZED ?
+	if (v.value < 0  && v.is_valid()) throw SyntaxError("number of pilot pulses negative");
+	if (v.value == 0 && v.is_valid()) throw SyntaxError(type==CODE || type==TZX_GENERALIZED ?
 			"pilot=0 not allowed: use pilot=none, TZX pure data block or .tzx-pilot-sym and .tzx-pilot" :
 			"pilot=0 not allowed: use TZX pure data or generalized block");
 
@@ -820,7 +825,7 @@ void TzxMessageSegment::setDuration (Value v)
 void TzxPolaritySegment::setPolarity (Value v)
 {
 	check_validity(polarity,v,"polarity");
-	if (v.is_valid() && v&~1) throw SyntaxError("polarity: value must be 0 (low) or 1 (high)");
+	if (v.is_valid() && (v.value & ~1)) throw SyntaxError("polarity: value must be 0 (low) or 1 (high)");
 	polarity = v;
 }
 
@@ -912,14 +917,14 @@ void TzxCswRecording::setHeaderSize(Value v)
 {
 	if(!raw) throw SyntaxError("set header size: raw audio file required");
 	check_validity(header_size,v,"header size");
-	if (v.is_valid() && v<0) throw SyntaxError("header size is negative");
+	if (v.is_valid() && v.value < 0) throw SyntaxError("header size is negative");
 	header_size = v;
 }
 
 void TzxCswRecording::setFirstFrame(Value v)
 {
 	check_validity(first_frame,v,"first frame");
-	if (v.is_valid() && v<0) throw SyntaxError("first frame is negative");
+	if (v.is_valid() && v.value < 0) throw SyntaxError("first frame is negative");
 	if (first_frame.is_valid() && last_frame.is_valid() && first_frame > last_frame)
 		throw SyntaxError("first frame > last frame");
 	first_frame = v;
@@ -928,7 +933,7 @@ void TzxCswRecording::setFirstFrame(Value v)
 void TzxCswRecording::setLastFrame(Value v)
 {
 	check_validity(last_frame,v,"last frame");
-	if (v.is_valid() && v<0) throw SyntaxError("last frame is negative");
+	if (v.is_valid() && v.value < 0) throw SyntaxError("last frame is negative");
 	if (first_frame.is_valid() && last_frame.is_valid() && first_frame>last_frame)
 		throw SyntaxError("first frame > last frame");
 	last_frame = v;
@@ -1370,7 +1375,7 @@ void TestSegment::setExpectedCcMin (SourceLine* q, Value v)
 
 	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
 	check_value(v, "cc", 0, 0x7fffffff);
-	expectations << Expectation("cc_min",v,address+dpos,q);
+	expectations << Expectation("cc_min", v.value, address.value+dpos.value, q);
 }
 
 void TestSegment::setExpectedCcMax (SourceLine* q, Value v)
@@ -1381,7 +1386,7 @@ void TestSegment::setExpectedCcMax (SourceLine* q, Value v)
 
 	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
 	check_value(v, "cc", 0, 0x7fffffff);
-	expectations << Expectation("cc_max",v,address+dpos,q);
+	expectations << Expectation("cc_max", v.value, address.value+dpos.value, q);
 }
 
 void TestSegment::setExpectedCc (SourceLine* q, Value v)
@@ -1392,7 +1397,7 @@ void TestSegment::setExpectedCc (SourceLine* q, Value v)
 
 	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
 	check_value(v, "cc", 0, 0x7fffffff);
-	expectations << Expectation("cc",v,address+dpos,q);
+	expectations << Expectation("cc", v.value, address.value+dpos.value, q);
 }
 
 void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr regname, Value v)
@@ -1413,7 +1418,7 @@ void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr regname, Value v
 		throw SyntaxError("%s: value is not in range[%i .. %i]", regname, min, max);
 
 	expectations_valid = expectations_valid && v.is_valid() && address.is_valid() && dpos.is_valid();
-	expectations << Expectation(regname,v,address+dpos,q);
+	expectations << Expectation(regname, v.value, address.value+dpos.value, q);
 }
 
 static const cstr ioModeNames[] = {
@@ -1422,7 +1427,8 @@ static const cstr ioModeNames[] = {
 
 static uint16 validated_io_address (cValue& addr) // helper
 {
-	if (addr != uint16(addr))
+	assert(addr.is_valid());
+	if (addr.value != uint16(addr))
 		throw SyntaxError("address not in range[0 .. $ffff]");
 	return uint16(addr);
 }
@@ -1516,7 +1522,7 @@ void TestSegment::setBlockDevice (cValue& ioaddr, cstr filename, cValue& blocksi
 
 	if (!blocksize.is_valid())
 		throw SyntaxError("blocksize must be valid in pass 1");
-	if (blocksize < 1 || blocksize > 0x8000)
+	if (blocksize.value < 1 || blocksize.value > 0x8000)
 		throw SyntaxError("invalid block size");
 
 	if (outputdata.contains(addr))

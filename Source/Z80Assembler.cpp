@@ -567,7 +567,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 	{
 		if (label->is_valid())
 		{
-			if (value == label->value) return;
+			if (value == label->value.value) return;
 			else throw SyntaxError("label redefined (use 'defl' or '=')");
 		}
 	}
@@ -578,7 +578,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 	if (validity < label->value.validity)
 		throw SyntaxError("label %s value decayed",label->name);
 
-	if (value!=label->value) labels_changed++;
+	if (value != label->value.value) labels_changed++;
 
 x:	label->value.set(value,validity);
 	label->is_defined = yes;
@@ -987,7 +987,7 @@ uint Z80Assembler::assembleSingleLine (uint address, cstr instruction, char buff
 
 	CodeSegment& segment = dynamic_cast<CodeSegment&>(current_segment());
 
-	if (segment.size>4) setError("resulting code size exceeds size of z80 opcodes");	// defs etc.
+	if (segment.size.value > 4) setError("resulting code size exceeds size of z80 opcodes");	// defs etc.
 	if (errors.count()) return 0;
 	memcpy(buffer,segment.getData(),uint(segment.size));
 	return uint(segment.size);
@@ -1202,7 +1202,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 					if (label!=nullptr && label->is_defined) { n=1; break; }
 					if (i==0) { n=0; break; }
 				}
-				if_values.append(n);
+				if_values.append(n.value);
 			}
 			else
 			{
@@ -1225,7 +1225,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 					if (label!=nullptr) { n = label->is_used && !label->is_defined; break; }
 					if (i==0) { n=0; break; }
 				}
-				if_values.append(n);
+				if_values.append(n.value);
 			}
 			else
 			{
@@ -1264,10 +1264,10 @@ hi:			n = value(q);
 			Value a = value(q);		// angle
 			q.expectComma();
 			Value b = value(q);		// value for full rotation (==360°)
-			if (abs(b)<4) { if (b.is_valid()) throw SyntaxError("value for full circle must be ≥ 4"); b.value = 360; }
+			if (abs(b.value) < 4) { if (b.is_valid()) throw SyntaxError("value for full circle must be ≥ 4"); b.value = 360; }
 			q.expectComma();
 			n = value(q);			// scale value for result (==1.0)
-			if (n==0) { if (n.is_valid()) throw SyntaxError("scale value for result must be ≥ 1"); n.value = 128; }
+			if (n.value == 0) { if (n.is_valid()) throw SyntaxError("scale value for result must be ≥ 1"); n.value = 128; }
 
 			n.validity = min(n.validity,min(a.validity,b.validity));
 			double r = a.value * 6.2831853071796 / b.value;
@@ -1537,14 +1537,14 @@ op:	char c1,c2;
 		if (c1=='/')
 		{
 			Value m = value(++q,pMul);
-			if (m==0) { if (m.validity!=valid) { m = 1; } else throw SyntaxError("division by zero"); }
+			if (m.value == 0) { if (m.validity!=valid) { m = 1; } else throw SyntaxError("division by zero"); }
 			n = n / m;
 			goto op;
 		}
 		if (c1=='%')
 		{
 			Value m = value(++q,pMul);
-			if (m==0) { if (validity==invalid) { m = 1; } else throw SyntaxError("division by zero"); }
+			if (m.value == 0) { if (validity==invalid) { m = 1; } else throw SyntaxError("division by zero"); }
 			n = n % m;
 			goto op;
 		}
@@ -1884,7 +1884,7 @@ void Z80Assembler::compressSegments ()
 		bool multiple = s1 != s2;
 		cstr name = multiple ? catstr(s1->name,"_to_",s2->name) : s1->name;
 
-		if (usize>0x10000 && usize.is_valid())
+		if (usize.value > 0x10000 && usize.is_valid())
 			throw FatalError("%s_size exceeds $10000 bytes (size=%u)",name,int32(usize));
 
 		if (ucore.count()==s1->ucore.count() && memcmp(ucore.getData(),s1->ucore.getData(),ucore.count()) == 0)
@@ -2041,8 +2041,8 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 			try {n = value(q);} catch (AnyError& e) { n=1; setError(e); }
 			if_pending = no;
 			if (!n.is_valid()){ n=1; setError("count must be evaluatable in pass 1"); }
-			if (n>0x8000)     { n=1; setError("number of repetitions too high"); }
-			if (n<0)          { n=1; setError("number of repetitions negative"); }
+			if (n.value > 0x8000)     { n=1; setError("number of repetitions too high"); }
+			if (n.value < 0)          { n=1; setError("number of repetitions negative"); }
 		}
 	}
 
@@ -2294,7 +2294,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 		if (w[0]!='"') throw SyntaxError("string with source character(s) expected");
 		if (!q.testChar('=') && !q.testChar(',') && !q.testWord("to")) throw SyntaxError("keyword 'to' expected");
 		n = value(q);
-		if (n.is_valid() && (n < -0x80 || n > 0xff)) throw SyntaxError("destination char code out of range");
+		if (n.is_valid() && (n.value < -0x80 || n.value > 0xff)) throw SyntaxError("destination char code out of range");
 		if (!charset) charset = new CharMap();
 		charset->addMappings(unquotedstr(w),uint(n)); // throws on illegal utf-8 chars
 	}
@@ -2513,8 +2513,8 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 		f = value(q);
 		if_pending = no;
 		if (!f.is_valid()) throw FatalError("condition not evaluatable in pass1");
-		if (pass==1) if_values.append(f);
-		else if (if_values[if_values_idx++] != f) throw FatalError("condition changed in pass%i",pass);
+		if (pass==1) if_values.append(f.value);
+		else if (if_values[if_values_idx++] != f.value) throw FatalError("condition changed in pass%i",pass);
 	}
 
 	memmove( cond+1, cond, sizeof(cond)-sizeof(*cond) );
@@ -2549,8 +2549,8 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 			f = value(q);		// else evaluate value
 			if_pending = no;
 			if (!f.is_valid()) throw FatalError("condition must be evaluatable in pass1");
-			if (pass==1) if_values.append(f);
-			else if (if_values[if_values_idx++] != f) throw FatalError("condition changed in pass%i",pass);
+			if (pass==1) if_values.append(f.value);
+			else if (if_values[if_values_idx++] != f.value) throw FatalError("condition changed in pass%i",pass);
 		}
 
 		cond_off -= !!f.value;	// if f==1 then clear bit 0 => enable #elif clause
@@ -3795,7 +3795,7 @@ void Z80Assembler::asmTzxArchiveInfo (SourceLine& q, cstr w) throws
 
 		Value id = value(q);
 		if (!id.is_valid()) throw SyntaxError("archive info: ID must evaluate in pass 1");
-		if (uint(id) > 0x10 && id!=0xff) throw SyntaxError("archive info: ID out of range [0..0F]");
+		if (uint(id) > 0x10 && id.value != 0xff) throw SyntaxError("archive info: ID out of range [0..0F]");
 
 		q.expectComma();
 		w = q.nextWord();
@@ -4225,7 +4225,7 @@ void Z80Assembler::asmPseudoInstr (SourceLine& q, cstr w) throws
 		{
 			Value n = value(q);
 			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n,value(q));
+			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n,value(q).value);
 			else static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n);
 		}
 		return;
@@ -4245,7 +4245,7 @@ ds:		q.is_data = yes;
 		{
 			Value n = value(q);
 			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n,value(q));
+			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n,value(q).value);
 			else static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
 		}
 		return;
@@ -4263,7 +4263,7 @@ dw:		q.is_data = yes;
 		// store long words:
 		// .long nn [,nn ..]
 dl:		q.is_data = yes;
-		do { int32 n = value(q); store(n,n>>8,n>>16,n>>24); } while (q.testComma());
+		do { int32 n = value(q).value; store(n,n>>8,n>>16,n>>24); } while (q.testComma());
 		return;
 
 	case '  db':
@@ -4352,7 +4352,7 @@ sh:				if (n&1) throw SyntaxError("even number of hex characters expected");
 		if (target!=TZX) throw SyntaxError("#target TZX required");
 		if (!current_segment_ptr->isCode()) throw SyntaxError("code segment required");
 		assert(dynamic_cast<CodeSegment*>(current_segment_ptr) != nullptr);
-		if (currentPosition() != 0) throw SyntaxError(".tzx pseudo instructions must appear before any code");
+		if (currentPosition().value != 0) throw SyntaxError(".tzx pseudo instructions must appear before any code");
 
 		q.expect('-');
 
@@ -4511,7 +4511,7 @@ longer:
 	{
 		TestSegment* segment = dynamic_cast<TestSegment*>(current_segment_ptr);
 		if (segment == nullptr) throw SyntaxError("test segment required");
-		if (currentPosition() == 0) throw SyntaxError(".expect pseudo instructions must appear after the test code");
+		if (currentPosition().value == 0) throw SyntaxError(".expect pseudo instructions must appear after the test code");
 
 		if (q.testWord("cc"))	// cycle counter: cc [=,<=,>=] nnnnn
 		{
@@ -4553,8 +4553,8 @@ longer:
 	{								// note: current address is evaluated as uint
 		q.is_data = yes;
 		Value n = value(q);
-		if (n.is_valid() && n<1)	  throw SyntaxError("alignment value must be ≥ 1");
-		if (n.is_valid() && n>0x4000) throw SyntaxError("alignment value must be ≤ $4000");
+		if (n.is_valid() && n.value < 1)	  throw SyntaxError("alignment value must be ≥ 1");
+		if (n.is_valid() && n.value > 0x4000) throw SyntaxError("alignment value must be ≤ $4000");
 
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
 		Value a = static_cast<DataSegment*>(current_segment_ptr)->lpos;
@@ -4565,7 +4565,7 @@ longer:
 		n = n-N1 - (a+n-N1) % n;
 
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-		if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n,value(q));
+		if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n,value(q).value);
 		else static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
 		return;
 	}
@@ -4669,7 +4669,7 @@ IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
 
 		Value reps = value(q);
 		if (reps.is_invalid()) throw SyntaxError("repetitions must be valid in pass 1"); // TODO: support validity
-		if (reps<0) throw SyntaxError("repetitions < 0");
+		if (reps.value < 0) throw SyntaxError("repetitions < 0");
 		return IoSequence(&data[0], data.count(), uint(reps.value));
 	}
 
@@ -4678,7 +4678,7 @@ IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
 
 static uint8 validatedByte (cValue& byte)
 {
-	if (byte >= -0x80 && byte <= 0xFF) return uint8(byte);
+	if (byte.value >= -0x80 && byte.value <= 0xFF) return uint8(byte);
 	if (byte.is_invalid()) return 0;
 	throw SyntaxError("byte value out of range");
 }

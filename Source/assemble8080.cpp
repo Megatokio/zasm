@@ -45,13 +45,13 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 		}
 		if (target_z80_or_z180)	// n(X) or n(Y)
 		{
-			Value n = value(q); if(n.is_valid() && n != int8(n)) throw SyntaxError("offset out of range");
+			Value n = value(q); if(n.is_valid() && n.value != int8(n.value)) throw SyntaxError("offset out of range");
 			q.expect('(');
 			w = q.nextWord();
-			if ((*w|0x20)=='x') n = (PFX_IX<<8) + (n&0xff); else
-			if ((*w|0x20)=='y') n = (PFX_IY<<8) + (n&0xff); else throw SyntaxError("register X or Y exepcted");
+			if ((*w|0x20)=='x') n.value = (PFX_IX<<8) + (n.value & 0xff); else
+			if ((*w|0x20)=='y') n.value = (PFX_IY<<8) + (n.value & 0xff); else throw SyntaxError("register X or Y exepcted");
 			q.expectClose();
-			return n;
+			return n.value;
 		}
 	}
 	throw SyntaxError("register A to L or memory M expected");
@@ -166,7 +166,8 @@ void Z80Assembler::asm8080Instr (SourceLine& q, cstr w) throws
 	case ' sta': instr = LD_xNN_A;  goto iw;	// 8080: sta NN  => ld (NN),a
 
 iw:		n = value(q);							// before store wg. '$'
-		return store(instr, n, n>>8);
+		store(instr); storeWord(n);
+		return;
 
 	case ' out': instr = OUTA;		goto ib;	// 8080: out N => out (N),a
 	case '  in': instr = INA;		goto ib;	// 8080: in  N => in a,(N)
@@ -273,8 +274,8 @@ pop:	r = get8080WordRegister(q, BDHAF);
 		q.expectComma();
 		n = value(q);
 
-		if (r<64) return store(LD_BC_NN + r, n, n>>8);	// lxi r,NN
-		else      return store(r, LD_HL_NN, n, n>>8);	// lxi x,NN		Z80
+		if (r<64) { store(LD_BC_NN + r); storeWord(n); return; }	// lxi r,NN
+		else      { store(r, LD_HL_NN);  storeWord(n); return; }	// lxi x,NN		Z80
 
 	case ' dad':										// 8080: dad r => add hl,rr			b, d, h, sp
 
@@ -284,9 +285,9 @@ pop:	r = get8080WordRegister(q, BDHAF);
 
 	case ' rst':										// rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
-		if (n%8==0) n.value>>=3;
-		if (n.is_valid() && n>>3) throw SyntaxError( "illegal vector number" );
-		else return store(RST00+n*8);
+		if (n.value%8 == 0) n.value>>=3;
+		if (n.is_valid() && n.value>>3) throw SyntaxError( "illegal vector number" );
+		else return store(RST00+n.value*8);
 
 // ---- Z80 opcodes ----
 
@@ -432,7 +433,7 @@ dsbc:	r = get8080WordRegister(q,BDHSP);
 bit:	if (target_8080) goto ill_8080;
 		n = value(q);
 		if (uint(n)>7) throw SyntaxError("illegal bit number");
-		instr += 8*n;
+		instr += 8*n.value;
 		q.expectComma();
 		goto rlcr;
 
