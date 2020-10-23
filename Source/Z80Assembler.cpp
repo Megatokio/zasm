@@ -425,9 +425,6 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	cstr dest_directory = destpath ? directory_from_path(destpath) : destpath=source_directory;
 	assert(is_dir(dest_directory));
 
-	IFDEBUG( cstr list_directory = ) listpath ? directory_from_path(listpath) : listpath=dest_directory;
-	assert(is_dir(list_directory));
-
 	temp_directory = temppath ? temppath : dest_directory;
 	assert(is_dir(temp_directory));
 	if (clean && is_dir(catstr(temp_directory,"s/"))) delete_dir(catstr(temp_directory,"s/"),yes);
@@ -476,8 +473,8 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			if (cpu == CpuDefault && find(s,"--z180")) { cpu = CpuZ180; m = " --z180"; }
 
 			// add options not yet set:
-			if (!ixcbr2_enabled && find(s,"--ixcbr2"))	{ ixcbr2_enabled = yes; m = catstr(m," --ixcbr2");   }
-			if (!ixcbxh_enabled && find(s,"--ixcbxh"))	{ ixcbxh_enabled = yes; m = catstr(m," --ixcbxh");   }
+			if (!ixcbr2_enabled && !ixcbxh_enabled && find(s,"--ixcbr2")) { ixcbr2_enabled = yes; m = catstr(m," --ixcbr2"); }
+			if (!ixcbr2_enabled && !ixcbxh_enabled && find(s,"--ixcbxh")) { ixcbxh_enabled = yes; m = catstr(m," --ixcbxh"); }
 			if (!syntax_8080 && find(s,"--asm8080"))	{ syntax_8080 = yes;    m = catstr(m," --asm8080");  }
 			if (!allow_dotnames && find(s,"--dotnames")){ allow_dotnames = yes; m = catstr(m," --dotnames"); }
 			if (!require_colon && find(s,"--reqcolon")) { require_colon = yes;  m = catstr(m," --reqcolon"); }
@@ -497,7 +494,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 			destpath = endswith(destpath,"/") ? catstr(destpath, basename, ".$") : destpath;
 			if (compare_to_old)
 			{
-				cstr zdir = catstr(tempdirpath(), "/", tostr(getuid()), "/zasm/test/");
+				cstr zdir = catstr(tempdirpath(), "/zasm/", tostr(getuid()), "/test/");
 				create_dir(zdir,0770,yes);
 				cstr zpath = catstr(zdir,basename,".$");
 				writeTargetfile(zpath,deststyle);
@@ -519,6 +516,13 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 					if (obu[i]==nbu[i]) continue;
 					setError("mismatch at $%04lX: old=$%02X, new=$%02X",ulong(i),obu[i],nbu[i]);
 				}
+
+				if (errors.count()==0)
+				{
+					// test generation of listfile:
+					if (!liststyle) liststyle = 2+4+8;
+					if (!listpath) listpath = zdir;
+				}
 			}
 			else
 			{
@@ -532,6 +536,8 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	{
 		try
 		{
+			if (!listpath) listpath = directory_from_path(destpath);
+			listpath = quick_fullpath(listpath);
 			listpath = endswith(listpath,"/") ? catstr(listpath, basename, ".lst") : listpath;
 			writeListfile(listpath, liststyle);
 		}

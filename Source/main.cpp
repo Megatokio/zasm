@@ -488,13 +488,7 @@ static int doit( Array<cstr> argv )
 	}
 
 // check list file or dir:
-	if (!listfile) listfile = directory_from_path(outputfile);
-	listfile = fullpath(listfile);
-	if (errno && errno!=ENOENT)
-	{
-		if (verbose) log( "--> %s: %s\nzasm: 1 error\n", listfile, strerror(errno));
-		return 1;
-	}
+	// must not be tested here: in some cases assemble() must see whether it was set
 
 // check temp dir:
 	if (!tempdir) tempdir = directory_from_path(outputfile);
