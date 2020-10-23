@@ -580,7 +580,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 
 	if (value != label->value.value) labels_changed++;
 
-x:	label->value.set(value,validity);
+x:	label->value = Value(value,validity);
 	label->is_defined = yes;
 }
 
@@ -1500,63 +1500,63 @@ op:	char c1,c2;
 		goto cc;
 
 	case pCmp:	// > < == >= <= !=
-	cc:	if (c1>='a')
+	cc:	if (c1 >= 'a')
 		{
-			if (c1=='n' && c2=='e')  { n = n != value(q+=2,pCmp); goto op; }
-			if (c1=='e' && c2=='q')  { n = n == value(q+=2,pCmp); goto op; }
-			if (c1=='g' && c2=='e')  { n = n >= value(q+=2,pCmp); goto op; }
-			if (c1=='g' && c2=='t')  { n = n >  value(q+=2,pCmp); goto op; }
-			if (c1=='l' && c2=='e')  { n = n <= value(q+=2,pCmp); goto op; }
-			if (c1=='l' && c2=='t')  { n = n <  value(q+=2,pCmp); goto op; }
+			if (c1=='n' && c2=='e')  { n.ne(value(q+=2,pCmp)); goto op; }
+			if (c1=='e' && c2=='q')  { n.eq(value(q+=2,pCmp)); goto op; }
+			if (c1=='g' && c2=='e')  { n.ge(value(q+=2,pCmp)); goto op; }
+			if (c1=='g' && c2=='t')  { n.gt(value(q+=2,pCmp)); goto op; }
+			if (c1=='l' && c2=='e')  { n.le(value(q+=2,pCmp)); goto op; }
+			if (c1=='l' && c2=='t')  { n.lt(value(q+=2,pCmp)); goto op; }
 		}
 		else
 		{
-			if (c1=='=') { q+=c2-c1?1:2; n = n==value(q,pCmp); goto op; }	// equal: = ==
-			if (c1=='!' && c2=='=') { n = n!=value(q+=2,pCmp); goto op; }	// not equal: !=
-			if (c1=='<')
+			if (c1 == '=') { q+=c2-c1?1:2; n.eq(value(q,pCmp)); goto op; }	// equal: = ==
+			if (c1 == '!' && c2=='=') { n.ne(value(q+=2,pCmp)); goto op; }	// not equal: !=
+			if (c1 == '<')
 			{
-				if (c2=='>')	{ n = n != value(q+=2,pCmp); goto op; }			// not equal:   "<>"
-				if (c2=='=')	{ n = n <= value(q+=2,pCmp); goto op; }			// less or equ:	"<="
-				if (c2!='<') { n = n <  value(q+=1,pCmp); goto op; }			// less than:	"<"
+				if (c2 == '>')	{ n.ne(value(q+=2,pCmp)); goto op; }		// not equal:   "<>"
+				if (c2 == '=')	{ n.le(value(q+=2,pCmp)); goto op; }		// less or equ:	"<="
+				if (c2 != '<')	{ n.lt(value(q+=1,pCmp)); goto op; }		// less than:	"<"
 			}
 			if (c1=='>')
 			{
-				if (c2=='=')	{ n = n >= value(q+=2,pCmp); goto op; }			// greater or equ:	">="
-				if (c2!='>') { n = n >  value(q+=1,pCmp); goto op; }			// greater than:	">"
+				if (c2 == '=')	{ n.ge(value(q+=2,pCmp)); goto op; }		// greater or equ:	">="
+				if (c2 != '>')	{ n.gt(value(q+=1,pCmp)); goto op; }		// greater than:	">"
 			}
 		}
 		goto dd;
 
 	case pAdd:	// + -
-	dd:	if (c1=='+') { n = n + value(++q,pAdd); goto op; }
-		if (c1=='-') { n = n - value(++q,pAdd); goto op; }
+	dd:	if (c1 == '+') { n += value(++q,pAdd); goto op; }
+		if (c1 == '-') { n -= value(++q,pAdd); goto op; }
 		goto ee;
 
 	case pMul:	// * / %
-	ee:	if (c1=='*') { n = n * value(++q,pMul); goto op; }
-		if (c1=='/')
+	ee:	if (c1 == '*') { n *= value(++q,pMul); goto op; }
+		if (c1 == '/')
 		{
 			Value m = value(++q,pMul);
-			if (m.value == 0) { if (m.validity!=valid) { m = 1; } else throw SyntaxError("division by zero"); }
-			n = n / m;
+			if (m.value == 0) { if (!m.is_valid()) { m = N1; } else throw SyntaxError("division by zero"); }
+			n /= m;
 			goto op;
 		}
-		if (c1=='%')
+		if (c1 == '%')
 		{
 			Value m = value(++q,pMul);
-			if (m.value == 0) { if (validity==invalid) { m = 1; } else throw SyntaxError("division by zero"); }
-			n = n % m;
+			if (m.value == 0) { if (!m.is_valid()) { m = N1; } else throw SyntaxError("division by zero"); }
+			n %= m;
 			goto op;
 		}
 		goto ff;
 
 	case pBits:	// & | ^
-	ff:	if (c1=='^')					  { n = n ^ value(++q, pBits); goto op; }
-		if (c1=='&' && c2!='&')			  { n = n & value(++q, pBits); goto op; }
-		if (c1=='|' && c2!='|')			  { n = n | value(++q, pBits); goto op; }
-		if (c1=='a' && q.testWord("and")) { n = n & value(q,   pBits); goto op; }
-		if (c1=='o' && c2=='r')			  { n = n | value(q+=2,pBits); goto op; }
-		if (c1=='x' && q.testWord("xor")) { n = n ^ value(q,   pBits); goto op; }
+	ff:	if (c1=='^')					  { n ^= value(++q, pBits); goto op; }
+		if (c1=='&' && c2!='&')			  { n &= value(++q, pBits); goto op; }
+		if (c1=='|' && c2!='|')			  { n |= value(++q, pBits); goto op; }
+		if (c1=='a' && q.testWord("and")) { n &= value(q,   pBits); goto op; }
+		if (c1=='o' && c2=='r')			  { n |= value(q+=2,pBits); goto op; }
+		if (c1=='x' && q.testWord("xor")) { n ^= value(q,   pBits); goto op; }
 		goto gg;
 
 	case pRot:	// >> <<
@@ -2034,15 +2034,15 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 	Value n;
 	if (pass==1)
 	{
-		if (q.testEol()) { n=1; setError("number of repetitions missing"); }
+		if (q.testEol()) { n=N1; setError("number of repetitions missing"); }
 		else
 		{
 			if_pending = yes;		// => global labels can be used
-			try {n = value(q);} catch (AnyError& e) { n=1; setError(e); }
+			try { n = value(q); } catch (AnyError& e) { n=N1; setError(e); }
 			if_pending = no;
-			if (!n.is_valid()){ n=1; setError("count must be evaluatable in pass 1"); }
-			if (n.value > 0x8000)     { n=1; setError("number of repetitions too high"); }
-			if (n.value < 0)          { n=1; setError("number of repetitions negative"); }
+			if (!n.is_valid())		   { n=N1; setError("count must evaluate in pass 1"); }
+			else if (n.value > 0x8000) { n=N1; setError("number of repetitions too high"); }
+			else if (n.value < 0)      { n=N1; setError("number of repetitions negative"); }
 		}
 	}
 

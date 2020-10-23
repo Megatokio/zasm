@@ -251,7 +251,7 @@ void DataSegment::setOrigin (cValue& address) throws
 			throw SyntaxError("address out of range");
 	}
 
-	lpos.set(address);
+	lpos = address;
 }
 
 
@@ -537,7 +537,7 @@ void CodeSegment::setFlag (cValue& v) throws
 	}
 
 	has_flag = yes;
-	flag.set(v);
+	flag = v;
 }
 
 void CodeSegment::setNoFlag()
@@ -683,8 +683,7 @@ void CodeSegment::check_data_symbol(uint idx) const
 		if (symbol[0].is_valid() && symbol[0].value != 0)
 			throw SyntaxError("tzx-data-sym[%u][0]: toggle type must be 0", idx);
 
-		Value equal = symbol[1] == symbol[2];
-		if (!equal && equal.is_valid())
+		if (symbol[1].value != symbol[2].value && symbol[1].is_valid() && symbol[2].is_valid())
 			throw SyntaxError("tzx-data-sym[%u][1,2]: both pulses must be same length", idx);
 	}
 	else // GENERALIZED:

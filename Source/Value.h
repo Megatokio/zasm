@@ -51,8 +51,6 @@ using cValue = const class Value;
 
 class Value
 {
-	void	chkv (Validity v)	{ validity = min(validity,v); }
-
 public:
 	int32	 value;
 	Validity validity;
@@ -61,87 +59,40 @@ public:
 	explicit Value(int32 n)				:value(n),validity(valid){}
 			 Value(int32 n, Validity v)	:value(n),validity(v){}
 
-	//operator int() const		{ return value; }	// auto-cast to int
+	Value& operator= (int n) { value = n; validity = valid; return *this; }
+
 	template<typename T>
 	explicit operator T() const	{ return T(value); }
-
-	void	set	(int32 n, Validity v) { value = n; validity = v; }
 
 	bool	is_valid ()			const { return validity == valid;   }
 	bool	is_invalid ()		const { return validity == invalid; }
 	bool	is_preliminary ()	const { return validity == preliminary; }
 
+	// used in value() since comparator operators return bool (not Value):
+	void	ge  (cValue& v)	{ value = value >= v.value; validity = min(validity,v.validity); }
+	void	le  (cValue& v)	{ value = value <= v.value; validity = min(validity,v.validity); }
+	void	ne  (cValue& v)	{ value = value != v.value; validity = min(validity,v.validity); }
+	void	gt  (cValue& v)	{ value = value >  v.value; validity = min(validity,v.validity); }
+	void	lt  (cValue& v)	{ value = value <  v.value; validity = min(validity,v.validity); }
+	void	eq  (cValue& v)	{ value = value == v.value; validity = min(validity,v.validity); }
 
-	void	BOOL()				{ value = !!value; }
-	void	NOT ()				{ value = !value; }
-	void	cpl ()				{ value = ~value; }
-	void	neg	()				{ value = -value; }	// validity check optional
-	void	pos	()				{ value = +value; }	// for completeness
+	// mostly used in value():
+	void	operator += (cValue& v) { value += v.value; validity = min(validity,v.validity); }
+	void	operator -= (cValue& v) { value -= v.value; validity = min(validity,v.validity); }
+	void	operator *= (cValue& v) { value *= v.value; validity = min(validity,v.validity); }
+	void	operator /= (cValue& v) { value /= v.value; validity = min(validity,v.validity); }
+	void	operator %= (cValue& v) { value %= v.value; validity = min(validity,v.validity); }
+	void	operator &= (cValue& v) { value &= v.value; validity = min(validity,v.validity); }
+	void	operator |= (cValue& v) { value |= v.value; validity = min(validity,v.validity); }
+	void	operator ^= (cValue& v) { value ^= v.value; validity = min(validity,v.validity); }
 
-	void	ge	(int32 n, Validity v) { value = value >= n; chkv(v); }
-	void	le	(int32 n, Validity v) { value = value <= n; chkv(v); }
-	void	ne	(int32 n, Validity v) { value = value != n; chkv(v); }
-	void	gt	(int32 n, Validity v) { value = value >  n; chkv(v); }
-	void	lt	(int32 n, Validity v) { value = value <  n; chkv(v); }
-	void	eq	(int32 n, Validity v) { value = value == n; chkv(v); }
-	void	sr	(int32 n, Validity v) { value >>= n; chkv(v); }
-	void	sl	(int32 n, Validity v) { value <<= n; chkv(v); }
-	void	AND (int32 n, Validity v) { value &= n; chkv(v); }
-	void	OR  (int32 n, Validity v) { value |= n; chkv(v); }
-	void	XOR (int32 n, Validity v) { value ^= n; chkv(v); }
-	void	add (int32 n, Validity v) { value += n; chkv(v); }
-	void	sub (int32 n, Validity v) { value -= n; chkv(v); }
-	void	mul (int32 n, Validity v) { value *= n; chkv(v); }
-	void	div (int32 n, Validity v) throws; // throw(AnyError);
-	void	rem (int32 n, Validity v) throws; // throw(AnyError);
-
-	void	set (cValue& v)	{ set(v.value,v.validity); }
-	void	ge  (cValue& v)	{ ge (v.value,v.validity); }
-	void	le  (cValue& v)	{ le (v.value,v.validity); }
-	void	ne  (cValue& v)	{ ne (v.value,v.validity); }
-	void	gt  (cValue& v)	{ gt (v.value,v.validity); }
-	void	lt  (cValue& v)	{ lt (v.value,v.validity); }
-	void	eq  (cValue& v)	{ eq (v.value,v.validity); }
-	void	sr	(cValue& v)	{ sr (v.value,v.validity); }
-	void	sl	(cValue& v)	{ sl (v.value,v.validity); }
-	void	AND (cValue& v)	{ AND(v.value,v.validity); }
-	void	OR  (cValue& v)	{ OR (v.value,v.validity); }
-	void	XOR (cValue& v)	{ XOR(v.value,v.validity); }
-	void	add (cValue& v)	{ add(v.value,v.validity); }
-	void	sub (cValue& v)	{ sub(v.value,v.validity); }
-	void	mul (cValue& v)	{ mul(v.value,v.validity); }
-	void	div (cValue& v)	{ div(v.value,v.validity); }
-	void	rem (cValue& v)	{ rem(v.value,v.validity); }
-
-	//void	operator =	(cValue& v) { value = v.value; validity = v.validity; }
-	void	operator <<=(cValue& v) { sl (v.value,v.validity); }
-	void	operator >>=(cValue& v) { sr (v.value,v.validity); }
-	void	operator &= (cValue& v) { AND(v.value,v.validity); }
-	void	operator |= (cValue& v) { OR (v.value,v.validity); }
-	void	operator ^= (cValue& v) { XOR(v.value,v.validity); }
-	void	operator += (cValue& v) { add(v.value,v.validity); }
-	void	operator -= (cValue& v) { sub(v.value,v.validity); }
-	void	operator *= (cValue& v) { mul(v.value,v.validity); }
-	void	operator /= (cValue& v) { div(v.value,v.validity); }
-	void	operator %= (cValue& v) { rem(v.value,v.validity); }
-
-	Value&	operator =	(int32 n) { value=n; validity=valid; return *this; }
-	void	operator <<=(int32 v) { sl (v,valid); }
-	void	operator >>=(int32 v) { sr (v,valid); }
-	void	operator &= (int32 v) { AND(v,valid); }
-	void	operator |= (int32 v) { OR (v,valid); }
-	void	operator ^= (int32 v) { XOR(v,valid); }
-	void	operator += (int32 v) { add(v,valid); }
-	void	operator -= (int32 v) { sub(v,valid); }
-	void	operator *= (int32 v) { mul(v,valid); }
-	void	operator /= (int32 v) { div(v,valid); }
-	void	operator %= (int32 v) { rem(v,valid); }
-
+	// used in value():
 	Value	operator ~  ()	const { return Value(~value, validity); }
 	Value	operator !  ()	const { return Value(!value, validity); }
 	Value	operator +  ()	const { return Value(+value, validity); }
 	Value	operator -  ()	const { return Value(-value, validity); }
 
+	// general use:
 	Value	operator +  (cValue& q) const { return Value(value +  q.value, min(validity,q.validity)); }
 	Value	operator -  (cValue& q) const { return Value(value -  q.value, min(validity,q.validity)); }
 	Value	operator *  (cValue& q) const { return Value(value *  q.value, min(validity,q.validity)); }
@@ -152,43 +103,49 @@ public:
 	Value	operator ^  (cValue& q) const { return Value(value ^  q.value, min(validity,q.validity)); }
 	Value	operator << (cValue& q) const { return Value(value << q.value, min(validity,q.validity)); }
 	Value	operator >> (cValue& q) const { return Value(value >> q.value, min(validity,q.validity)); }
-	Value	operator == (cValue& q) const { return Value(value == q.value, min(validity,q.validity)); }
-	Value	operator >= (cValue& q) const { return Value(value >= q.value, min(validity,q.validity)); }
-	Value	operator <= (cValue& q) const { return Value(value <= q.value, min(validity,q.validity)); }
-	Value	operator >  (cValue& q) const { return Value(value >  q.value, min(validity,q.validity)); }
-	Value	operator <  (cValue& q) const { return Value(value <  q.value, min(validity,q.validity)); }
-	Value	operator != (cValue& q) const { return Value(value != q.value, min(validity,q.validity)); }
 
-//	Value	operator +  (int q) const { return Value(value +  q, validity); }
-//	Value	operator -  (int q) const { return Value(value -  q, validity); }
-//	Value	operator &  (int q) const { return Value(value &  q, validity); }
-//	Value	operator |  (int q) const { return Value(value |  q, validity); }
-//	Value	operator ^  (int q) const { return Value(value ^  q, validity); }
-//	Value	operator *  (int q) const { return Value(value *  q, validity); }
-//	Value	operator /  (int q) const { return Value(value /  q, validity); }
-//	Value	operator %  (int q) const { return Value(value %  q, validity); }
-//	Value	operator << (int q) const { return Value(value << q, validity); }
-//	Value	operator >> (int q) const { return Value(value >> q, validity); }
-//	Value	operator == (int q) const { return Value(value == q, validity); }
-//	Value	operator >= (int q) const { return Value(value >= q, validity); }
-//	Value	operator <= (int q) const { return Value(value <= q, validity); }
-//	Value	operator >  (int q) const { return Value(value >  q, validity); }
-//	Value	operator <  (int q) const { return Value(value <  q, validity); }
-//	Value	operator != (int q) const { return Value(value != q, validity); }
+	// general use. attn: return bool not Value, validity ignored:
+	bool 	operator == (cValue& q) const { return value == q.value; }
+	bool 	operator >= (cValue& q) const { return value >= q.value; }
+	bool 	operator <= (cValue& q) const { return value <= q.value; }
+	bool 	operator >  (cValue& q) const { return value >  q.value; }
+	bool 	operator <  (cValue& q) const { return value <  q.value; }
+	bool 	operator != (cValue& q) const { return value != q.value; }
 };
 
-//__attribute__((deprecated))
+
 inline Value operator +  (cValue& v, int q) { return Value(v.value + q, v.validity); }
 inline Value operator -  (cValue& v, int q) { return Value(v.value - q, v.validity); }
 inline Value operator &  (cValue& v, int q) { return Value(v.value & q, v.validity); }
 inline Value operator |  (cValue& v, int q) { return Value(v.value | q, v.validity); }
 inline Value operator ^  (cValue& v, int q) { return Value(v.value ^ q, v.validity); }
+inline Value operator *  (cValue& v, int q) { return Value(v.value * q, v.validity); }
+inline Value operator /  (cValue& v, int q) { return Value(v.value / q, v.validity); }
+inline Value operator %  (cValue& v, int q) { return Value(v.value % q, v.validity); }
 
 inline Value operator +  (int q, cValue& v) { return Value(q + v.value, v.validity); }
 inline Value operator -  (int q, cValue& v) { return Value(q - v.value, v.validity); }
 inline Value operator &  (int q, cValue& v) { return Value(q & v.value, v.validity); }
 inline Value operator |  (int q, cValue& v) { return Value(q | v.value, v.validity); }
 inline Value operator ^  (int q, cValue& v) { return Value(q ^ v.value, v.validity); }
+inline Value operator *  (int q, cValue& v) { return Value(q * v.value, v.validity); }
+inline Value operator /  (int q, cValue& v) { return Value(q / v.value, v.validity); }
+inline Value operator %  (int q, cValue& v) { return Value(q % v.value, v.validity); }
+
+
+inline bool  operator == (cValue& v, int q) { return v.value == q; }
+inline bool  operator != (cValue& v, int q) { return v.value != q; }
+inline bool  operator >= (cValue& v, int q) { return v.value >= q; }
+inline bool  operator <= (cValue& v, int q) { return v.value <= q; }
+inline bool  operator >  (cValue& v, int q) { return v.value >  q; }
+inline bool  operator <  (cValue& v, int q) { return v.value <  q; }
+
+inline bool  operator == (int q, cValue& v) { return q == v.value; }
+inline bool  operator != (int q, cValue& v) { return q != v.value; }
+inline bool  operator >= (int q, cValue& v) { return q >= v.value; }
+inline bool  operator <= (int q, cValue& v) { return q <= v.value; }
+inline bool  operator >  (int q, cValue& v) { return q >  v.value; }
+inline bool  operator <  (int q, cValue& v) { return q <  v.value; }
 
 
 inline Value min (cValue& a, cValue& b)
@@ -214,21 +171,19 @@ public:
 	}
 
 	Values& operator << (Value q) throws { append(std::move(q)); return *this; }
-
-	// compare 2 Arrays of Values:
-	// -> ATTN: only compares values, ignores validity
-	// -> operator== and operator!= are used BOTH in outputfile.cpp to compare array for equality ...
-	bool operator!= (const Array<Value>& q) const noexcept { return !operator==(q); }
-	bool operator== (const Array<Value>& q) const noexcept
-	{
-		if (count() != q.count()) return no;
-		for (uint i=0; i<count(); i++)
-		{
-			if ((*this)[i].value != q[i].value) return no;
-		}
-		return yes;
-	}
 };
 
 
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
