@@ -12,7 +12,6 @@
 ; hint: assemble with "-uvwy"
 
 
-
 #target ram
 
 #code CODE, 0x100
@@ -272,6 +271,9 @@ systime dw  0
 
 
 ; -------------------------------------------
+; test A_times_DE:
+; -------------------------------------------
+
 #test TEST1, 0x1000
 #local
     .test-timeout 100 ms
@@ -347,17 +349,20 @@ Lxx = Lxx+1
 
 
 ; -------------------------------------------
+; test DEHL_div_C:
+; -------------------------------------------
+
 #test TEST1B, 0x1000
 #local
     .test-timeout 100 ms
 
 .macro DEHL_div_C &N, &D
-    ld  de,&N >> 16
-    ld  hl,&N & 0xffff
+    ld  dehl,&N
     ld  c,&D
     call DEHL_div_C
     .expect de = (&N/&D) >> 16
     .expect hl = (&N/&D) & 0xffff
+    .expect dehl = &N/&D
     .expect a  = (&N%&D)
     .expect b  = 0
     .expect c  = &D
@@ -377,12 +382,12 @@ Lxx = Lxx+1
     DEHL_div_C 2048876234,1
 
 ; test division by zero:
-    ld  de,0
-    ld  hl,123
+    ld  dehl,123
     ld  c,0
     call DEHL_div_C
     .expect de = 0xffff
     .expect hl = 0xffff
+    .expect dehl = 0xffffffff
     .expect a  = 123
     .expect b  = 0
     .expect c  = 0
@@ -391,29 +396,32 @@ Lxx = Lxx+1
 
 
 ; -------------------------------------------
+; test DEHL_times_A
+; -------------------------------------------
+
 #test TEST1C, 0x1000
 #local
     .test-timeout 100 ms
 
     ld  bc,47111
-    ld  de,0
-    ld  hl,45678
+    ld  dehl,45678
     ld  a,123
     call DEHL_times_A
     .expect de = (45678*123) >> 16
     .expect hl = (45678*123) & 0xffff
+    .expect dehl = 45678*123
     .expect a  = 0
     .expect bc = 47111
 
 
 .macro DEHL_times_A &N, &D
     ld  bc,4711
-    ld  de,&N >> 16
-    ld  hl,&N & 0xffff
+    ld  dehl,&N
     ld  a,&D
     call DEHL_times_A
     .expect de = (&N*&D) >> 16
     .expect hl = (&N*&D) & 0xffff
+    .expect dehl = &N * &D
     .expect a  = 0          ; zasm can't calculate 40 bit ints => take care for max result!
     .expect bc = 4711
 .endm
@@ -425,6 +433,8 @@ Lxx = Lxx+1
 #endlocal
 
 
+; -------------------------------------------
+; test .expect itself
 ; -------------------------------------------
 #test TEST2, 0x1000
 #local
@@ -514,14 +524,44 @@ Lxx = Lxx+1
     .expect iff2 = 1        ; ei
     .expect r = 10 + 1      ; ei
 
+    ld  a,0
+    ld  iy,0
+    ld  bcde, 0xe0b0c0df
+    ld  ixhl, 0x23456789
+
+    .expect bc = 0xe0b0
+    .expect ix = 0x2345
+    .expect de = 0xc0df
+    .expect hl = 0x6789
+    .expect bcde = 0xe0b0c0df
+    .expect ixhl = 0x23456789
+    .expect a=0
+    .expect iy=0
+
+    ld  a,0
+    ld  hl,0
+    ld  ixbc, 0xcdef2345
+    ld  iyde, 0x98765432
+
+    .expect ix = 0xcdef
+    .expect iy = 0x9876
+    .expect bc = 0x2345
+    .expect de = 0x5432
+    .expect ixbc = 0xcdef2345
+    .expect iyde = 0x98765432
+    .expect a=0
+    .expect hl=0
+
 #endlocal
 
 
 ; -------------------------------------------
+; test running with cc limiter and no interrupts
+; -------------------------------------------
+
 #test TEST3, 0x1000
 #local
-; run with cc limiter and no interrupts
-    .test-clock 4 MHz
+    .test-clock 4 MHz           ; set speed
     .test-timeout 1 s
 
     ld  bc,0
@@ -539,13 +579,16 @@ duration = 10 + 13*$ff00 + 24*$100 - 5  ; 854789
 
 
 ; -------------------------------------------
+; test running with cc limiter and interrupts
+; test output to console
+; -------------------------------------------
+
 #test TEST4, 0x1000
 #local
-; run with cc limiter and interrupts
-    .test-clock   4 MHz
-    .test-timeout 1 s
-    .test-int     100 Hz
+    .test-clock   4 MHz         ; set speed
+    .test-int     100 Hz        ; set interrupt frequency
     .test-console CON_IO        ; read from / dump to console
+    .test-timeout 1 s
 
     im  1       ; rst $38
     ei
@@ -570,6 +613,7 @@ dur_int  = 13 + 83 + 34 + 25            ; cc per interrupt
     jr  z,msg_end
     rst stdout
     jr  2$
+
 msg: dm "--> Hello World, this is Test #4 speaking!",10,0
 msg_end:
 
@@ -577,19 +621,27 @@ msg_end:
 
 
 ; -------------------------------------------
+; test running with cc limiter and interrupts
+; test input from list
+; test compare output with data from list
+; -------------------------------------------
+
 #test TEST5, 0x1000
 #local
-; run with cc limiter and interrupts
 in_addr  equ 1
 out_addr equ 2
 
-    .test-clock   4 MHz
+    .test-clock   4 MHz             ; set speed
+    .test-int     10000 cc          ; set interrupt using cpu cycles (=> 400 Hz)
+    .test-intack  opcode(RST 48)    ; set opcode read from bus during int ack cycle
     .test-timeout 100 ms
-    .test-int     10000 cc
-    .test-intack  opcode(RST 48)
 
-    .test-in  in_addr,  {'y'}*10, "abcde", 0, "DEFGH", {0}*10       ; 31 bytes
-    .test-out out_addr, "yyyyyyyyyy", "abcde", "DEFGH"
+    ; set input data:
+    .test-in    in_addr,  {'y'}*10, "abcde", 0, "DEFGH", {0}*10       ; 31 bytes
+
+    ; set output compare data:
+    .test-out   out_addr, "yyyyyyyyyy", "abcde", "DEFGH"
+
 
     ; make rst 48 point to my handler
     ld  hl,int_handler
@@ -620,17 +672,22 @@ resume:
 
 
 ; -------------------------------------------
+; test running without cc limiter and with interrupts
+; read input from list
+; output to console
+; -------------------------------------------
+
 #test TEST6, 0x1000
 #local
-; run without cc limiter and with interrupts
 in_addr  equ 1
 out_addr equ 2
 
+    .test-int     10000 cc      ; set interrupt using cpu cycles
     .test-timeout 100 ms
-    .test-int     10000 cc
 
     .test-in  in_addr,  "--> ", {"Hello, "}*2, "this is Test #6 queeking", 10, {0}*
     .test-console out_addr
+
 
     ; setup interrupt table:
     im  2                           ; -> jump via table
@@ -666,15 +723,17 @@ resume:
 
 
 ; -------------------------------------------
-#test TEST7, 0x1000
-#local
 ; run without cc limiter and with interrupts
 ; calculate emulation speed
+; -------------------------------------------
 
-    .test-timeout 105 ms
+#test TEST7, 0x1000
+#local
+
     .test-int     1000 Hz       ; fastest allowed for tests
-    .test-console CON_IO
-    ;.test-clock   100 MHz      ; for reference measurement
+    ;.test-clock  100 MHz       ; used for reference measurement
+    .test-console CON_IO        ; output to console
+    .test-timeout 105 ms
 
 
     ; setup interrupt table:
@@ -757,13 +816,13 @@ resume:
 
     ld  hl,msg_mhz1
     rst puts
-    ld  hl,(counter)
-    ld  de,(counter+2)      ; dehl = counter
-    call div1998            ; divide by 199.8 --> hl = MHz
+    ld  dehl,(counter)
+    call div1998            ; divide dehl by 199.8 --> hl = MHz
     call print_hl
     ld  hl,msg_mhz2
     rst puts
 
+    ; used during reference measurement:
     ;.expect cc > 100000 * 100
     ;.expect cc < 100000 * 100 + 10000
     ;.expect hl=0   ; --> print
@@ -780,6 +839,17 @@ resume:
 #endlocal
 
 #end
+
+
+
+
+
+
+
+
+
+
+
 
 
 

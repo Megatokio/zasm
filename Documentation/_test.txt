@@ -195,6 +195,7 @@ pre	#local
 	.expect a = 3
 	.expect de = 7
 	.expect hl = 3*7
+	.expect dehl = 7*$10000 + 3*7
 	.expect cc < 1000
 	#endlocal
 
@@ -203,13 +204,14 @@ h5	.expect register
 
 p	<i>.expect</i> can be used to test register values.
 
-p	You can compare the value of any register or register pair to match an expected value. Ordered comparisons ('>' or '<')	are not allowed.
+p	You can compare the value of any register, register pair or quad register to match an expected value. Ordered comparisons ('>' or '<')	are not allowed.
 
 p	Recognized register names are:
 
 pre	 a f b c d e h l a2 f2 b2 c2 d2 e2 h2 l2 a' f' b' c' d' e' h' l'
 	xh xl yh yl ixh ixl iyh iyl pch pcl sph spl i r
 	af bc de hl af2 bc2 de2 hl2 af' bc' de' hl' ix iy pc sp
+	bcde bchl bcix bciy debc dehl deix deiy etc.
 	im iff1 iff2
 
 h5	.expect cc

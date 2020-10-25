@@ -8,32 +8,32 @@ p	All opcodes which do not use the index registers or the 0xCB group can also be
 p	All these combinations have <u>no side effect</u>.
 
 pre	ld	bc,de
-	ld	bc,hl		
+	ld	bc,hl
 	ld	de,bc
-	ld	de,hl		
-	ld	hl,bc		
-	ld	hl,de		
+	ld	de,hl
+	ld	hl,bc
+	ld	hl,de
 	 
 	ld	bc,ix		; illegal ...
 	ld	bc,iy		; ...
 	ld	de,ix		; ...
 	ld	de,iy		; ...
-	ld	ix,bc		; ...	
+	ld	ix,bc		; ...
 	ld	ix,de		; ...
 	ld	iy,bc		; ...
 	ld	iy,de		; ...
 	 
-	ld	bc,(ix+dis)		
-	ld	bc,(iy+dis)		
-	ld	de,(ix+dis)		
-	ld	de,(iy+dis)		
+	ld	bc,(ix+dis)
+	ld	bc,(iy+dis)
+	ld	de,(ix+dis)
+	ld	de,(iy+dis)
 	ld	hl,(ix+dis)
 	ld	hl,(iy+dis)
 	 
 	ld	(ix+dis),bc
 	ld	(iy+dis),bc
 	ld	(ix+dis),de
-	ld	(iy+dis),de	
+	ld	(iy+dis),de
 	ld	(ix+dis),hl
 	ld	(iy+dis),hl
 	 
@@ -105,5 +105,24 @@ pre	ld	bc,de
 	xor (--hl)
 	cp	(--hl)
 
-	
-	
+h4	Load/store Quad Registers
+p.i	since version 4.4.2.
+p	Quad registers are combinations of two 16 bit registers BC, DE, HL, SP, IX or IY.
+	these can also be .expected in #test segments.
+
+pre	ld	bcde,NNNN
+	ld	bchl,NNNN
+	ld 	bcix,NNNN
+	etc.
+	 
+	ld	debc,(NNNN)
+	ld	dehl,(NNNN)
+	ld 	deix,(NNNN)
+	etc.
+	 
+	ld	(NNNN),hlbc
+	ld	(NNNN),hlde
+	ld 	(NNNN),ixiy
+	etc.
+
+
