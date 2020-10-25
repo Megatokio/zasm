@@ -1407,8 +1407,8 @@ void TestSegment::setExpectedRegisterValue (SourceLine* q, cstr regname, Value v
 
 	regname = lowerstr(regname);
 
-	int min,max;
-	Z80Registers::getLimits(regname,min,max);
+	int32 min,max;
+	Z80Registers::getLimits(regname,min,max,yes);
 
 	if (max == 0)
 		throw SyntaxError("%s: not a register name", regname);

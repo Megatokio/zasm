@@ -122,6 +122,8 @@ inline Value operator ^  (cValue& v, int q) { return Value(v.value ^ q, v.validi
 inline Value operator *  (cValue& v, int q) { return Value(v.value * q, v.validity); }
 inline Value operator /  (cValue& v, int q) { return Value(v.value / q, v.validity); }
 inline Value operator %  (cValue& v, int q) { return Value(v.value % q, v.validity); }
+inline Value operator << (cValue& v, int q) { return Value(v.value << q, v.validity); }
+inline Value operator >> (cValue& v, int q) { return Value(v.value >> q, v.validity); }
 
 inline Value operator +  (int q, cValue& v) { return Value(q + v.value, v.validity); }
 inline Value operator -  (int q, cValue& v) { return Value(q - v.value, v.validity); }

@@ -74,7 +74,7 @@ enum // enumeration of Z80 identifiers
 
 	// 16-bit registers:
 	BC,		DE,		HL,		SP,			// <-- DO NOT REORDER!
-	IX,		IY,		AF,
+	IX,		IY,		AF,					// <-- DO NOT REORDER!
 
 	// others:
 	XBC,	XDE,	XC,		XSP,	XIX,	XIY,
@@ -113,7 +113,7 @@ int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 	throw SyntaxError("illegal condition");
 }
 
-int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
+int Z80Assembler::getRegister (SourceLine& q, Value& n, bool with_qreg) throws
 {
 	// test and skip over register or value
 	// returns register enum:
@@ -192,17 +192,34 @@ int Z80Assembler::getRegister (SourceLine& q, Value& n) throws
 	}
 	else	// ≥3 letters
 	{
-		// target_z80:  test for ixh, ixl, iyh, iyl:					2016-10-01
-		// target_8080: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
-		// target_z180: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
-		if (target_z80 && c1=='i')
+		char c3 = *w++ | 0x20;
+		char c4 = *w++ | 0x20;
+
+		if (c4==0x20)	// strlen=3
 		{
-			char c3 = *w++ | 0x20;
-			if (*w==0)	// 3 letters
+			// target_z80:  test for ixh, ixl, iyh, iyl:					2016-10-01
+			// target_8080: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
+			// target_z180: no test: ixh, ixl, iyh, iyl are valid label names (not rejected in asmLabel())
+			if (target_z80 && c1=='i')
 			{
 				int rval = c2=='x' ? c3=='h'?XH:c3=='l'?XL:0 :
 						   c2=='y' ? c3=='h'?YH:c3=='l'?YL:0 : 0;
 				if (rval) return rval;
+			}
+		}
+		else if (*w==0)	// strlen=4
+		{
+			if (with_qreg && c2 != c4)	// detect quad_regs, e.g. 'DEHL', but not 2x same reg, e.g. 'HLHL'
+			{
+				static const char hi[]="bdhsii";
+				static const char lo[]="celpxy";
+				cptr p2 = strchr(lo,c2);
+				cptr p4 = strchr(lo,c4);
+				if (p2 && p4 && c1==hi[p2-lo] && c3==hi[p4-lo])
+				{
+					if (target_8080 && (c1=='i' || c3=='i')) goto no_8080;	// IX, IY
+					return 256 * (BC + int(p2-lo)) + BC + int(p4-lo);		// "DEHL" -> DE*256 + HL
+				}
 			}
 		}
 	}
@@ -438,9 +455,9 @@ cp_a:	depp=q.p; if (q.testComma()) { if (r!=RA) goto ill_target; else r = getReg
 		goto ill_source;
 
 	case '  ld':
-		r = getRegister(q,n);
+		r = getRegister(q,n,yes);		// allow quad reg
 		depp=q.p; q.expectComma();
-		r2 = getRegister(q,n2);
+		r2 = getRegister(q,n2,r==XNN);	// allow quad reg if dest = '(NN)'
 		assert(r>=RB);
 		assert(r2>=RB);
 
@@ -571,14 +588,23 @@ ld_xiy:		if (r2<=RA && r2!=XHL) { store(instr, LD_xHL_B+r2-RB, n.value); return;
 			// ld (NN),a
 			// ld (NN),hl	hl ix iy
 			// ld (NN),rr	bc de sp
-			if (r2==RA) { store(		LD_xNN_A ); storeWord(n); return; }
-			if (r2==HL) { store(		LD_xNN_HL); storeWord(n); return; }
-			if (r2==IX) { store(PFX_IX, LD_xNN_HL); storeWord(n); return; }
-			if (r2==IY) { store(PFX_IY, LD_xNN_HL); storeWord(n); return; }
-			if (r2==BC) { storeEDopcode(LD_xNN_BC); storeWord(n); return; }
-			if (r2==DE) { storeEDopcode(LD_xNN_DE); storeWord(n); return; }
-			if (r2==SP) { storeEDopcode(LD_xNN_SP); storeWord(n); return; }
-			goto ill_source;
+			// ld (NN),rrrr	dehl, ...			Goodie
+
+			for(;;)
+			{
+				if (int8(r2) == RA) { store(		LD_xNN_A ); } else
+				if (int8(r2) == HL) { store(        LD_xNN_HL); } else
+				if (int8(r2) == IX) { store(PFX_IX, LD_xNN_HL); } else
+				if (int8(r2) == IY) { store(PFX_IY, LD_xNN_HL); } else
+				if (int8(r2) == BC) { storeEDopcode(LD_xNN_BC); } else
+				if (int8(r2) == DE) { storeEDopcode(LD_xNN_DE); } else
+				if (int8(r2) == SP) { storeEDopcode(LD_xNN_SP); } else goto ill_source;
+				storeWord(n);
+				if (r2 <= 255) return;
+				// quad register:		// 1st loop stored low register
+				n.value += 2;			// 2nd loop for high word:
+				r2 = r2 >> 8;			// increment address and fetch high register id
+			}
 
 		case XBC:
 			// ld (bc),a
@@ -693,7 +719,47 @@ ld_r:		assert(r<=RA && r!=XHL);
 			goto ill_dest;
 
 		default:
-			//IERR();
+			if (r >= 256)		// goodie:  ld rrrr,NNNN  or  ld rrrr,(NN)
+			{
+				if (r2==XNN)
+				{
+					do
+					{
+						// loop 1: load lo word
+						// loop 2: load hi word
+						if (int8(r) == HL) { store(        LD_HL_xNN); } else
+						if (int8(r) == BC) { storeEDopcode(LD_BC_xNN); } else
+						if (int8(r) == DE) { storeEDopcode(LD_DE_xNN); } else
+						if (int8(r) == IX) { storeIXopcode(LD_HL_xNN); } else
+						if (int8(r) == IY) { storeIYopcode(LD_HL_xNN); } else
+						if (int8(r) == SP) { storeEDopcode(LD_SP_xNN); } else goto ill_dest;
+						storeWord(n2);	// store address
+						n2.value += 2;	// incr address for high registers
+						r = r >> 8;		// move spec for high registers into low byte
+					}
+					while (r != 0);
+					return;
+				}
+				if (r2==NN)
+				{
+					do
+					{
+						// loop 1: load lo word
+						// loop 2: load hi word
+						if (int8(r) == HL) { store(LD_HL_NN); } else
+						if (int8(r) == BC) { store(LD_BC_NN); } else
+						if (int8(r) == DE) { store(LD_DE_NN); } else
+						if (int8(r) == IX) { storeIXopcode(LD_HL_NN); } else
+						if (int8(r) == IY) { storeIYopcode(LD_HL_NN); } else
+						if (int8(r) == SP) { store(LD_SP_NN); } else goto ill_dest;
+						storeWord(n2 & 0xffff);	// store value
+						n2 = n2 >> 16;	// move high part of value into low word
+						r = r >> 8;		// move spec for high registers into low byte
+					}
+					while (r != 0);
+					return;
+				}
+			}
 			goto ill_dest;
 		}
 

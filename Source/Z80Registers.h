@@ -38,11 +38,12 @@ union Z80Registers
 	~Z80Registers(){}
 
 	void reset() noexcept;
-	int getValue (cstr name) const noexcept;	// returns -1 for invalid names
+	int32 getValue (cstr name, bool with_quadregs=no) const noexcept;	// returns -1 for invalid names (ATTN: -1 is a legal value for QuadRegisters!)
 
-	static bool isaRegisterName(cstr) noexcept;
-	static bool isa8bitRegister(cstr) noexcept;
-	static bool isa16bitRegister(cstr) noexcept;
-	static bool getLimits(cstr,int&,int&) noexcept;
+	static bool isaRegisterName(cstr name, bool with_quadregs=no) noexcept;
+	static bool isa8bitRegister(cstr name) noexcept;
+	static bool isa16bitRegister(cstr name) noexcept;
+	static bool isaQuadRegister(cstr name) noexcept;
+	static bool getLimits(cstr name, int32& min,int32& max, bool with_quadregs=no) noexcept;
 };
 

@@ -29,10 +29,12 @@ void Z80Registers::reset() noexcept
 	af=bc=de=hl=ix=iy=pc=sp=af2=bc2=de2=hl2=ir=iff=im=0;
 }
 
-int Z80Registers::getValue (cstr name) const noexcept
+int32 Z80Registers::getValue (cstr name, bool with_quadregs) const noexcept
 {
 	// get value of register, flag, 8 bit or 16 bit:
 	// returns -1 for invalid names
+	// if with_quadregs is true, then also return value of dreg register tuple.
+	// attn: -1 is a valid value for quad_regs!
 
 	char z[8]={0};
 	strncpy(z,name,5);
@@ -99,7 +101,10 @@ int Z80Registers::getValue (cstr name) const noexcept
 	case 'r   ': return r;
 	case 'im  ': return im;
 
-	default:     return -1;
+	default:
+		if (!with_quadregs || strlen(name)!=4) return -1;  // not a register name
+		// try to return quad register value:
+		return getValue(leftstr(name,2)) * 0x10000 + uint16(getValue(name+2));
 	}
 }
 
@@ -110,47 +115,82 @@ static const char reg16names[] =
 	" af bc de hl af2 bc2 de2 hl2 af' bc' de' hl' ix iy pc sp ";
 
 
-bool Z80Registers::isaRegisterName (cstr name) noexcept
+bool Z80Registers::isaRegisterName (cstr name, bool with_quadregs) noexcept
 {
-	name = catstr(" ",lowerstr(name), " ");
-	return find(reg8names,name) || find(reg16names,name) ||
-			eq(name," im ") || eq(name," iff1 ") || eq(name," iff2 ");
+	// test whether the name is recognized as a 8 or 16 bit register, im or iff.
+	// if with_quadregs is true, then also test for quad register names like dehl.
+
+	cstr name_w_guards = catstr(" ",lowerstr(name), " ");
+	return find(reg8names,name_w_guards) || find(reg16names,name_w_guards) ||
+			(with_quadregs && isaQuadRegister(name)) ||
+			eq(name,"im") || eq(name,"iff1") || eq(name,"iff2");
 }
 
-bool Z80Registers::isa8bitRegister(cstr name) noexcept
+bool Z80Registers::isa8bitRegister (cstr name) noexcept
 {
 	name = catstr(" ",lowerstr(name), " ");
 	return find(reg8names,name);
 }
 
-bool Z80Registers::isa16bitRegister(cstr name) noexcept
+bool Z80Registers::isa16bitRegister (cstr name) noexcept
 {
 	name = catstr(" ",lowerstr(name), " ");
 	return find(reg16names,name);
 }
 
-bool Z80Registers::getLimits(cstr name,int& min, int& max) noexcept
+bool Z80Registers::isaQuadRegister (cstr name) noexcept
 {
-	name = catstr(" ",lowerstr(name), " ");
-	if (find(reg8names,name))
+	// test for names formed from 2 dreg names like DEHL:
+	// allowed dregs: BC DE HL SP IX IY
+	// pairs of the same dreg are not allowed
+
+	char c1,c2,c3,c4;
+	if (name && (c1=*name++) && (c2=*name++) && (c3=*name++) && (c4=*name++) && *name==0)
+	{
+		static const char hi[]="bdhsii";
+		static const char lo[]="celpxy";
+
+		cptr p2 = strchr(lo, c2|0x20);
+		cptr p4 = strchr(lo, c4|0x20);
+
+		return p2 && p4 && (p2!=p4) && (c1|0x20) == hi[p2-lo] && (c3|0x20) == hi[p4-lo];
+	}
+	return no;
+}
+
+bool Z80Registers::getLimits (cstr name, int32& min, int32& max, bool with_quadregs) noexcept
+{
+	// return lower and upper limit for the named register.
+	// reg = 8 bit register, 16 bit register, quad (two 16 bit registers), im or iff.
+	// returns true if ok
+	// returns false and sets max=min=0 if no such register.
+
+	cstr name_w_guards = catstr(" ",lowerstr(name), " ");
+	if (find(reg8names,name_w_guards))
 	{
 		min = -0x80;
 		max = 0xFF;
 		return true;
 	}
-	else if (find(reg16names,name))
+	else if (find(reg16names,name_w_guards))
 	{
 		min = -0x8000;
 		max = 0xFFFF;
 		return true;
 	}
-	else if (eq(name, " im "))
+	else if (with_quadregs && isaQuadRegister(name))
+	{
+		min = int32(0x80000000);
+		max = 0x7fffffff;
+		return true;
+	}
+	else if (eq(name, "im"))
 	{
 		min = 0;
 		max = 2;
 		return true;
 	}
-	else if (eq(name, " iff1 ") || eq(name, " iff2 "))
+	else if (eq(name, "iff1") || eq(name, "iff2"))
 	{
 		min = 0;
 		max = 1;

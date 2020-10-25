@@ -4547,7 +4547,7 @@ longer:
 		{
 			cstr reg = q.nextWord();
 			if (*q.p == '\'') { reg = catstr(reg,"'"); q.p++; }
-			if (!Z80Registers::isaRegisterName(reg)) throw SyntaxError("register name expected");
+			if (!Z80Registers::isaRegisterName(reg,yes)) throw SyntaxError("register name expected");
 			q.expect('=');
 			Value v = value(q);
 			segment->setExpectedRegisterValue(&q,reg,v);

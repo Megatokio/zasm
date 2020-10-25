@@ -290,6 +290,12 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 				if (total_cc+cpu.cc != e.value)
 					setError(e.sourceline, "cpu cycles %u != %u", total_cc+cpu.cc, e.value);
 			}
+			else if (Z80Registers::isaQuadRegister(e.name))	// e.name is a quad register name?
+			{
+				regvalue = cpu.registers.getValue(e.name,yes);
+				if (regvalue != e.value)
+					setError(e.sourceline, "register %s = %i ≠ expected %i", e.name, regvalue, e.value);
+			}
 			else IERR();
 		}
 	}

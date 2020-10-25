@@ -311,12 +311,12 @@ struct IoList
 struct Expectation
 {
 	cstr  name;		// not retained: register name, cc, cc_min or cc_max
-	int   value;	// validity is managed by a single Validity instance in TestSegment
+	int32 value;	// validity is managed by a single Validity instance in TestSegment
 	uint16 pc;		// ""
 	int16 padding;
 	RCPtr<SourceLine> sourceline;
 
-	Expectation (cstr name, int v, int pc, SourceLine* q) : name(name), value(v), pc(uint16(pc)), sourceline(q) {}
+	Expectation (cstr name, int32 v, int pc, SourceLine* q) : name(name), value(v), pc(uint16(pc)), sourceline(q) {}
 	Expectation (Expectation&& q) = default;
 	~Expectation () = default;
 };

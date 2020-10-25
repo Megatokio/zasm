@@ -224,7 +224,7 @@ private:
 			}
 
 	int 	getCondition	(SourceLine&, bool expect_comma) throws ;
-	int 	getRegister		(SourceLine&, Value&)		throws;
+	int 	getRegister		(SourceLine&, Value&, bool quad_reg=no) throws;
 	int		get8080Register	(SourceLine& q)				throws;
 	int		get8080WordRegister	(SourceLine& q, uint)	throws;
 
