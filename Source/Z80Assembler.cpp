@@ -4430,11 +4430,10 @@ longer:
 		}
 		else if (q.testWord("int"))	// .test-int value
 		{
-			Value v = value(q);
-			if (q.testWord("Hz")) segment->setIntPerSec(v);
-			else if (q.testWord("cc")) segment->setCcPerInt(v);
-			else if (v.value <= 1000) segment->setIntPerSec(v);
-			else segment->setCcPerInt(v);
+			Value v = value(q);			// frequency or cc
+			bool hz = q.testWord("Hz") || (!q.testWord("cc") && v.value <= 1000); // Hz or cc ?
+			if (hz) segment->setIntPerSec(v); else segment->setCcPerInt(v);
+			if (q.testComma()) { segment->setIntDuration(value(q)); q.testWord("cc"); }
 			return;
 		}
 		else if (q.testWord("intack"))	// .test-intack value

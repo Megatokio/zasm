@@ -69,11 +69,7 @@ Z80::Z80 (CpuID cpu_type, CoreByte* core, InputHandler input, OutputHandler outp
 	core(core),
 	input(input),
 	output(output),
-	cpu_type(cpu_type),
-	ixcbr2_enabled(no),
-	ixcbxh_enabled(no),
-	int_ack_byte(RST38),
-	breakpoint(0)
+	cpu_type(cpu_type)
 {
 	reset();
 }
@@ -82,9 +78,10 @@ void Z80::reset() noexcept
 {
 	registers.reset();
 	cc   = 0;
-	halt = 0;
-	int_start = 0;
-	int_end = 0;
+	halt = no;
+	int_off = yes;		// startup with no interrupt pending (automatic switch-off mode only)
+	int_start = 0;		// start cc for interrupts
+	int_end = 0;		// end cc for interrupts; start==end = automatic switch-off mode
 }
 
 
@@ -153,9 +150,18 @@ slow_loop:
 //		 if the interrupt is not started until the /INT signal goes away then it is lost!
 
 	ccx = ccx0;						// restore cc for fast exit test
-	if (cc >= int_end) LOOP;		// interrupt no longer asserted
 	if (cc < int_start) { ccx = min(int_start,ccx); LOOP; } // interrupt not yet asserted
-	if (IFF1 == disabled) LOOP;		// irpt disabled
+	if (IFF1 == disabled) LOOP;		// int disabled in cpu
+
+	if (int_start == int_end) 		// automatic switch-off mode?
+	{
+		if (int_off) LOOP;			// interrupts off or already processed
+		else int_off = yes;			// switch off interrupt in int ack cycle
+	}
+	else							// interrupt with duration
+	{
+		if (cc >= int_end) LOOP;	// interrupt no longer asserted
+	}
 
 	if (halt) { assert(peek(pc)==HALT); halt=no; pc++; }
 	IFF1 = IFF2 = disabled;			// disable interrupt

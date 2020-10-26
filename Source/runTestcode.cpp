@@ -141,14 +141,8 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 	bool with_interrupts = int_per_sec > 0;
 	if (!with_interrupts) int_per_sec = 50;			// Hz
 
-	int int_dur = with_interrupts ? 48 : 0;			// TODO configurable?
-		// must be longer than longest instruction.
-		// 32 is sort of a minimum value (longest instr = 23 cc)
-		// but xshort int handler may be shorter than 64 cc
-		// ex af,af \ in a,(IO) \ and a \ jr nz,1$ \ ex af,af' \ ei \ ret  = 13+4+8+4+7+4+4+10 = 54
 	cpu.int_start = 0;
-	cpu.int_end = 0 + int_dur;
-	cpu.cc = int_dur;				// => don't start with int pending
+	cpu.int_end   = with_interrupts ? test_segment.int_duration.value : -1;
 	cpu.int_ack_byte = uint8(test_segment.int_ack_byte);
 	cpu.registers.pc = uint16(test_segment.address);
 
@@ -164,8 +158,9 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 		else				logline("  timeout: none");
 		if (with_interrupts)
 		{
-			if (cc_per_int<=1000) logline("  interrupts: %i Hz", int_per_sec);
-			else				  logline("  interrupts: after %i cc", cc_per_int);
+			if (cc_per_int > 1000) logline("  interrupts: after %i cc", cc_per_int);
+			else                   logline("  interrupts: %i Hz", int_per_sec);
+			if (cpu.int_end > 0)   logline("  interrupt active for %i cc", cpu.int_end);
 		}
 	}
 
@@ -206,6 +201,7 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 					if (rval != Z80::TimeOut) break;
 					total_cc += cc_per_int;
 					cpu.cc -= cc_per_int;
+					cpu.int_off = no;
 					current_time += time_per_int;
 					waitUntil(current_time, clock_id);
 
@@ -223,6 +219,7 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 					if (rval != Z80::TimeOut) break;
 					total_cc += cc_per_int;
 					cpu.cc -= cc_per_int;
+					cpu.int_off = no;
 
 					if (with_timeout && (current_time=now(clock_id)) > start_time + timeout) throw AnyError("timeout");
 				}
@@ -243,6 +240,7 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 					if (now(clock_id) >= current_time + time_per_int)
 					{
 						total_cc += cpu.cc; cpu.cc = 0;
+						cpu.int_off = no;
 						current_time += time_per_int;
 						if (with_timeout && current_time > start_time + timeout) throw AnyError("timeout");
 					}

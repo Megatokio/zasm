@@ -331,6 +331,7 @@ public:
 
 	mutable Value cpu_clock{-1,invalid};	static constexpr uint32 cpu_unlimited = 0;
 	mutable Value int_per_sec{-1,invalid};	static constexpr uint   no_interrupts = 0;
+	mutable Value int_duration{-1,invalid}; static constexpr uint   dflt_int_duration = 0; // automatic switch-off mode
 	mutable Value int_ack_byte{-1,invalid};	static constexpr uint8  floating_bus_byte = 255;
 	mutable Value timeout_ms{-1,invalid};	static constexpr uint32 no_timeout = 0;
 
@@ -345,11 +346,12 @@ public:
 	Validity validity () const override;
 	void rewind() override;
 
-	void setCpuClock (Value frequency);
-	void setIntPerSec (Value frequency);
-	void setCcPerInt (Value cc);
-	void setIntAckByte (Value byte);
-	void setTimeoutMsec (Value msecs);
+	void setCpuClock (cValue& frequency);
+	void setIntPerSec (cValue& frequency);	// set timer int using frequency
+	void setCcPerInt (cValue& cc);			// set timer int using cpu cycles
+	void setIntDuration (cValue& cc);		// how long is the int signal active
+	void setIntAckByte (cValue& byte);
+	void setTimeoutMsec (cValue& msecs);
 	void setExpectedCcMin (SourceLine* q, Value cc);
 	void setExpectedCcMax (SourceLine* q, Value cc);
 	void setExpectedCc (SourceLine* q, Value cc);

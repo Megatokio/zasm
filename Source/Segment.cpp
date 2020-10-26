@@ -1281,25 +1281,18 @@ Validity TestSegment::validity () const
 	// check this segment for validity.
 	// must be called before rewind(), because after rewind() the lists all become valid.
 
-	// we also replace some values with their default values if they were not set be the source.
-	// these values are therefore mutable because validity() is a const method.
-	// this will only happen after pass 1.
-
-	// overwrite (invalid) unset values with (valid) defaults: (pass 1 only)
-	if (cpu_clock.value == -1) cpu_clock = cpu_unlimited;
-	if (int_per_sec.value == -1) int_per_sec = no_interrupts;
-	if (int_ack_byte.value == -1) int_ack_byte = floating_bus_byte;
-	if (timeout_ms.value == -1) timeout_ms = no_timeout;
-
 	if (!expectations_valid) return invalid;
 	if (!iodata_valid) return invalid;
+
 	Validity v = CodeSegment::validity();
 	if (v==invalid) return v;
 
-	v = min(v, cpu_clock.validity);
-	v = min(v, int_per_sec.validity);
-	v = min(v, int_ack_byte.validity);
-	v = min(v, timeout_ms.validity);
+	// replace unset values with (valid) default values:
+	if (cpu_clock.value == -1)    cpu_clock    = cpu_unlimited;     else v = min(v, cpu_clock.validity);
+	if (int_per_sec.value == -1)  int_per_sec  = no_interrupts;     else v = min(v, int_per_sec.validity);
+	if (int_duration.value == -1) int_duration = dflt_int_duration; else v = min(v, int_duration.validity);
+	if (int_ack_byte.value == -1) int_ack_byte = floating_bus_byte; else v = min(v, int_ack_byte.validity);
+	if (timeout_ms.value == -1)   timeout_ms   = no_timeout;        else v = min(v, timeout_ms.validity);
 
 	return v;
 }
@@ -1319,7 +1312,7 @@ void TestSegment::rewind()
 	expectations.shrink(0);		// instead of purge: avoid reallocation
 }
 
-void TestSegment::setCpuClock (Value v)
+void TestSegment::setCpuClock (cValue& v)
 {
 	// set the cpu clock for the test run.
 	// cpu_clock = 0 means run at unlimited speed, which is the default.
@@ -1328,7 +1321,7 @@ void TestSegment::setCpuClock (Value v)
 	cpu_clock = v;
 }
 
-void TestSegment::setIntPerSec (Value v)
+void TestSegment::setIntPerSec (cValue& v)
 {
 	// set the timer interrupt frequency during test run.
 	// int_frequ = 0 means no interrupts, which is the default.
@@ -1338,7 +1331,7 @@ void TestSegment::setIntPerSec (Value v)
 	int_per_sec = v;
 }
 
-void TestSegment::setCcPerInt (Value v)
+void TestSegment::setCcPerInt (cValue& v)
 {
 	// set the timer interrupt frequency during test run.
 	// int_per_sec stores in_per sec (1..1000) or cc_per_int (1001++)
@@ -1347,7 +1340,16 @@ void TestSegment::setCcPerInt (Value v)
 	int_per_sec = v;
 }
 
-void TestSegment::setIntAckByte (Value v)
+void TestSegment::setIntDuration (cValue& v)
+{
+	// set number of cpu cycles for which the timer interrupt is active
+	// default = until handled
+
+	check_value(int_duration, v, ".test-int duration", 16, 1024);
+	int_duration = v;
+}
+
+void TestSegment::setIntAckByte (cValue& v)
 {
 	// set the bus byte during an interrupt acknowledge cycle
 	// the default value is 255.
@@ -1356,7 +1358,7 @@ void TestSegment::setIntAckByte (Value v)
 	int_ack_byte = v;
 }
 
-void TestSegment::setTimeoutMsec (Value v)
+void TestSegment::setTimeoutMsec (cValue& v)
 {
 	// set a timeout for the test in milli seconds
 	// if the test is preempted by the timeout an error is set.

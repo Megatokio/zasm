@@ -41,17 +41,18 @@ public:
 	OutputHandler output;
 
 	CpuID cpu_type;
-	bool ixcbr2_enabled;	// if std. Z80
-	bool ixcbxh_enabled;	// if std. Z80
+	bool ixcbr2_enabled = no;	// if std. Z80
+	bool ixcbxh_enabled = no;	// if std. Z80
 
-	CpuCycle cc;
-	uint int_ack_byte = 255;  // RST 7
-	bool halt;
+	CpuCycle cc = 0;
+	uint int_ack_byte = 255;	// RST 0x38
+	bool halt = no;
+	bool int_off = yes;			// interrupt was automatically switched off in int ack cycle
 	CpuCycle int_start = 0;
-	CpuCycle int_end = 0;
+	CpuCycle int_end = 0;		// interrupt duration: -1 = no interrupts, 0 = automatic switch-off mode, else cc
 
 
-	Address breakpoint;
+	Address breakpoint = 0;
 	enum RVal { TimeOut=0, BreakPoint, IllegalInstruction };
 
 
