@@ -390,6 +390,8 @@ DISTFILES += \
 	Test/SDCC/sdcpp \
 	Test/SDCC/test-tap.asm \
 	Test/SDCC/test1.asm \
+	Test/TEST/test.asm \
+	Test/TEST/test2.asm \
 	Test/Z180/185macro.lib \
 	Test/Z180/counter master.asm \
 	Test/Z180/first.asm \

@@ -92,6 +92,20 @@ p	The units <i>cc</i> or <i>Hz</i> are optional. If present, a sanity test is in
 	If the unit is omitted, zasm uses values up to 1000 as Hz and larger values as cc.
 	1000 is the highest value which can be used for frequency.
 
+p	Since version 4.0.3 a second argument can be added to specify the duration, for which the interrupt should be asserted. This can be used to test whether interrupts are missed due to longisch sequences with interrupts disabled or whether they interrupt itself, if enabled in the interrupt handler too early.
+
+p	It is recommended to use at least 32 cc for the duration, because even if your code never disables interrupts (which will easily take longer than that) the longest Z80 opcodes takes 23 cpu cycles! And, of course, best use the actual duration of your real system. :-)
+
+p	If no interrupt duration is specified, then the interrupt is asserted until it is acknowledged (handled).
+
+pre	.test-int  50 Hz, 40 cc    ; interrupt with real-world frequency, asserted for 40 cc
+	.test-int  70000 cc, 48 cc ; interrupt after 70000 cc, asserted for 48 cc
+	.test-int  50, 128         ; interrupt with 50 Hz, asserted for 128 cc
+	.test-int  70000, 64 cc    ; interrupt after 70000 cc, asserted for 64 cc
+
+p	There is one more subtable difference between auto-off mode and int-with-duration mode:
+	In auto-off mode the first interrupt, which would occur at cpu cycle cc = 0 is suppressed.
+	In interrupt-with-duration mode the first interrupt at cc = 0 is not suppressed, and if the test code enables interrupts very early, then the first interrupt is immediately taken.
 
 h5	.test-intack
 

@@ -666,7 +666,7 @@ resume:
 
     .expect cc > 31 * 10000
     .expect cc < 31 * 10000 + 200
-    .expect cc = 310026             ; lt. zasm
+    .expect cc = 310074             ; lt. zasm
 
 #endlocal
 
@@ -717,7 +717,7 @@ resume:
 
     .expect cc > 48 * 10000
     .expect cc < 48 * 10000 + 200
-    .expect cc = 480023             ; lt. zasm
+    .expect cc = 480071             ; lt. zasm
 
 #endlocal
 
