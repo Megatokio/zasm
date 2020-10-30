@@ -262,15 +262,17 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 		assert(cpu.registers.pc == stop_pc);
 		cpu.core[stop_pc] = orig_byte;
 
+		if (verbose >= 2) logline("          cc = %u", total_cc+cpu.cc);
+
 		// test expectations:
 		while (expectation_index < expectations.count() && expectations[expectation_index].pc == stop_pc)
 		{
 			const Expectation& e = expectations[expectation_index++];
 
-			int regvalue = cpu.registers.getValue(e.name);
+			int32 regvalue = cpu.registers.getValue(e.name);
 			if (regvalue >= 0) // e.name is a register name?
 			{
-				if (uint(regvalue ) != uint(e.value))
+				if (int16(regvalue) != int16(e.value))
 					setError(e.sourceline, "register %s = %i ≠ expected %i", e.name, regvalue, e.value);
 			}
 			else if (eq(e.name,"cc_min"))
