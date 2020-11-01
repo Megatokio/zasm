@@ -342,8 +342,22 @@ void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
 	case ' pop':	instr = POP_HL;  goto pop;
 
 		// pop rr		bc de hl af ix iy
+		// pop rrrr		bcde bchl bcix bciy debc ...
 pop:
-		r = getRegister(q,n);
+		r = getRegister(q,n,yes); // with qreg
+
+		if (r>256)	// qreg
+		{
+			if (instr==PUSH_HL) { r2 = r >> 8; r = r & 0xff; }
+			else                { r2 = r & 0xff; r = r >> 8; }
+
+			if (r2>=BC && r2<=HL) store(instr+(r2-HL)*16);
+			else if (r2==AF) store(instr+16);
+			else if (r2==IX) store(PFX_IX,instr);
+			else if (r2==IY) store(PFX_IY,instr);
+			else if (instr==POP_HL) goto ill_target; else goto ill_source;
+		}
+
 		if (r>=BC && r<=HL) return store(instr+(r-HL)*16);
 		if (r==AF) return store(instr+16);
 		if (r==IX) return store(PFX_IX,instr);
