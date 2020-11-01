@@ -27,16 +27,16 @@ INCLUDEPATH +=          \
 	Libraries           \
 
 SOURCES += \
-	Libraries/Z80/goodies/z80_disass.cpp \
 	Source/Error.cpp \
 	Source/Label.cpp \
 	Source/Value.cpp \
+	Source/main.cpp \
+	Source/Z180.cpp \
 	Source/Z80.cpp \
 	Source/Z80Registers.cpp \
 	Source/assemble8080.cpp \
 	Source/assembleZ80.cpp \
 	Source/convert8080.cpp \
-	Source/main.cpp \
 	Source/Segment.cpp \
 	Source/Source.cpp \
 	Source/Z80Assembler.cpp \
@@ -55,6 +55,7 @@ SOURCES += \
 	Libraries/unix/FD.cpp \
 	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
+	Libraries/Z80/goodies/z80_disass.cpp \
 	Libraries/Z80/goodies/z180_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_major_opcode.cpp \

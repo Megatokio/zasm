@@ -65,207 +65,9 @@
 #define	SP		registers.sp
 
 
-// ===================================
-// default implementations for macros:
-// ===================================
-
-// read/write data:
-
-// increment cpu cycle counter
-#ifndef INCR_CC
-#define INCR_CC(N)		cc += (N)
-#endif
-
-// increment refresh register
-#ifndef INCR_R
-#define INCR_R()		r += 1
-#endif
-
-// read byte from memory
-#ifndef	PEEK
-#define	PEEK(DEST,ADDR)	do{ INCR_CC(3); DEST = peek(ADDR); }while(0)
-#endif
-
-// write byte into memory
-#ifndef	POKE
-#define	POKE(ADDR,BYTE)	do{ INCR_CC(3); poke(ADDR,BYTE); }while(0)
-#endif
-
-// read instruction byte at PC (M1 cycle)
-#ifndef	GET_INSTR
-#define	GET_INSTR(R)	do{ INCR_CC(4); INCR_R(); R = peek(pc++); }while(0)
-#endif
-
-// read 2nd instruction byte after 0xCB opcode
-#ifndef	GET_CB_OP
-#define	GET_CB_OP(R)	do{ INCR_CC(4); INCR_R(); R = peek(pc++); }while(0)
-#endif
-
-// read 2nd instruction byte after 0xED opcode
-#ifndef	GET_ED_OP
-#define	GET_ED_OP(R)	do{ INCR_CC(4); INCR_R(); R = peek(pc++); }while(0)
-#endif
-
-// read 2nd instruction byte after IX or IY opcode prefix
-#ifndef	GET_XY_OP
-#define	GET_XY_OP(R)	do{ INCR_CC(4); INCR_R(); R = peek(pc++); }while(0)
-#endif
-
-// read 3rd instruction byte after IX or IY prefix and 0xCB opcode
-#ifndef	GET_XYCB_OP
-#define	GET_XYCB_OP(R)	do{ INCR_CC(5); R = peek(pc++); }while(0)
-#endif
-
-// read byte at PC
-#ifndef	GET_N
-#define	GET_N(R)		do{ INCR_CC(3); R = peek(pc++); }while(0)
-#endif
-
-// dummy read byte at PC
-#ifndef	SKIP_N
-#define	SKIP_N()		do{ INCR_CC(3); peek(pc++); }while(0)
-#endif
-
-// increment cpu cycle counter
-#ifndef SKIP_1CC
-#define SKIP_1CC(RR)	INCR_CC(1)
-#endif
-#ifndef SKIP_2X1CC
-#define SKIP_2X1CC(RR)	INCR_CC(2)
-#endif
-#ifndef SKIP_4X1CC
-#define SKIP_4X1CC(RR)	INCR_CC(4)
-#endif
-#ifndef SKIP_5X1CC
-#define SKIP_5X1CC(RR)	INCR_CC(5)
-#endif
-#ifndef SKIP_7X1CC
-#define SKIP_7X1CC(RR)	INCR_CC(7)
-#endif
-
-// output byte to address
-#ifndef OUTPUT
-#define	OUTPUT(ADDR,BYTE) do{ INCR_CC(4); this->handle_output(cc-2,ADDR,BYTE); }while(0)
-#endif
-
-// input byte from address
-#ifndef INPUT
-#define	INPUT(ADDR,DEST) do{ INCR_CC(4); DEST = this->handle_input(cc-2,ADDR); }while(0)
-#endif
-
-
 // =====================================
 // call-backs at some intersting points:
 // =====================================
-
-// processing interrupt:
-#ifndef Z80_INFO_IRPT			/* cpu cycle of irpt ack is cc-2 */
-#define Z80_INFO_IRPT			/* nop */
-#endif
-
-// processing NMI:
-#ifndef Z80_INFO_NMI			/* cpu cycle of nmi ack is cc-2 */
-#define	Z80_INFO_NMI			/* nop */
-#endif
-
-// execute RETI
-#ifndef Z80_INFO_RETI
-#define	Z80_INFO_RETI			/* nop */
-#endif
-
-// execute RETN
-#ifndef Z80_INFO_RETN
-#define	Z80_INFO_RETN			/* nop */
-#endif
-
-// execute HALT
-#ifndef Z80_INFO_HALT
-#define	Z80_INFO_HALT do{if(pc==breakpoint){cc-=4;r--;ccx=cc;result=BreakPoint;LOOP;}}while(0)
-#endif
-
-// executing an illegal instruction:
-#ifndef Z80_INFO_ILLEGAL
-#define Z80_INFO_ILLEGAL(dCC,dPC,dR) do{cc-=dCC;pc-=dPC;r-=dR;result=IllegalInstruction;EXIT;}while(0)
-#endif
-
-// pop value from stack
-// probably needed for a single stepper / debugger
-#ifndef Z80_INFO_POP
-#define Z80_INFO_POP			/* nop */
-#endif
-
-// execute return opcode
-// probably needed for a single stepper / debugger
-#ifndef Z80_INFO_RET
-#define Z80_INFO_RET			/* nop */
-#endif
-
-// excute EX HL,(SP)
-// probably needed for a single stepper / debugger
-#ifndef Z80_INFO_EX_HL_xSP
-#define Z80_INFO_EX_HL_xSP		/* nop */
-#endif
-
-// execute RST 0 opdode
-#ifndef Z80_INFO_RST00
-#define Z80_INFO_RST00			/* nop */
-#endif
-
-// execute RST 8 opdode
-#ifndef Z80_INFO_RST08
-#define Z80_INFO_RST08			/* nop */
-#endif
-
-// execute RST 0x10 opdode
-#ifndef Z80_INFO_RST10
-#define Z80_INFO_RST10			/* nop */
-#endif
-
-// execute RST 0x18 opdode
-#ifndef Z80_INFO_RST18
-#define Z80_INFO_RST18			/* nop */
-#endif
-
-// execute RST 0x20 opdode
-#ifndef Z80_INFO_RST20
-#define Z80_INFO_RST20			/* nop */
-#endif
-
-// execute RST 0x28 opdode
-#ifndef Z80_INFO_RST28
-#define Z80_INFO_RST28			/* nop */
-#endif
-
-// execute RST 0x30 opdode
-#ifndef Z80_INFO_RST30
-#define Z80_INFO_RST30			/* nop */
-#endif
-
-// execute RST 0x38 opdode
-#ifndef Z80_INFO_RST38
-#define Z80_INFO_RST38			/* nop */
-#endif
-
-// execute DI opcode
-#ifndef Z80_INFO_DI
-#define Z80_INFO_DI				/* nop */
-#endif
-
-// execute EI opcode
-#ifndef Z80_INFO_EI
-#define Z80_INFO_EI				/* nop */
-#endif
-
-// execute LD R,A opcode
-#ifndef Z80_INFO_LD_R_A
-#define Z80_INFO_LD_R_A			/* nop */
-#endif
-
-// execute LD I,A opcode
-#ifndef Z80_INFO_LD_I_A
-#define Z80_INFO_LD_I_A			/* nop */
-#endif
-
 
 
 
@@ -279,54 +81,39 @@
 #define	PUSH(R)			do{ --SP; POKE(SP,Byte(R)); }while(0)
 
 
-#define	LOAD_REGISTERS do{ 									\
-	r		= registers.r;	/* refresh counter R		*/	\
-	cc		= this->cc;		/* cpu cycle counter		*/	\
-	pc		= registers.pc;	/* program counter PC		*/	\
-	ra		= registers.a;	/* register A				*/	\
-	rf		= registers.f;	/* register F				*/	\
-	}while(0)
-
-#define	SAVE_REGISTERS do{														\
-	registers.r		= (registers.r&0x80)|(r&0x7f);	/* refresh counter R	*/	\
-	this->cc		= cc;							/* cpu cycle counter	*/	\
-	registers.pc	= pc;							/* program counter PC	*/	\
-	registers.a		= ra;							/* register A			*/	\
-	registers.f		= rf;							/* register F			*/	\
-	}while(0)
-
-
 /*	RLC ... SRL:	set/clr C, Z, P, S;
 			clear	N=0, H=0
 			pres.	none
 */
 #define M_RLC(R)      				\
 	rf  = R>>7;						\
-	R   = (R<<1)+rf; 				\
+	R   = uint8((R<<1)+rf); 		\
 	rf |= zlog_flags[R]
 
 #define M_RRC(R)      				\
 	rf  = R&0x01;					\
-	R   = (R>>1)+(rf<<7);		 	\
+	R   = uint8((R>>1)+(rf<<7));	\
 	rf |= zlog_flags[R]
 
 #define M_RL(R)						\
+	do{								\
 	if (R&0x80)						\
-	{	R 	= (R<<1)+(rf&0x01);		\
+	{	R 	= uint8((R<<1)+(rf&0x01));\
 		rf	= zlog_flags[R]+C_FLAG;	\
 	} else							\
-	{	R 	= (R<<1)+(rf&0x01);		\
+	{	R 	= uint8((R<<1)+(rf&0x01));\
 		rf	= zlog_flags[R];		\
-	}
+	}}while(0)
 
 #define M_RR(R)						\
+	do{								\
 	if (R&0x01)						\
-	{	R 	= (R>>1)+(rf<<7);		\
+	{	R 	= uint8((R>>1)+(rf<<7));\
 		rf	= zlog_flags[R]+C_FLAG;	\
 	} else							\
-	{	R 	= (R>>1)+(rf<<7);		\
+	{	R 	= uint8((R>>1)+(rf<<7));\
 		rf	= zlog_flags[R];		\
-	}
+	}}while(0)
 
 #define M_SLA(R)					\
 	rf	= R>>7;						\
@@ -340,7 +127,7 @@
 
 #define M_SLL(R)					\
 	rf	= R>>7;						\
-	R	= (R<<1)+1;					\
+	R	= uint8((R<<1)+1);			\
 	rf |= zlog_flags[R]
 
 #define M_SRL(R)					\
@@ -364,38 +151,67 @@
 /*	ADD ... CP:	set/clr	Z, S, V, C, N, H
 				pres	none
 */
-#define M_ADD(R)								\
+#define M_ADD_old(R)								\
 	wm	= ra+R;									\
 	rf	= wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
 			 + (~(ra^R)&(wml^ra)&0x80?V_FLAG:0)	\
 			 + ((ra^R^wml)&H_FLAG);				\
 	ra	= wml
+#define M_ADD(R)								\
+	wm	= ra+R;									\
+	rf	= wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
+			 + ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			 + ((ra^R^wml)&H_FLAG);				\
+	ra	= wml
 
-#define M_SUB(R)								\
+#define M_SUB_old(R)								\
 	wm	= ra-R;									\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
 			  + ((ra^R)&(wml^ra)&0x80?V_FLAG:0)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
 	ra	= wml
+#define M_SUB(R)								\
+	wm	= ra-R;									\
+	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
+			+ ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
+	ra	= wml
 
-#define M_ADC(R)								\
+#define M_ADC_old(R)								\
 	wm	= ra+R+(rf&C_FLAG);						\
 	rf	= wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
 			 + (~(ra^R)&(wml^ra)&0x80?V_FLAG:0)	\
 			 + ((ra^R^wml)&H_FLAG);				\
 	ra	= wml
+#define M_ADC(R)								\
+	wm	= ra+R+(rf&C_FLAG);						\
+	rf	= wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
+			+ ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			 + ((ra^R^wml)&H_FLAG);				\
+	ra	= wml
 
-#define M_SBC(R)								\
+#define M_SBC_old(R)								\
 	wm	= ra-R-(rf&C_FLAG);						\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
 			  + ((ra^R)&(wml^ra)&0x80?V_FLAG:0)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
 	ra	= wml
+#define M_SBC(R)								\
+	wm	= ra-R-(rf&C_FLAG);						\
+	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
+			 + ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
+	ra	= wml
 
-#define M_CP(R)									\
+#define M_CP_old(R)									\
 	wm	= ra-R;									\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
 			  + ((ra^R)&(wml^ra)&0x80?V_FLAG:0)	\
+			  + ((ra^R^wml)&H_FLAG) + N_FLAG
+#define M_CP(R)									\
+	wm	= ra-R;									\
+	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
+			+ ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG
 
 
@@ -414,6 +230,10 @@
 #define M_XOR(R)								\
 	ra ^= R;									\
 	rf	= zlog_flags[ra]
+
+// Z180:
+#define M_TST(A,N)								\
+	rf = H_FLAG|zlog_flags[A & N]
 
 
 /*	INC ... DEC:	set/clr	Z,P,S,H
@@ -456,7 +276,7 @@
 */
 #define M_ADCW(R)								\
 	wm	= HL+R+(rf&C_FLAG);						\
-	rf	= ((uint32(HL)+uint32(R)+(rf&C_FLAG))>>16)\
+	rf	= uint8((uint32(HL)+uint32(R)+(rf&C_FLAG))>>16)\
 			+ (wm?0:Z_FLAG) + (wmh&S_FLAG)		\
 			+ (~(HL^R)&(wm^HL)&0x8000?V_FLAG:0);\
 	HL	= wm
@@ -478,6 +298,15 @@
 	INPUT(BC,R);								\
 	rf	= (rf&C_FLAG) + zlog_flags[R]
 
+
+/* Z180:
+	IN0	set/clr	Z, P, S, H
+		clear	N=0
+		pres	C
+*/
+#define M_IN0(PORT,R)							\
+	INPUT(PORT,R);								\
+	rf	= (rf&C_FLAG) + zlog_flags[R]
 
 
 

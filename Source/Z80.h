@@ -35,14 +35,16 @@ public:
 	typedef std::function<uint8(CpuCycle,uint16)> InputHandler;
 	typedef std::function<void(CpuCycle,uint16,uint8)> OutputHandler;
 
+	static const uint8 zlog_flags[256];
+
 	Z80Registers registers;
 	CoreByte* core = nullptr;
 	InputHandler input;
 	OutputHandler output;
 
 	CpuID cpu_type;
-	bool ixcbr2_enabled = no;	// if std. Z80
-	bool ixcbxh_enabled = no;	// if std. Z80
+	bool ixcbr2_enabled = no;	// Z80
+	bool ixcbxh_enabled = no;	// Z80
 
 	CpuCycle cc = 0;
 	uint int_ack_byte = 255;	// RST 0x38
@@ -50,25 +52,21 @@ public:
 	bool int_off = yes;			// interrupt was automatically switched off in int ack cycle
 	CpuCycle int_start = 0;
 	CpuCycle int_end = 0;		// interrupt duration: -1 = no interrupts, 0 = automatic switch-off mode, else cc
-
-
 	Address breakpoint = 0;
-	enum RVal { TimeOut=0, BreakPoint, IllegalInstruction };
 
+	enum RVal { TimeOut=0, BreakPoint, IllegalInstruction, UnsupportedIntAckByte };
 
 	Z80 (CpuID, CoreByte[0x10000], InputHandler, OutputHandler);
 	~Z80(){}
 
 	void reset() noexcept;
 	RVal run (CpuCycle cc_exit);
+	RVal runZ180 (CpuCycle);
 
 	Byte peek  (Address a) const noexcept	{ return core[a]; }
 	void poke  (Address a, Byte c) noexcept	{ core[a] = c; }
-	Word peek2 (Address a) const noexcept;
-	void poke2 (Address, Word n) noexcept;
-	Word pop2  () noexcept;
-	void push2 (Word n) noexcept;
 };
+
 
 
 
