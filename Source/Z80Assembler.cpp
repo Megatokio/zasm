@@ -1290,6 +1290,7 @@ hi:			n = value(q);
 				if (w[0]==0) throw SyntaxError("')' missing");	// EOL
 				if (w[0]=='(') { nkl++; continue; }
 				if (w[0]==')') { nkl--; continue; }
+				if (lceq(w,"af") && *q=='\'') q+=1;
 			}
 			n = z80_major_opcode(substr(a,q.p-1));
 			goto op;
