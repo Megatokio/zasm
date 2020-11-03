@@ -124,5 +124,15 @@ pre	ld	bcde,NNNN
 	ld	(NNNN),hlde
 	ld 	(NNNN),ixiy
 	etc.
+	 
+	push bcde
+	push dehl
+	push hlix
+	etc.
+
+	pop bcde
+	pop dehl
+	pop hlix
+	etc.
 
 

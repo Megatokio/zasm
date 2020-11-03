@@ -26,11 +26,12 @@ pre	ex	hl,de		ex	de,hl
 	xor a,R			xor	R
 	or  a,R         or	R
 	cp  a,R         cp	R
-	
+
 p	Some variants apply to notation for arguments:
 
 pre	ld	a,N			ld 	a,#N
 	ld	a,(ix+0)	ld	a,(ix)
 	ld	a,(ix+dis)	ld	a,dis(ix)
-	
-	
+
+p	Beyond that, zasm provides convenience definitions for compound instructions to increase readability and maintainability by reducing the number of lines in a source files.
+
