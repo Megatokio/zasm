@@ -30,6 +30,7 @@ SOURCES += \
 	Libraries/Z80/goodies/z80_disass.cpp \
 	Source/Error.cpp \
 	Source/Label.cpp \
+	Source/Value.cpp \
 	Source/Z80.cpp \
 	Source/Z80Registers.cpp \
 	Source/assemble8080.cpp \

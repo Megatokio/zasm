@@ -28,30 +28,26 @@
 #include "Value.h"
 
 
-void Value::div (int32 n, Validity v) throws
+Value Value::operator / (cValue& q) const
 {
-	if (n)
-	{
-		value /= n;
-	}
-	else
-	{
-		if (v==valid) throw AnyError(EDOM,"division by zero");
-		value = n<0 ? 0x80000000 : 0x7FFFFFFF;
-	}
-	chkv(v);
+	Validity v = min(validity,q.validity);
+	int32 n = q.value;
+
+	if (n) return Value(value/n, v);
+
+	if (q.is_valid()) throw AnyError(EDOM,"division by zero");
+	return Value(n < 0 ? int32(0x80000000) : 0x7FFFFFFF, v);
 }
 
-void Value::rem (int32 n, Validity v) throws
+Value Value::operator % (cValue& q) const
 {
-	if (n)
-	{
-		value %= n;
-	}
-	else
-	{
-		if (v==valid) throw AnyError(EDOM,"division by zero");
-		value = 0;
-	}
-	chkv(v);
+	Validity v = min(validity,q.validity);
+	int32 n = q.value;
+
+	if (n) return Value(value %  n, v);
+
+	if (q.is_valid()) throw AnyError(EDOM,"division by zero");
+	return Value(0,v);
 }
+
+

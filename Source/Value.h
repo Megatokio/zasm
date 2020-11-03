@@ -80,8 +80,8 @@ public:
 	void	operator += (cValue& v) { value += v.value; validity = min(validity,v.validity); }
 	void	operator -= (cValue& v) { value -= v.value; validity = min(validity,v.validity); }
 	void	operator *= (cValue& v) { value *= v.value; validity = min(validity,v.validity); }
-	void	operator /= (cValue& v) { value /= v.value; validity = min(validity,v.validity); }
-	void	operator %= (cValue& v) { value %= v.value; validity = min(validity,v.validity); }
+	void	operator /= (cValue& v) { *this = *this / v; } // { value /= v.value; validity = min(validity,v.validity); }
+	void	operator %= (cValue& v) { *this = *this % v; } // { value %= v.value; validity = min(validity,v.validity); }
 	void	operator &= (cValue& v) { value &= v.value; validity = min(validity,v.validity); }
 	void	operator |= (cValue& v) { value |= v.value; validity = min(validity,v.validity); }
 	void	operator ^= (cValue& v) { value ^= v.value; validity = min(validity,v.validity); }
@@ -96,8 +96,8 @@ public:
 	Value	operator +  (cValue& q) const { return Value(value +  q.value, min(validity,q.validity)); }
 	Value	operator -  (cValue& q) const { return Value(value -  q.value, min(validity,q.validity)); }
 	Value	operator *  (cValue& q) const { return Value(value *  q.value, min(validity,q.validity)); }
-	Value	operator /  (cValue& q) const { return Value(value /  q.value, min(validity,q.validity)); }
-	Value	operator %  (cValue& q) const { return Value(value %  q.value, min(validity,q.validity)); }
+	Value	operator /  (cValue& q) const;// { return Value(value /  q.value, min(validity,q.validity)); }
+	Value	operator %  (cValue& q) const;// { return Value(value %  q.value, min(validity,q.validity)); }
 	Value	operator &  (cValue& q) const { return Value(value &  q.value, min(validity,q.validity)); }
 	Value	operator |  (cValue& q) const { return Value(value |  q.value, min(validity,q.validity)); }
 	Value	operator ^  (cValue& q) const { return Value(value ^  q.value, min(validity,q.validity)); }
@@ -120,8 +120,8 @@ inline Value operator &  (cValue& v, int q) { return Value(v.value & q, v.validi
 inline Value operator |  (cValue& v, int q) { return Value(v.value | q, v.validity); }
 inline Value operator ^  (cValue& v, int q) { return Value(v.value ^ q, v.validity); }
 inline Value operator *  (cValue& v, int q) { return Value(v.value * q, v.validity); }
-inline Value operator /  (cValue& v, int q) { return Value(v.value / q, v.validity); }
-inline Value operator %  (cValue& v, int q) { return Value(v.value % q, v.validity); }
+inline Value operator /  (cValue& v, int q) { return v / Value(q); }
+inline Value operator %  (cValue& v, int q) { return v % Value(q); }
 inline Value operator << (cValue& v, int q) { return Value(v.value << q, v.validity); }
 inline Value operator >> (cValue& v, int q) { return Value(v.value >> q, v.validity); }
 
@@ -131,8 +131,8 @@ inline Value operator &  (int q, cValue& v) { return Value(q & v.value, v.validi
 inline Value operator |  (int q, cValue& v) { return Value(q | v.value, v.validity); }
 inline Value operator ^  (int q, cValue& v) { return Value(q ^ v.value, v.validity); }
 inline Value operator *  (int q, cValue& v) { return Value(q * v.value, v.validity); }
-inline Value operator /  (int q, cValue& v) { return Value(q / v.value, v.validity); }
-inline Value operator %  (int q, cValue& v) { return Value(q % v.value, v.validity); }
+inline Value operator /  (int q, cValue& v) { return Value(q) / v; }
+inline Value operator %  (int q, cValue& v) { return Value(q) % v; }
 
 
 inline bool  operator == (cValue& v, int q) { return v.value == q; }
