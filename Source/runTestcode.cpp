@@ -249,7 +249,10 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 
 			// check return code
 			if (rval == Z80::IllegalInstruction)
-				throw AnyError("illegal instruction: %s", disassemble(cpu.cpu_type, cpu.core, cpu.registers.pc));
+			{
+				ushort pc = cpu.registers.pc;
+				throw AnyError("illegal instruction: %s", disassemble(cpu.cpu_type, cpu.core, pc));
+			}
 			else
 				assert(rval == Z80::BreakPoint);
 		}
