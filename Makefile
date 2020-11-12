@@ -31,9 +31,7 @@ OBJECTS = \
 		tmp/FD.o \
 		tmp/tempmem.o \
 		tmp/files.o \
-		tmp/z180_clock_cycles.o \
 		tmp/z80_clock_cycles.o \
-		tmp/z80_major_opcode.o \
 		tmp/z80_opcode_length.o \
 		tmp/z80_disass.o \
 		tmp/kio.o \
@@ -80,14 +78,8 @@ tmp/tempmem.o:
 tmp/files.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/files.o Libraries/unix/files.cpp
 
-tmp/z180_clock_cycles.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z180_clock_cycles.o Libraries/Z80/goodies/z180_clock_cycles.cpp
-
 tmp/z80_clock_cycles.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_clock_cycles.o Libraries/Z80/goodies/z80_clock_cycles.cpp
-
-tmp/z80_major_opcode.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_major_opcode.o Libraries/Z80/goodies/z80_major_opcode.cpp
 
 tmp/z80_opcode_length.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_opcode_length.o Libraries/Z80/goodies/z80_opcode_length.cpp

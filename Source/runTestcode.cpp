@@ -19,7 +19,7 @@
 #include "kio/kio.h"
 #include "Z80Assembler.h"
 #include "Z80.h"
-#include "Z80/goodies/z80_disass.h"
+#include "Z80/goodies/z80_goodies.h"
 #include "Z80/goodies/z80_opcodes.h"
 
 
@@ -251,7 +251,11 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 			if (rval == Z80::IllegalInstruction)
 			{
 				ushort pc = cpu.registers.pc;
-				throw AnyError("illegal instruction: %s", disassemble(cpu.cpu_type, cpu.core, pc));
+				CpuID cpuid = cpu.cpu_type;
+				if (cpuid==Cpu8080) throw AnyError("%s", disassemble_8080(cpu.core, pc, syntax_8080));
+				if (ixcbr2_enabled) cpuid = CpuZ80_ixcbr2;
+				if (ixcbxh_enabled) cpuid = CpuZ80_ixcbxh;
+				throw AnyError("%s", disassemble(cpuid, cpu.core, pc));
 			}
 			else
 				assert(rval == Z80::BreakPoint);

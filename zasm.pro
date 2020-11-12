@@ -56,9 +56,7 @@ SOURCES += \
 	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
 	Libraries/Z80/goodies/z80_disass.cpp \
-	Libraries/Z80/goodies/z180_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
-	Libraries/Z80/goodies/z80_major_opcode.cpp \
 	Libraries/Z80/goodies/z80_opcode_length.cpp \
 	Libraries/audio/audio.cpp \
 	Libraries/audio/WavFile.cpp \
@@ -70,7 +68,6 @@ HEADERS += \
 	Libraries/Templates/relational_operators.h \
 	Libraries/Templates/sort.h \
 	Libraries/Templates/template_helpers.h \
-	Libraries/Z80/goodies/z80_disass.h \
 	Libraries/kio/auto_config.h \
 	Source/Error.h \
 	Source/Label.h \
@@ -104,7 +101,7 @@ HEADERS += \
 	Libraries/kio/exceptions.h \
 	Libraries/Templates/Array.h \
 	Libraries/Templates/HashMap.h \
-	Libraries/Z80/goodies/z80_major_opcode_tables.h \
+	Libraries/Z80/goodies/CpuID.h \
 	Libraries/Z80/goodies/z80_opcodes.h \
 	Libraries/Z80/goodies/z80_goodies.h \
 	Libraries/hash/sdbm_hash.h \
