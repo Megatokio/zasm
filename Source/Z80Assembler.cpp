@@ -1292,7 +1292,7 @@ hi:			n = value(q);
 				if (w[0]==')') { nkl--; continue; }
 				if (lceq(w,"af") && *q=='\'') q+=1;
 			}
-			n = z80_major_opcode(substr(a,q.p-1));
+			n = syntax_8080 ? major_opcode_8080(substr(a,q.p-1)) : major_opcode(substr(a,q.p-1));
 			goto op;
 		}
 		else if (eq(w,"target"))

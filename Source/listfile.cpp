@@ -79,7 +79,7 @@ static uint write_line_with_objcode
 	{
 		for (count=0;;)
 		{
-			uint n = cpu_opcode_length(variant,bytes+count);
+			uint n = opcode_length(variant,bytes+count);
 			if (count+n>4) break;
 			count += n;
 		}
@@ -130,19 +130,18 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data, CpuID var
 
 	if (is_data) return "         ";		// spacestr(9)
 
-	assert(count>=1 && count<=4);
+	assert(count>=1 && count<=4); (void)count;
 
 	// TODO: verify opcode length
 
 	uint8 op1 = bytes[0];
-	uint8 op2 = count>=2 ? bytes[1] : 0;
 
-	bool can_branch = cpu_opcode_can_branch(variant,op1,op2);
+	bool can_branch = opcode_can_branch(variant,bytes);
 	if (can_branch)
 	{
-		uint a = cc + cpu_clock_cycles(variant,op1,op2,0);			// print accumulated time after instruction
-		uint b = op1==0xed ? cpu_clock_cycles_on_branch(variant,op1,op2) : // for ldir etc. print loop time
-				 cc + cpu_clock_cycles_on_branch(variant,op1,op2);	// for other instructions print accum. time as for a
+		uint a = cc + clock_cycles(variant,bytes);					 // print accumulated time after instruction
+		uint b = op1==0xed ? clock_cycles_on_branch(variant,bytes) : // for ldir etc. print loop time
+				 cc + clock_cycles_on_branch(variant,bytes);		 // for other instructions print accum. time as for a
 		cc = a;
 
 		str s = usingstr("[%2u|%2u]  ", a, b);
@@ -151,8 +150,7 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data, CpuID var
 	}
 	else
 	{
-		uint8 op4 = count>=4 ? bytes[3] : 0;
-		cc += cpu_clock_cycles(variant,op1,op2,op4);
+		cc += clock_cycles(variant,bytes);
 
 		str s = usingstr("[%2u]     ", cc);
 		s[9] = 0;
@@ -168,12 +166,8 @@ static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc, CpuID variant
 
 	while (count)
 	{
-		uint8 op1 = bytes[0];
-		uint8 op2 = count>=2 ? bytes[1] : 0;
-		uint8 op4 = count>=4 ? bytes[3] : 0;
-
-		cc += cpu_clock_cycles(variant,op1,op2,op4);
-		uint len = cpu_opcode_length(variant,bytes);
+		cc += clock_cycles(variant,bytes);
+		uint len = opcode_length(variant,bytes);
 		assert(len<=count);
 		bytes += len;
 		count -= len;
@@ -208,13 +202,13 @@ static uint write_line_with_objcode_and_cycles
 	count   -= offset;
 
 	// special handling for compound opcodes:
-	if (count>1 && !is_data && count>cpu_opcode_length(variant,bytes))
+	if (count>1 && !is_data && count>opcode_length(variant,bytes))
 	{
 		if (count>4)	// limit number of accounted bytes to 4; break on opcode boundary:
 		{
 			for (count=0;;)
 			{
-				uint n = cpu_opcode_length(variant,bytes+count);
+				uint n = opcode_length(variant,bytes+count);
 				if (count+n>4) break;
 				count += n;
 				//if (n>=2 && z80_opcode_can_branch(bytes[0],bytes[1])) break;			denk...
