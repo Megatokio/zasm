@@ -485,7 +485,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 		}
 
 		checkCpuOptions();
-		assemble(source);
+		assemble(source,sourcefile);
 		if (errors.count()==0) checkTargetfile();
 		if (errors.count()==0) runTestcode();
 
@@ -590,7 +590,7 @@ x:	label->value = Value(value,validity);
 	label->is_defined = yes;
 }
 
-void Z80Assembler::assemble (StrArray& sourcelines) noexcept
+void Z80Assembler::assemble (StrArray& sourcelines, cstr sourcepath) noexcept
 {
 	// assemble source[]
 	// output will be in
@@ -600,7 +600,7 @@ void Z80Assembler::assemble (StrArray& sourcelines) noexcept
 	//   errors[];
 
 	source.purge();
-	for (uint i=0;i<sourcelines.count();i++) { source.append(new SourceLine("", i, dupstr(sourcelines[i]))); }
+	for (uint i=0;i<sourcelines.count();i++) { source.append(new SourceLine(sourcepath, i, dupstr(sourcelines[i]))); }
 	current_sourceline_index = 0;
 
 	//target_str = NULL;
@@ -988,8 +988,8 @@ uint Z80Assembler::assembleSingleLine (uint address, cstr instruction, char buff
 
 	StrArray sourcelines;
 	sourcelines.append(catstr(" org ",tostr(address)));	// set the destination address (allow use of '$')
-	sourcelines.append(catstr(" ",instruction));			// the instruction to assemble
-	assemble(sourcelines);
+	sourcelines.append(catstr(" ",instruction));		// the instruction to assemble
+	assemble(sourcelines,"");
 
 	CodeSegment& segment = dynamic_cast<CodeSegment&>(current_segment());
 
