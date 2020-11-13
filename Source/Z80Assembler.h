@@ -255,7 +255,7 @@ public:
 							 int  liststyle=1,			// 0=none, 1=plain, 2=w/ocode, 4=w/labels, 8=w/clkcycles
 							 int  deststyle='b',		// 0=none, 'b'=bin, 'x'=intel hex, 's'=motorola s19
 							 bool clean=no)			noexcept;
-	void	assemble		(StrArray& sourcelines)	noexcept;
+	void	assemble		(StrArray& sourcelines, cstr sourcepath) noexcept;
 	void	assembleOnePass	(uint pass) noexcept;
 	void	assembleLine	(SourceLine&)			throws;
 	uint	assembleSingleLine(uint address, cstr z80_instruction, char buffer[]);
