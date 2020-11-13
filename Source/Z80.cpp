@@ -931,11 +931,13 @@ nxtcmnd:
 				GET_N(dis);
 				GET_XYCB_OP(o);					// major opcode op3
 
-				if ((o&0x06)==4 && ixcbxh_enabled)
+				if ((o&7) != 6 && !ixcbr2_enabled)
 				{
+					if (!ixcbxh_enabled || (o&6) != 4) goto ill_op4;
+
 					// use register XH or XL
-					c = o&1 ? rzl : rzh;		// TODO TIMING UNKNOWN
-					w = 0; // wg. warning
+					c = o&1 ? rzl : rzh;	// TODO TIMING UNKNOWN
+					w = 0; // wg. warning	// ASSUMED: memory not accessed, 3cc/6cc saved
 				}
 				else
 				{
@@ -986,18 +988,16 @@ nxtcmnd:
 				// copy result to register (illegals only)
 				switch(o&0x07)
 				{
-				case 0:	RB=c; goto ixcbra;
-				case 1:	RC=c; goto ixcbra;
-				case 2:	RD=c; goto ixcbra;
-				case 3:	RE=c; goto ixcbra;
-				case 4:	if (ixcbxh_enabled) { rzh = c; LOOP; } // TODO TIMING UNKNOWN
-						RH=c; goto ixcbra;
-				case 5:	if (ixcbxh_enabled) { rzl = c; LOOP; } // TODO TIMING UNKNOWN
-						RL=c; goto ixcbra;
-				case 6: break;				// (HL): legal register
-				case 7:	ra=c; goto ixcbra;
-				ixcbra:	if (!ixcbr2_enabled) goto ill_op3;
-						break;
+				case 0:	RB=c; break;
+				case 1:	RC=c; break;
+				case 2:	RD=c; break;
+				case 3:	RE=c; break;
+				case 4:	if (ixcbxh_enabled) { rzh = c; LOOP; }
+						RH=c; break;
+				case 5:	if (ixcbxh_enabled) { rzl = c; LOOP; }
+						RL=c; break;
+				case 6: break;				// (HL): legal opcode
+				case 7:	ra=c; break;
 				}
 
 				if ((o&0xc0)==0x40) LOOP;	// BIT
@@ -1278,8 +1278,8 @@ nxtcmnd:
 		// all opcodes decoded!
 		IERR();
 
-		ill_op3:
-		cc -= 12; pc -= 2;		// undo dis and op3 fetch
+		ill_op4:
+		cc -= 8; pc -= 2;		// undo dis and op3 fetch
 		ill_op2:
 		cc -= 4; pc--; r--;		// undo op2 fetch
 		ill_op1:
