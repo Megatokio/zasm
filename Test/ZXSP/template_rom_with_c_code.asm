@@ -62,7 +62,7 @@ __sdcc_heap_end: 			; --> sdcc _malloc.c
 
 ; reset vector
 RST0::	di
-		ld		sp,_ram_end
+		ld		sp,_ram_end & 0xffff
 		jp		init
 		defs	0x08-$
 
