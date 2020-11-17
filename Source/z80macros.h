@@ -173,7 +173,7 @@
 #define M_SUB(R)								\
 	wm	= ra-R;									\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
-			+ ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			  + (((ra^R)&(wml^ra))>>5 & V_FLAG)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
 	ra	= wml
 
@@ -199,7 +199,7 @@
 #define M_SBC(R)								\
 	wm	= ra-R-(rf&C_FLAG);						\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
-			 + ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			  + (((ra^R)&(wml^ra))>>5 & V_FLAG)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG;	\
 	ra	= wml
 
@@ -211,7 +211,7 @@
 #define M_CP(R)									\
 	wm	= ra-R;									\
 	rf	= -wmh + (wml?0:Z_FLAG) + (wml&S_FLAG)	\
-			+ ((~(ra^R)&(wml^ra))>>5 & V_FLAG)	\
+			  + (((ra^R)&(wml^ra))>>5 & V_FLAG)	\
 			  + ((ra^R^wml)&H_FLAG) + N_FLAG
 
 
