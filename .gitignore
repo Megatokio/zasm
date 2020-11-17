@@ -19,3 +19,4 @@ tmp/
 .cproject
 .project
 .settings
+*.c.s
