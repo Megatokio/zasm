@@ -896,10 +896,11 @@ void Z80Assembler::assembleLine (SourceLine& q) throws
 	}
 	else if (cond_off)			// assembling conditionally off ?
 	{
-		if (q.testWord("endif")) { if (!q.testChar(':')) { asmEndif(q); q.expectEol(); } return; }
-		if (q.testWord("if"))    { if (!q.testChar(':')) { asmIf(q);    q.expectEol(); } return; }
-		//if (q.testWord("elif"))  { if (!q.testChar(':')) { asmElif(q);  q.expectEol(); } return; }
-		//if (q.testWord("else"))  { if (!q.testChar(':')) { asmElse(q);  q.expectEol(); } return; }
+		if (!require_colon && uchar(*q) > ' ' && (*q != '.' || allow_dotnames)) return; // even 'IF' etc. is a label
+		if (q.testDotWord("endif")) { if (!q.testChar(':')) { asmEndif(q); q.expectEol(); } return; }
+		if (q.testDotWord("if"))    { if (!q.testChar(':')) { asmIf(q);    q.expectEol(); } return; }
+		if (q.testDotWord("elif"))  { if (!q.testChar(':')) { asmElif(q);  q.expectEol(); } return; }
+		if (q.testDotWord("else"))  { if (!q.testChar(':')) { asmElse(q);  q.expectEol(); } return; }
 		return;
 	}
 	else if (q.test_char('!'))	// test suite: this line must fail:
@@ -3939,6 +3940,8 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (doteq(w,"rept"))	return asmRept(q,"endm");
 	if (doteq(w,"dup"))		return asmRept(q,"edup");	// dzx7_lom "Life on Mars" by zxintrospec
 	if (doteq(w,"if"))		return asmIf(q);
+	if (doteq(w,"elif"))	return asmElif(q);
+	if (doteq(w,"else"))	return asmElse(q);
 	if (doteq(w,"endif"))	return asmEndif(q);
 	if (lceq (w,"aseg"))	goto warn;
 	if (doteq(w,"list"))	goto ignore;
