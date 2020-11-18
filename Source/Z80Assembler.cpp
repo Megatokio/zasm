@@ -2255,7 +2255,22 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			if (casefold) w = lowerstr(w);
 
 			uint a = args.indexof(w);			// get index of argument in argument list
-			if (a == ~0u) continue;				// not an argument
+			if (a == ~0u)						// no exact match
+			{
+				// test whether the word starts with a macro argument:
+				// used to compose label names, e.g. L_&Foo_&Bar => find argument Foo in Foo_
+				// NOTE: if not found by the exact match then shorter names may hide longer names
+				// e.g. macro &N, &NN --> L_&NNxx --> will never find &NN because argument &N already matched
+				for (a=0; a<args.count(); a++)
+				{
+					if (startswith(w,args[a]))	// found argument at start of word
+					{
+						s.p -= strlen(w)-strlen(args[a]);
+						break;
+					}
+				}
+				if (a == args.count()) continue;	// argument name not found
+			}
 
 			// w is the name of argument #a
 			// it was found starting at p+1 in s.text  (p points to the '&')
