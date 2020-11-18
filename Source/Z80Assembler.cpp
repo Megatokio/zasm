@@ -2275,7 +2275,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			s.expect('}');
 			if (!v.is_valid()) throw SyntaxError("value must be valid in pass 1"); // because replacement is done in pass 1
 			cstr rpl = numstr(v.value);			// textual replacement
-			j = p + strlen(rpl) - s.text;					// calculate index j after text replacement
+			j = p + strlen(rpl) - s.text - 1;				// calculate index j after text replacement
 			s.text = catstr(substr(s.text,p), rpl, s.p);	// … because this reallocates s.text!
 		}
 
