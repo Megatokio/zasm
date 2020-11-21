@@ -33,10 +33,10 @@
 class Macro
 {
 public:
-	Array<cstr>	args;
-	uint32		mdef;
-	uint32		endm;
-	char		tag;
+	Array<cstr>	args;	// argument names, without tag
+	uint32		mdef;	// line with '.macro'
+	uint32		endm;	// line with '.endm'
+	char		tag;	// the tag character, e.g. '&'
 
 public:
 	Macro(Array<cstr> args, uint32 a, uint32 e, char tag)	:args(std::move(args)),mdef(a),endm(e),tag(tag){}

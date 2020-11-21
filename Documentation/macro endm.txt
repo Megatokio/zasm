@@ -2,63 +2,54 @@
 h3	macro, .macro, endm and .endm
 	macro, endm
 
-p	'macro' starts a macro definition and 'endm' terminates it. Macros are assigned a name by which they can later be used at the place of an ordinary instruction.
+p	'.macro' starts a macro definition and '.endm' ends it. Macros are assigned a name by which they can later be used at the place of an ordinary instruction to insert the macro body.
 
 p	There are quite numerous formats used by different assemblers and zasm tries to support at least some of them out of the box. In the following code examples the instruction names with or without a dot can be used interchangeably.
-
-p	Frequently you need some kind of label in a macro, but you cannot redefine ordinary labels. Frequently this can be solved with redefinable labels which are defined with 'defl' or 'set'.
-
-p	Since version 4.2.6 expressions between '{' and '}' are evaluated and replaced with the resulting text. This can be used to generate label names. The expression must be evaluatable in pass 1 because macro replacement is done in pass 1.
-
-p	It is possible to conditionally exclude portions of the macro by use of the pseudo instructions 'if' and 'endif'. (<u>not</u> '#if' and '#endif'!)
-
-p	Assembler directives (starting with '#') are not allowed inside macros.
 
 
 h5	Define a simple macro without arguments
 
-pre	<name> 	macro
+pre	<name> 	.macro
 			<instr>
 			...
-			endm
+			.endm
 
 p	Alternate syntax:
 
-pre			macro <name>
+pre			.macro <name>
 			<instr>
 			...
-			endm
-
-p	Example:
-
-pre	counter	defl	0
-	COUNT	.macro
-	counter	defl counter + 1
 			.endm
+
+p.b	Example:
+
+pre	counter	= 0
+		.macro COUNT
+	counter	= counter + 1
+		.endm
 	 
-			...
-	 
-			COUNT
-	 
-			...
+		...
+		COUNT
+		...
 	 
 	final_count	equ	counter
 
-p	This defines a counter for something, e.g. Forth words if your source happens to be a Forth interpreter. It uses a redefinable label which is redefined every time the macro is used in the source. The final value of the redefinable label is only really the final value at the end of your source. In order to use it somewhere before, potentially befor the last occurance of the macro, it is finally copied into an ordinary not redefinable label which can be used anywhere in the source.
+p	This defines a counter for something, e.g. Forth words if your source happens to be a Forth interpreter. It uses a redefinable label which is redefined every time the macro is used in the source. The final value of the redefinable label is only really the final value at the end of your source. In order to use it before the last occurance of the macro, it is finally copied into another label named 'final_count' which can be used everywhere in the source.
+
 
 h5	Define a macro with arguments
 
-pre	<name> 	macro <name1> [ , <name2> … ]
+pre	<name> 	.macro <tag><name1> [ , <tag><name2> … ]
 			<instr>
 			...
-			endm
+			.endm
 
 p 	Alternate syntax:
 
-pre			macro <name> <name1> [ , <name2> … ]
+pre			.macro <name> <tag><name1> [ , <tag><name2> … ]
 			<instr>
 			...
-			endm
+			.endm
 
 p	Invocation:
 
@@ -66,48 +57,59 @@ pre			<name> <some text> [ , <some text> … ]
 
 p	This defines a macro with some arguments. Either of both definition styles are possible. Additionally there are different methods for defining and referencing the symbol arguments:
 
-pre	foo:	macro A, B
+pre	foo:	.macro A, B			; 1)
 			ld	&A, &B
-			endm
+			.endm
 	 
-			macro foo, A, B
+			.macro foo, A, B	; 2)
 			ld	\A, \B
-			endm
+			.endm
 	 
-	foo:	macro #A, #B
-			ld	#A, #B
-			endm
+	foo:	.macro &A, &B		; 3)
+			ld	&A, &B
+			.endm
 	 
-			macro foo, #A, #B
-			ld	#A, #B
-			endm
+			.macro foo, %A, %B	; 4)
+			ld	%A, %B
+			.endm
+
 
 h5	Argument processing in the macro definition
 
+p	A special character, a 'tag', must be preprended to the argument names in the head and body. This 'tag' varies from assembler to assembler. zasm supports any character from the following list:
+
+pre	! # $ % & . : ? @ \ ^ _ | ~
+
+p	Some assemblers required the tag only in the macro body, not in the head, see version 1) and 2) in the above example. zasm supports this "as seen in source examples" in the following way:
 ul
-li	Arguments are replaced by verbatim copies of the arguments in the invocation
-li	A 'special character' before the macro name is required in the macro definition
-li	The special character is either defined implicitely ('&' for <name> macro … and '\' for macro <name> …)
-li	or it is defined explicitely py prepending it to the arguments (name macro <tag><name1>, <tag><name2> …)
+li	If the macro is defined as <tt><name> macro <arguments…></tt> then the tag is '&'.
+li	If the macro is defined as <tt>macro <name> <arguments…></tt> then the tag is '\'.
 
-p	Macro arguments can be inserted anywhere, even '#<name>' is allowed to occur in column 1 (if '#' happens to be your tag of choice). Possible tags are one of: "!#$%&.:?@\^_|~" but don't try to be too smart here, use of '&' is recommended.
+p.i	The use of '&' is recommended. All other tags are to support various sources out of the box only!
 
-p	Example:
+p.b	Example:
 
 pre	foo:	macro &A
 			ld	b,&A
-	foo&A:	ld	a,' '
+	foo&A:	ld	a,' '		; <-- simple unique label name
 			rst	8
 			djnz	foo&A
 			endm
-	 
+			 
 			...
-	 
 			foo	20
 			...
 			foo 8
 
-p	In this example the argument is used as the second argument for 'ld b,N' and to construct a unique label name for each invocation. Obviously the passed argument must be a number literal else the label name thing won't work. A better solution would have been to use a redefinable label.
+p	In this example the argument is used as the second argument for 'ld b,N' and to construct a unique label name for each invocation. Another solution would have been to use a counter and a redefinable label.
+
+p	Since version 4.4.6 macro arguments are matched in two stages: zasm first looks for an exact match but then also tries to match the beginning of a possible argument. This allows to construct a label name with the macro argument somewhere in the middle:
+
+pre	.macro foo_define &NAME, &rr
+	ld_&NAME_&rr = ld_int_&rr
+	.endm
+
+p	In this example '&NAME' in 'ld_&NAME_&rr' would not be recognized if there wasn't this second try, because of the '_' after the 'NAME'.
 
 
 h5	Argument processing in the macro invocation
@@ -131,34 +133,89 @@ pre		foo	<,>, <;>, <">			; 3 arguments: , ; and "
 
 p	There are still some impossible combinations, e.g. it is not possible to pass <b class=blue><>,</b> (3 characters) as an argument.
 
+p.b '{...}' replacement
 
-h5	Evaluation and literal text replacement of expresions
-p.i	since versio 4.2.6
+Since version 4.4.6 numeric expressions between '{' and '}' are evaluated and immediately replaced with the resulting text. This also happens for macro arguments. If you mix this with the complex argument style then you can probably run into interesting problems. <b>B-)</b>
 
-pre	L:      .equ  0         ; initialize redefinable label 'L'
 
+h5	Labels in macros
+
+p	Frequently you need some program labels in a macro, but if you use a macro more than once then you'll have multiple definitions of this label name and assembly fails.
+ul
+li	Use redefinable labels instead which are defined with 'defl', '=' or 'set'
+li	or use a local context between '.local' and '.endlocal' (since version 4.4.6)
+li	or construct unique label names using a redefinable counter and text replacement with '{…}'.
+
+
+h5	Literal text replacement of expressions between '{' and '}'
+
+p	Expressions between '{' and '}' are evaluated and immediately replaced with the result
+ul
+li	Since version 4.2.6 in macros
+li	Since version 4.4.6 everywhere
+
+p.b	Example:
+
+pre	cnt:    .equ  0         ; initialize redefinable label 'cnt'
+	 
 	; calculate unsigned max
 	; &A = umax(&A,&B)
 	; usable for a and hl.
-
+	 
 	umax:   .macro &A, &B
 			and   a
 			sbc   &A,&B
-			jr    nc,L{L}	; e.g. L0 in first call
+			jr    nc,L{cnt}
 			ld    &A,&B
-			jr    L{L+1}	; e.g. L1 in first call
-	L{L}:	add   &A,&B
-	L{L+1}:
-	L		.equ  L+2		; next macro call will use L2 and L3
+			jr    L{cnt+1}
+	L{cnt}:	add   &A,&B
+	L{cnt+1}:
+	cnt		.equ  cnt+2		; next macro call will use L2 and L3 and so on
 	        .endm
 
+p.b	Difference between version 4.2.6 and 4.4.6:
 
-h5	Not implemented in macros:
+p	Since version 4.2.6 the text replacement was done at the point of the macro replacement. This had a subtle side effect:
+	All expressions between '{' and '}' were already evaluated before the lines from the macro were assembled. Therefore redefinitions of labels performed inside the macro had no effect on '{…}' expressions until the end of the macro.
+	So in the above example the line <tt>cnt .equ cnt+2</tt> had no effect on the expressions between '{' and '}' even if this line was the very first in the macro; but it would have effected all other normal expressions in the macro as expected. (in the above example there is none except in the cnt incrementing expression itself.)
+
+pre	cnt = 0
+	.macro Foo
+	cnt = cnt+1
+	L{cnt}: .dw cnt ; 1)
+	cnt = cnt+1
+	L{cnt}: .dw cnt ; 2)
+	.macro
+
+p	In this example the label in line 1) would still be 'L0' while the value stored with '.dw' would be 1.
+	In line 2) the label again would still be 'L0' (and assembly fails) while the value stored with '.dw' would be 2. This was irritating and is no longer the case since version 4.4.6.
+
+p	Since version 4.4.6 text replacements between '{' and '}' are now possible everywhere in the source and they are done when the lines are actually assembled. Now in the above example the label names are 'L1' and 'L2' as expected.
+
+
+
+h5	conditional assembly with '.if' in macros
+
+p	It is possible to conditionally exclude portions of the macro by use of the pseudo instructions '.if', '.else' and '.endif'. (do <u>not</u> use '#if' and '#endif'!)
+
+
+h5	Assembler directives in macros
+
+p.red	Assembler directives (starting with '#') inside macros are possible but deprecated.
+p	Also, you should not use '#' for your argument tag.
+
+
+h5	Nested macro definitions
+
+p	Since version 4.4.6 macro dfinitions inside macro definitions are possible and may make some sense with text replacement between '{' and '}'. But you really should know what you are doing!
+
+
+h5	Not implemented:
 
 ul
-li	reference to arguments without a tag character
-li	keyword 'local': try to use 'defl' instead. (not possible in all cases)
-
+li	Reference to arguments without a tag character
+li	Keyword 'local' before a <NAME> to define a single local label: try to use 'defl'.
+    since version 4.4.6: use a local context: '.local' … '.endlocal'
 
 
 

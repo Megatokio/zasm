@@ -152,6 +152,8 @@ private:
 	int			c_zi;			// index for output file in c_flags[] or -1
 
 private:
+	void	replaceCurlyBraces (SourceLine&)			throws;
+	uint	skipMacroBlock	(uint i, cstr a, cstr e)	throws;
 	void	parseBytes		(SourceLine&, Array<uint8>&)throws;
 	IoSequence parseIoSequence (SourceLine&)			throws;
 	Value	value			(SourceLine&, int prio=0)	throws;
@@ -177,8 +179,8 @@ private:
 	void	asmCompress		(SourceLine&)				throws;
 	void	asmCharset		(SourceLine&)				throws;
 	void	asmFirstOrg		(SourceLine&)				throws;
-	void	asmRept			(SourceLine&, cstr endm = "endm")	throws;
-	void	asmMacro		(SourceLine&, cstr name, char tag)	throws;
+	void	asmRept			(SourceLine&, cstr rept, cstr endm)	throws;
+	void	asmMacro		(SourceLine&, cstr macro, cstr name, char tag)	throws;
 	void	asmMacroCall	(SourceLine&, Macro&)		throws;
 	void	asmShebang		(SourceLine&)				throws;
 	cstr	compileFile		(cstr)						throws;
