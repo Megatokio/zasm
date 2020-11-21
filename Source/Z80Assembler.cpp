@@ -879,15 +879,58 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 	}
 }
 
+void Z80Assembler::replaceCurlyBraces (SourceLine& q) throws
+{
+	assert(pass==1);
+	assert(!cond_off);
+
+	q.rewind();
+
+	if (!strchr(q.text,'{')) return;
+
+	// some test commands have arguments with "{…}"
+	// TODO: replace "{…}" with "[…]"
+	if (current_segment_ptr && current_segment().isTest())
+	{
+		if (find(q.text, ".test-in")) return;
+		if (find(q.text, ".test-out")) return;
+	}
+
+	// search for '{' using nextWord():
+	// => do not search in chars and strings and stop at ';'
+
+	for(;;)
+	{
+		cstr w = q.nextWord();
+		if (*w==0) break;					// ';' or EOL
+		if (*w!='{') continue;
+
+		cstr p = q.p-1;						// p -> '{'
+		Value v = value(q, pAny);			// evaluate value
+		q.expect('}');
+		if (!v.is_valid()) throw SyntaxError("value in braces must be valid in pass 1");
+		cstr rpl = numstr(v.value);			// textual replacement
+
+		cstr z = catstr(substr(q.text,p), rpl, q.p);
+
+		ssize_t d = q.p - p;				// length '{' … '}'
+		d = ssize_t(strlen(rpl)) - d;		// d = newlen - oldlen
+		q.p += (z-q.text) + d;				// point q.p behind rpl in new string
+		q.text = z;
+	}
+	q.rewind();
+}
+
 void Z80Assembler::assembleLine (SourceLine& q) throws
 {
 	// Assemble SourceLine
 
-	q.rewind();							// if pass 2++
-	if(pass==1) q.segment = current_segment_ptr;	// for Temp Label Resolver
+	if (pass==1) q.segment = current_segment_ptr;	// for Temp Label Resolver
 	q.byteptr = current_segment_ptr ? uint(currentPosition()) : 0; // for Temp Label Resolver & Logfile
 	//if (pass==1) q.bytecount = 0;		// for Logfile and skip over error in pass 2++
 	if (current_segment_ptr) cmd_dpos = currentPosition();
+	if (pass==1 && !cond_off) replaceCurlyBraces(q);
+	q.rewind();
 
 	if (q.test_char('#'))		// #directive ?
 	{
@@ -1633,7 +1676,8 @@ void Z80Assembler::asmLabel (SourceLine& q) throws
 			q.p = z;
 
 			// test for MACRO:
-			if (q.testDotWord("macro")) { asmMacro(q,name,'&'); return; }
+			if (q.testWord(".macro")) { asmMacro(q,".macro", name, '&'); return; }
+			if (q.testWord( "macro")) { asmMacro(q, "macro", name, '&'); return; }
 		}
 
 		if (require_colon && !f) { q.p = p; return; }	// must be a [pseudo] instruction
@@ -2028,16 +2072,76 @@ unknown_instr:
 	q.label = l;				// this source line defines a label
 }
 
-void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
+uint Z80Assembler::skipMacroBlock (uint idx, cstr macro, cstr endm) throws
 {
-	//  rept	N
-	//  ;
-	//  ; some instructions
-	//  ;
-	//  endm
+	/*	must be called with line of 'macro', 'rept' or 'dup'
+		returns line with 'endm' or 'edup' or throws
 
-	uint32& e = current_sourceline_index;
-	uint32  a = e;
+		.rept - .endm
+		.dup - .edup
+		.macro - .endm
+		rept - endm
+		dup - edup
+		macro - endm
+
+		may be nested
+	*/
+
+	// copy leading dot from 'macro' to 'endm':
+	if ((*macro=='.') != (*endm=='.'))
+	{
+		if (*endm=='.') endm++;
+		else endm = catstr(".",endm);
+	}
+
+	for (idx+=1; idx < source.count(); idx+=1)
+	{
+		SourceLine& s = source[idx];
+		//if (s[0]=='#')
+		//{
+		//	current_sourceline_index = idx;
+		//	throw FatalError("unexpected assembler directive in '%s' block", macro);
+		//}
+
+		s.rewind();
+		if (!require_colon && uchar(*s) > ' ' && (*s != '.' || allow_dotnames))  // even 'ENDM' etc. is a label
+		{
+			s.test_char('.');		// skip dot
+			s.nextWord();			// skip label
+			s.testChar(':');
+	L:		s.test_char(':');
+		}
+
+		cstr w = s.nextWord();
+		if (s.testChar(':')) goto L;
+
+		// test for expected block end marker:
+		if (lceq(w,endm)) return idx;
+
+		// test for unexpected block end marker:
+		if (doteq(w,"endm") || doteq(w,"edup"))
+		{
+			current_sourceline_index = idx;
+			throw FatalError("nesting error: expected '%s'", endm);
+		}
+
+		// test for nested block starter:
+		if (doteq(w,"rept")) { idx = skipMacroBlock(idx, w, ".endm"); } else
+		if (doteq(w,"dup"))  { idx = skipMacroBlock(idx, w, ".edup"); } else
+		if (doteq(w,"macro")){ idx = skipMacroBlock(idx, w, ".endm"); }
+	}
+
+	throw FatalError("end of '%s' block (instruction '%s') not found", macro, endm);
+}
+
+void Z80Assembler::asmRept (SourceLine& q, cstr rept, cstr endm) throws
+{
+	/*  rept N
+		;
+		; some instructions
+		;
+		endm
+	*/
 
 	Value n;
 	if (pass==1)
@@ -2053,33 +2157,19 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 			else if (n.value < 0)      { n=N1; setError("number of repetitions negative"); }
 		}
 	}
+	else
+	{
+		q.skip_to_eol();			// just skip the rept macro
+	}
 
 	// skip over contained instructions:
-	// does not check for interleaved macro def or similar.
-	for (;;)
-	{
-		if (++e>=source.count()) throw FatalError("end of repetition (instruction '%s') missing", endm);
-		SourceLine& s = source[e];
-		if (s[0]=='#') throw FatalError("unexpected assembler directive inside macro");
-		s.rewind();
-		if (s.testDotWord(endm)) break;
-		//if (s.testDotWord("endm")) throw fatal_error("");
-		//if (s.testDotWord("edup")) throw fatal_error("");
-		if (s.testDotWord("rept")) throw FatalError("nested repetition macro");
-		if (s.testDotWord("dup")) throw FatalError("nested repetition macro");
-		//if (s.testDotWord("macro")) throw fatal_error("");
-	}
+	uint32 a = current_sourceline_index;
+	uint32 e = current_sourceline_index = skipMacroBlock(a,rept,endm);
 
-	if (pass==1)
-	{
-		if (source.count() + uint32(n)*(e-a-1) > 1000000)
-			throw FatalError("total source exceeds 1,000,000 lines");
-	}
-	else // if (pass>1)	// => just skip the rept macro
-	{
-		q.skip_to_eol();
-		return;
-	}
+	if (pass > 1) return;
+
+	if (source.count() + uint32(n)*(e-a-1) > 1000000)
+		throw FatalError("total source exceeds 1,000,000 lines");
 
 	RCArray<SourceLine> zsource;
 	while (n.value--)
@@ -2092,32 +2182,34 @@ void Z80Assembler::asmRept (SourceLine& q, cstr endm) throws
 	source.insertat(e+1,zsource);
 }
 
-void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
+void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) throws
 {
-	//	NAME macro
-	//	NAME macro ARG,ARG…
-	//	;
-	//	; some instructions
-	//	;	&ARG may refer to ARG
-	//	;	#ARG may refer to #ARG
-	//	;
-	//		endm
-	//	;
-	//	; invocation:
-	//	;
-	//		NAME ARG,…
-	//
-	//	tag = potential tag character, e.g. '&'
-	//	seen syntax:
-	//	NAME macro ARG	; def
-	//		NAME &ARG	; substitution in call
-	//	NAME macro #ARG	; def
-	//		NAME #ARG	; substitution in call
-	//	.macro NAME ARG	; def
-	//		NAME \ARG	; substitution in call
-	//
-	//	the good thing is, they all _have_ a tag befor the argument reference…
+	/*	NAME macro
+		NAME macro ARG,ARG…
+		;
+		; some instructions
+		;	&ARG may refer to ARG
+		;	#ARG may refer to #ARG
+		;
+			endm
+		;
+		; invocation:
+		;
+			NAME ARG,…
 
+		tag = potential tag character, e.g. '&'
+		seen syntax:
+		NAME macro ARG	; def
+			NAME &ARG	; substitution in call
+		NAME macro #ARG	; def
+			NAME #ARG	; substitution in call
+		.macro NAME ARG	; def
+			NAME \ARG	; substitution in call
+
+		the good thing is, they all _have_ a tag befor the argument reference…
+	*/
+
+	assert(doteq(macro,"macro"));
 	name = lowerstr(name);
 
 	if (pass>1)	// => skip the macro definition
@@ -2134,8 +2226,8 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 	Array<cstr> args;
 	if (!q.testEol())
 	{
-		if (strchr("!#$%&.:?@\\^_|~",*q)) tag = *q;		// test whether args in def specify some kind of tag
-		do												// else use the supplied (if any)
+		if (strchr("!#$%&.:?@\\^_|~",*q)) tag = *q;	// test whether args in def specify some kind of tag
+		do											// else use the supplied (if any)
 		{
 			if (tag) q.testChar(tag);
 			cstr w = q.nextWord();
@@ -2147,31 +2239,11 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr name, char tag) throws
 		q.expectEol();
 	}
 
-	uint32& e = current_sourceline_index;
-	uint a = e;
-
 	// skip over contained instructions:
-	while (++e<source.count())
-	{
-		SourceLine& s = source[e];
-		s.rewind();
-		if (s[0]=='#')
-		{
-			if (tag=='#' && is_name(++s.p) && args.contains(s.nextWord())) continue;
-			throw FatalError("unexpected assembler directive inside macro");
-		}
-		if (s.testDotWord("macro"))
-		{
-			throw FatalError("macro definition inside macro");
-		}
-		if (s.testDotWord("endm"))
-		{
-			s.skip_to_eol();	// problem: eof error would be reported on line with macro definition
-			macros.add(name,Macro(std::move(args),a,e,tag)); // note: args[] & name are unprotected cstr in tempmem!
-			return;
-		}
-	}
-	throw FatalError("endm missing");
+	uint32 a = current_sourceline_index;
+	uint32 e = current_sourceline_index = skipMacroBlock(a,macro,".endm");
+
+	macros.add(name,Macro(std::move(args),a,e,tag)); // note: args[] & name are unprotected cstr in tempmem!
 }
 
 void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
@@ -2275,23 +2347,9 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 			// w is the name of argument #a
 			// it was found starting at p+1 in s.text  (p points to the '&')
 
-			j = p + strlen(rpl[a]) - s.text;				// calculate index j after text replacement
-			s.text = catstr(substr(s.text,p), rpl[a], s.p);	// … because this reallocates s.text!
-		}
-
-		// calculate and replace values between '{' and '}' with plain text:
-		// e.g. for calculated label names in macros.
-		for (ssize_t j=0;;j++)			// loop over occurrences of '{'
-		{
-			cptr p = strchr(s.text+j,'{');	    // at next '{'
-			if (!p) break;						// no more '{'
-			s.p = p+1;							// set the parser position behind '{'
-			Value v = value(s, pAny);			// get the value
-			s.expect('}');
-			if (!v.is_valid()) throw SyntaxError("value must be valid in pass 1"); // because replacement is done in pass 1
-			cstr rpl = numstr(v.value);			// textual replacement
-			j = p + strlen(rpl) - s.text - 1;				// calculate index j after text replacement
-			s.text = catstr(substr(s.text,p), rpl, s.p);	// … because this reallocates s.text!
+			j = p - s.text;						// index of '&'
+			j += strlen(rpl[a]) -1;				// index of last char of rpl after replacement
+			s.text = catstr(substr(s.text,p), rpl[a], s.p);
 		}
 
 		s.rewind();	// superflux. but makes s.p valid
@@ -3866,9 +3924,9 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 	if (doteq(w,"macro"))		// define macro:	".macro NAME ARG"		"binutils style macros"
 	{							//					"	instr \ARG"			seen in: OpenSE
-		w = q.nextWord();
-		if(!is_name(w)) throw SyntaxError("name expected");
-		asmMacro(q,w,'\\');
+		cstr name = q.nextWord();
+		if(!is_name(name)) throw SyntaxError("name expected");
+		asmMacro(q,w,name,'\\');
 		return;
 	}
 	if (lceq(w,".area"))		// .area NAME  or  .area NAME (ABS)    => (ABS) is ignored
@@ -3952,12 +4010,14 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".section"))	goto warn;
 	if (lceq(w,"globals"))	goto warn;
 	if (lceq(w,".pabs"))	goto warn;
-	if (doteq(w,"rept"))	return asmRept(q,"endm");
-	if (doteq(w,"dup"))		return asmRept(q,"edup");	// dzx7_lom "Life on Mars" by zxintrospec
+	if (doteq(w,"rept"))	return asmRept(q, w, ".endm");
+	if (doteq(w,"dup"))		return asmRept(q, w, ".edup");	// dzx7_lom "Life on Mars" by zxintrospec
 	if (doteq(w,"if"))		return asmIf(q);
 	if (doteq(w,"elif"))	return asmElif(q);
 	if (doteq(w,"else"))	return asmElse(q);
 	if (doteq(w,"endif"))	return asmEndif(q);
+	if (lceq(w,".local"))	return asmLocal(q);
+	if (lceq(w,".endlocal"))return asmEndLocal(q);
 	if (lceq (w,"aseg"))	goto warn;
 	if (doteq(w,"list"))	goto ignore;
 	if (doteq(w,"end"))		return asmEnd(q);
