@@ -4020,6 +4020,7 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (doteq(w,"endif"))	return asmEndif(q);
 	if (lceq(w,".local"))	return asmLocal(q);
 	if (lceq(w,".endlocal"))return asmEndLocal(q);
+	if (lceq(w,".assert"))	return asmAssert(q);
 	if (lceq (w,"aseg"))	goto warn;
 	if (doteq(w,"list"))	goto ignore;
 	if (doteq(w,"end"))		return asmEnd(q);
