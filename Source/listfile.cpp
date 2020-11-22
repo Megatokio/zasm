@@ -63,8 +63,8 @@ static uint write_line_with_objcode
 
 		fd.write_fmt("%04X: %s\t%s\n", address, oo_str(count), text);
 		if(count>4)
-			if(count>8) fd.write_fmt("%04X: 00...   \t%s\n", address+4, text);
-			else        fd.write_fmt("%04X: %s\t%s\n", address+4, oo_str(count-4), text);
+			if(count>8) fd.write_fmt("%04X: 00...   \t%s\n", address+4, "");
+			else        fd.write_fmt("%04X: %s\t%s\n", address+4, oo_str(count-4), "");
 		else{}
 		return count;
 	}
@@ -191,8 +191,8 @@ static uint write_line_with_objcode_and_cycles
 
 		fd.write_fmt("%04X: %s          %s\n", address, oo_str(count), text);
 		if(count>4)
-			if(count>8) fd.write_fmt("%04X: 00...             %s\n", address+4, text);
-			else        fd.write_fmt("%04X: %s          %s\n", address+4, oo_str(count-4), text);
+			if(count>8) fd.write_fmt("%04X: 00...             %s\n", address+4, "");
+			else        fd.write_fmt("%04X: %s          %s\n", address+4, oo_str(count-4), "");
 		else{}
 		return count;
 	}
