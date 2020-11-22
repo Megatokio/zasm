@@ -796,8 +796,10 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 			if (!l->is_redefinable) continue;
 			if (l->was_redefined)
 			{
+				//if (!(i>0 && l->is_global))	// because .globl labels encountered twice!
+				if (l->value.is_valid())    	// because .globl labels encountered twice!
+					labels_resolved--;
 				l->value.validity = invalid;
-				labels_resolved--;
 			}
 			else
 			{
