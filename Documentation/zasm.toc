@@ -92,15 +92,18 @@ p	Unless you use command line option '--reqcolon' Z80 and pseudo instructions mu
 +		include.txt
 +		incbin.txt
 +		globl.txt
++		_local.txt
 +		macro endm.txt
 +		rept endm.txt
 +		dup edup.txt
 +		phase dephase.txt
++		_assert.txt
 +		z80 z180 8080.txt
 +		dotnames reqcolon etc.txt
 +		equ.txt
 +		defl set.txt
 +		Label definition.txt
++		literal_text_replacement.txt
 
 
 // –––––––––––––––––––––––––––––––––––––––––––––––––

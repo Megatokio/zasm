@@ -1,0 +1,38 @@
+
+
+h3	Literal text replacement using "{...}"
+	Literal text replacement, Literal replacement, text replacement, replacement
+p.i	since version 4.2.6: in macros
+	since version 4.4.6: everywhere
+
+p	Before a source line is assembled, expressions between "{" and "}" are resolved.
+
+p	Literal text replacement is typically used to create calculated label names and can solve a common problem with macros.
+
+pre	mx = 0	; a counter which serves as a seed for labels in all macros
+	;
+	.macro extend_sign	; a macro with a forward jump
+		ld	h,0
+		ld	a,l
+		add	a
+		jr	nc,L{mx}	; jump forward
+		dec	h
+	L{mx}:
+	mx = mx+1			; next use of macro will use next number
+	.endm
+
+p	While backward jumps in labels can simply use a redefinable label to jump to, this is not possible with forward jumps. Besides other solutions (you could create a <tt>.local</tt> context in your macro) you can generate label names using a counter. In the above example the first use of the macro would use label <tt>L0</tt>, the second <tt>L1</tt> and so on.
+
+p	You can also iterate over a range of programmatically named labels:
+
+pre	_n = 0
+	.rept mx
+		.dw	L{_n}
+	_n = _n +1
+	.endm
+
+p	This will generate an array with all addresses where label <tt>L{mx}</tt> in the above example was used.
+	Actually you can implement arrays of labels this way e.g. to automatically create jump tables.
+
+
+
