@@ -151,8 +151,8 @@ CodeSegment::CodeSegment (cstr _name, SegmentType _type, uint8 _fillbyte)
 	is_code = yes;
 }
 
-void Segment::throw_data_segment_required () throws { throw SyntaxError("#data segment required"); }
-void Segment::throw_code_segment_required () throws { throw SyntaxError("#code or #data segment required"); }
+void Segment::throw_data_segment_required () throws { throw SyntaxError("#code or #data segment required"); }
+void Segment::throw_code_segment_required () throws { throw SyntaxError("#code segment required"); }
 
 void DataSegment::rewind ()
 {
@@ -337,7 +337,7 @@ void DataSegment::store (int byte) throws
 	// store byte
 	// byte must be zero
 
-	if (byte != 0) throw_data_segment_required();
+	if (byte != 0) throw_code_segment_required();
 
 	dpos.value++;
 	lpos.value++;
