@@ -135,7 +135,7 @@ p	There are still some impossible combinations, e.g. it is not possible to pass 
 
 p.b '{...}' replacement
 
-Since version 4.4.6 numeric expressions between '{' and '}' are evaluated and immediately replaced with the resulting text. This also happens for macro arguments. If you mix this with the complex argument style then you can probably run into interesting problems. <b>B-)</b>
+p	Since version 4.4.6 numeric expressions between '{' and '}' are evaluated and immediately replaced with the resulting text. This also happens for macro arguments. If you mix this with the complex argument style then you can probably run into interesting problems. <b>B-)</b>
 
 
 h5	Labels in macros

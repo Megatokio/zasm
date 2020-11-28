@@ -309,6 +309,7 @@ DISTFILES += \
 	"Documentation/8080 instructions.txt" \
 	"Documentation/Command Line Options.txt" \
 	"Documentation/Compound instructions.txt" \
+	Documentation/literal_text_replacement.txt \
 	Documentation/Illegals.txt \
 	"Documentation/Including C Sources.txt" \
 	"Documentation/Label definition.txt" \

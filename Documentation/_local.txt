@@ -1,18 +1,18 @@
 
-h3	#local and #endlocal
-	#local, #endlocal
+h3	#local, #endlocal, .local and .endlocal
+	#local, #endlocal, .local, .endlocal
 
 
 
 
 
-p	This defines a local scope for normal label definitions. This way you can safely use 'standard' names for jump targets in included files without worrying about name collissions. You can still push labels to the global scope though. 
+p	This defines a local scope for normal label definitions. This way you can safely use 'standard' names for jump targets in included files without worrying about name collissions. You can still push labels to the global scope though.
 p	#local contexts can be nested.
 
 p	Example: Wrap an included source file to avoid label name conflicts.
 	Note: zasm does this automatically for c files, but not for assembler files:
-	
-pre	#local 
+
+pre	#local
 	#include "util/u.asm"
 	#endlocal
 
@@ -22,10 +22,13 @@ pre	#local
 	boo::	ld a,0		; '::' makes 'boo' global
 			.globl fax
 	fax:	ret			; 'fax' is now also global
-	#define bar 4711	; labels defined with #define are also global. 
+	#define bar 4711	; labels defined with #define are also global.
 	#endlocal
-	
+
 p	Note: used but locally undefined labels are automatically pushed to the surrounding scope by #endlocal and will finally reach the global scope, if they were not defined in an intermediate surrounding #local scope. There they can be picked up and resolved by the <tt><b>#include library</b></tt> directive.
 
 p	The .globl pseudo instruction can also be used to make sure that a certain label <u>is</u> global and not accidentially defined in a surrounding #local scope.
+
+p	In some cases you need labels to be resolved in pass 1, e.g. for <tt>#IF <cond></tt> or for <tt>.rept</tt>. Then you run into problems when you refer to global labels from within a #local scope: zasm does not know for shure, whether it should use the valid global label, because a local label with this name still might be defined after this point of use. Therefore all references to global labels from within a local scope are never <i>valid</i> in pass 1.
+	To solve this problem you can declare this label global using the <tt>.global</tt> pseudo instruction.
 
