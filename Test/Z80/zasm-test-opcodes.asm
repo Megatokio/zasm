@@ -2027,6 +2027,80 @@ loop3:
 	cp	(--hl)
 	dec hl\cp(hl)
 
+	ds	16
+	.align	16
+	rr	bc
+	rr	de
+	rr	hl
+	.align	16
+	rr	b
+	rr 	c
+	rr	d
+	rr 	e
+	rr	h
+	rr 	l
+
+	.align	16
+	sra	bc
+	sra	de
+	sra	hl
+	.align	16
+	sra	b
+	rr 	c
+	sra	d
+	rr 	e
+	sra	h
+	rr 	l
+
+	.align	16
+	srl	bc
+	srl	de
+	srl	hl
+	.align	16
+	srl	b
+	rr 	c
+	srl	d
+	rr 	e
+	srl	h
+	rr 	l
+
+	.align	16
+	rl	bc
+	rl	de
+	rl	hl
+	.align	16
+	rl	c
+	rl	b
+	rl	e
+	rl	d
+	rl	l
+	rl	h
+
+	.align	16
+	sla	bc
+	sla	de
+	sla	hl
+	.align	16
+	sla	c
+	rl	b
+	sla	e
+	rl	d
+	sla	l
+	rl	h
+
+	.align	16
+	sll	bc
+	sll	de
+	sll	hl
+	.align	16
+	sll	c
+	rl	b
+	sll	e
+	rl	d
+	sll	l
+	rl	h
+	.align	16
+
 
 #if !defined(_8080_)
 	ld	bc,ix		; illegal ...
