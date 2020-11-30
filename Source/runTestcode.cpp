@@ -280,7 +280,7 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 			if (regvalue >= 0) // e.name is a register name?
 			{
 				if (int16(regvalue) != int16(e.value))
-					setError(e.sourceline, "register %s = %i ≠ expected %i", e.name, regvalue, e.value);
+					setError(e.sourceline, "register %s = %i ≠ expected %i", e.name, e.value<0 ? int(int16(regvalue)) : regvalue, e.value);
 			}
 			else if (eq(e.name,"cc_min"))
 			{
