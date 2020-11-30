@@ -915,6 +915,24 @@ rr:		if (target_8080) goto ill_8080;
 			else	    return store(PFX_IX, PFX_CB, 0, instr+r2+RH-XH-RB);
 		}
 
+		if (r2 <= HL && r2 >= BC)	// goodie: sla, sll, rl, sra, srl, rr with bc, de, hl
+		{
+			if (instr==SLA_B || instr == SLL_B || instr == RL_B)
+			{
+				r2 = (r2-BC)*2;
+				store(PFX_CB, instr + r2+1);
+				store(PFX_CB, RL_B  + r2+0);
+				return;
+			}
+			if (instr==SRA_B || instr == SRL_B || instr == RR_B)
+			{
+				r2 = (r2-BC)*2;
+				store(PFX_CB, instr + r2+0);
+				store(PFX_CB, RR_B  + r2+1);
+				return;
+			}
+		}
+
 		if (r2==XIX || r2==XIY)
 		{
 			r = XHL;

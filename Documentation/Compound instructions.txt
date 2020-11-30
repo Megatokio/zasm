@@ -63,25 +63,44 @@ pre	ld	bc,de
 	ld	R,(hl++)
 	ld	R,(--hl)
 	 
-	rr 	(hl++)			; 0xCB group:
+	rr	bc				; 0xCB group
+	rr	de
+	rr	hl
+	sra	bc
+	sra	de
+	sra	hl
+	srl	bc
+	srl	de
+	srl	hl
+	rl	bc
+	rl	de
+	rl	hl
+	sla	bc
+	sla	de
+	sla	hl
+	sll	bc				; sll undocumented
+	sll	de				; sll undocumented
+	sll	hl				; sll undocumented
+	 
+	rr 	(hl++)			; 0xCB group
 	rrc (hl++)
 	rl 	(hl++)
 	rlc (hl++)
 	sla (hl++)
 	sra (hl++)
-	sll (hl++)			; illegal
+	sll (hl++)			; sll undocumented
 	srl (hl++)
 	bit	N,(hl++)
 	set	N,(hl++)
 	res	N,(hl++)
 	 
-	rr 	(--hl)			; 0xCB group:
+	rr 	(--hl)			; 0xCB group
 	rrc (--hl)
 	rl 	(--hl)
 	rlc (--hl)
 	sla (--hl)
 	sra (--hl)
-	sll (--hl)			; illegal
+	sll (--hl)			; sll undocumented
 	srl (--hl)
 	bit	N,(--hl)
 	set	N,(--hl)
@@ -107,6 +126,7 @@ pre	ld	bc,de
 
 h4	Load/store Quad Registers
 p.i	since version 4.4.2.
+p.i	actually, these are not implemented! only usable in '.expect' so far.
 p	Quad registers are combinations of two 16 bit registers BC, DE, HL, SP, IX or IY.
 	these can also be .expected in #test segments.
 
@@ -115,14 +135,14 @@ pre	ld	bcde,NNNN
 	ld 	bcix,NNNN
 	etc.
 	 
-	ld	debc,(NNNN)
-	ld	dehl,(NNNN)
-	ld 	deix,(NNNN)
+	ld	debc,(NN)
+	ld	dehl,(NN)
+	ld 	deix,(NN)
 	etc.
 	 
-	ld	(NNNN),hlbc
-	ld	(NNNN),hlde
-	ld 	(NNNN),ixiy
+	ld	(NN),hlbc
+	ld	(NN),hlde
+	ld 	(NN),ixiy
 	etc.
 	 
 	push bcde
