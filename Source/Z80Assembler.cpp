@@ -574,7 +574,7 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 		if (label->is_valid())
 		{
 			if (value == label->value.value) return;
-			else throw SyntaxError("label redefined (use 'defl' or '=')");
+			else throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
 		}
 	}
 
@@ -582,7 +582,10 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 		labels_resolved++;
 
 	if (validity < label->value.validity)
-		throw SyntaxError("label %s value decayed",label->name);
+	{
+		if (pass==1) throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
+		else throw SyntaxError("label %s value decayed",label->name);
+	}
 
 	if (value != label->value.value) labels_changed++;
 
@@ -1701,13 +1704,19 @@ a:	Labels& labels = is_global ? global_labels() : local_labels();
 
 	if (l)
 	{
-		if (pass==1 && is_redefinable != l->is_redefinable)
+		if (pass==1)
 		{
-			if (!l->is_defined)
-				l->is_redefinable = is_redefinable;
-			else
-				throw SyntaxError(is_redefinable ? "normal label redefined as redefinable label"
-												  : "redefinable label redefined as normal label");
+			if (is_redefinable != l->is_redefinable)
+			{
+				if (!l->is_defined)
+					l->is_redefinable = is_redefinable;
+				else
+					throw SyntaxError(is_redefinable ? "normal label redefined as redefinable label"
+													  : "redefinable label redefined as normal label");
+			}
+
+			if (l->is_defined && !is_redefinable)
+				throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
 		}
 
 		setLabelValue(l,n);
