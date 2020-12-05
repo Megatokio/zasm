@@ -552,11 +552,15 @@ void Z80Assembler::setLabelValue (Label* label, cValue& value) throws
 
 void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) throws
 {
-	if (label->segment==nullptr)							// .globl or defined before ORG
+	if (label->segment==nullptr)
 	{
-		label->segment = current_segment_ptr;			// mit '.globl' deklarierte Label haben noch kein Segment
-		label->sourceline = current_sourceline_index;	// und keine Source-Zeilennummer
-		if (!label->is_redefinable) current_sourceline().label = label;
+		// implicitely defined by reference in an expression or defined before ORG
+
+		label->segment = current_segment_ptr;
+		if (label->sourceline == 0)
+			label->sourceline = current_sourceline_index;
+		if (!label->is_redefinable)
+			current_sourceline().label = label;
 	}
 
 	if (label->is_redefinable)
@@ -583,8 +587,15 @@ void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) 
 
 	if (validity < label->value.validity)
 	{
-		if (pass==1) throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
-		else throw SyntaxError("label %s value decayed",label->name);
+		// a not redefinable label may be defined multiple times with 'equ'
+		// and the values may not be immediately valid.
+		// then it is possible that a late definition makes it valid
+		// and the next pass sees the early definition which may be different and still invalid.
+		// this seems to be the only case where validity of a not redefinable lable can decay.
+		// what we originally tried here was to catch a possible error in zasm.
+
+		// throw SyntaxError("label %s value decayed",label->name);
+		throw SyntaxError("label validity decayed (use 'defl' or '=' for redefinable labels)");
 	}
 
 	if (value != label->value.value) labels_changed++;
@@ -1704,19 +1715,13 @@ a:	Labels& labels = is_global ? global_labels() : local_labels();
 
 	if (l)
 	{
-		if (pass==1)
+		if (pass==1 && is_redefinable != l->is_redefinable)
 		{
-			if (is_redefinable != l->is_redefinable)
-			{
-				if (!l->is_defined)
-					l->is_redefinable = is_redefinable;
-				else
-					throw SyntaxError(is_redefinable ? "normal label redefined as redefinable label"
-													  : "redefinable label redefined as normal label");
-			}
-
-			if (l->is_defined && !is_redefinable)
-				throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
+			if (!l->is_defined)
+				l->is_redefinable = is_redefinable;
+			else
+				throw SyntaxError(is_redefinable ? "normal label redefined as redefinable label"
+												  : "redefinable label redefined as normal label");
 		}
 
 		setLabelValue(l,n);
