@@ -3940,8 +3940,8 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 
 	if (doteq(w,"macro"))		// define macro:	".macro NAME ARG"		"binutils style macros"
 	{							//					"	instr \ARG"			seen in: OpenSE
-		cstr name = q.nextWord();
-		if(!is_name(name)) throw SyntaxError("name expected");
+		cstr name = q.nextName(allow_dotnames);
+		if (*name==0) throw SyntaxError("name expected");
 		asmMacro(q,w,name,'\\');
 		return;
 	}

@@ -84,7 +84,8 @@ public:
 	void	expectClose	()			throws 		{ expect(')'); }
 	void	expectEol	()			throws ;
 
-	cstr	nextWord	();
+	cstr	nextWord	() noexcept;
+	cstr	nextName	( bool dot=no );
 
 	uint	column		()			{ return p-text; }		// 0-based
 	cstr	whitestr	();			// whitestr() up to error column
