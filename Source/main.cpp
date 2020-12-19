@@ -87,6 +87,7 @@ static const char options[] =
 "  -g  --cgi       prevent access to files outside the source dir\n"
 "  --maxerrors=NN  set maximum for reported errors (default=30, max=999)\n"
 "  --date=DATETIME for reproducible __date__ and __time__\n"
+"  --target=ram    default to 'ram' not 'rom' => cpu addresses in hex files\n"
 "  -o0             don't write output file\n"
 "  -l0             don't write list file\n"
 "  --8080          target Intel 8080 (default if --asm8080)\n"
@@ -258,6 +259,7 @@ static int doit( Array<cstr> argv )
 	bool convert8080 = no;
 	uint maxerrors   = 30;
 	double timestamp = start; // __date__ and __time__ and S0 record
+	Target target = TARGET_UNSET;
 
 // filepaths:
 	cstr inputfile  = nullptr;
@@ -339,6 +341,13 @@ static int doit( Array<cstr> argv )
 					timestamp = double(dateval(s));
 					continue;
 				}
+			if (startswith(s,"--target="))	// 4.4.6
+			{
+				cstr t = lowerstr(s+9);
+				if (eq(t,"ram")) target = BIN; else
+				if (eq(t,"bin")) target = BIN; else
+				if (eq(t,"rom")) target = ROM; else goto h;
+			}
 			goto h;
 		}
 
@@ -571,6 +580,7 @@ static int doit( Array<cstr> argv )
 	ass.casefold	   = casefold;
 	ass.flat_operators = flatops;
 	ass.max_errors     = maxerrors;
+	ass.default_target = target;
 	ass.compare_to_old = compare;
 	ass.cgi_mode	   = cgi_mode;
 	ass.c_compiler     = c_compiler;

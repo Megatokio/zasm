@@ -30,6 +30,7 @@ pre	-u  --opcodes   include object code in list file
 	-g  --cgi       prevent access to files outside the source dir
 	--maxerrors=NN  set maximum for reported errors (default=30, max=999)
 	--date=DATETIME for reproducible __date__ and __time__ (default=now)
+	--target=ram    default to 'ram' not 'rom' => cpu addresses in hex files
 	-o0             don't write output file
 	-l0             don't write list file
 	--z80           target Zilog Z80 (default except if --asm8080)
@@ -140,6 +141,9 @@ pre	S00F00007320323031352D30312D313178
 	S12C00003E00ED79ED79ED793E40ED793EDAED793E37ED79ED780F30FB3A1027D370ED780F0F30FADB7032102772
 	S5030001FB
 	S9030000FC
+
+H5	--target=ram
+p	[4.4.6] If you assemble an old source which uses no #target directive then the target is 'rom' by default. This makes a tiny difference for the fillbyte ($FF instead of $00) and a big difference if you write the output to a hex file which include addresses: target 'rom' stores addresses starting from $0000 for an eprom burner, while target 'ram' stores addresses as set in the #code directives or by the '.org' pseudo opcode suitable for a ram downloader. This command line option – in combination with -x or -s – allows to create hex files for downloading to ram without the use of the #target directive.
 
 H5	-z  --clean
 p	This requests zasm to erase all cached files from the c compiler. These files are stored in subdirectory 's/' in the selected temp directory, which is by default the source file's directory.
