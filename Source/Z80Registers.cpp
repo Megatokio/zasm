@@ -168,13 +168,13 @@ bool Z80Registers::getLimits (cstr name, int32& min, int32& max, bool with_quadr
 	cstr name_w_guards = catstr(" ",lowerstr(name), " ");
 	if (find(reg8names,name_w_guards))
 	{
-		min = -0x80;
+		min = -0x100;
 		max = 0xFF;
 		return true;
 	}
 	else if (find(reg16names,name_w_guards))
 	{
-		min = -0x8000;
+		min = -0x10000;
 		max = 0xFFFF;
 		return true;
 	}

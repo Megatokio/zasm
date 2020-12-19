@@ -277,7 +277,7 @@ void Segment::storeByte (cValue& byte) throws
 
 	if (byte.is_valid())
 	{
-		if (int16(byte) < -0x80 || int16(byte) > 0xFF)
+		if (int16(byte) < -0x100 || int16(byte) > 0xFF)
 			throw SyntaxError("byte value out of range");
 	}
 	store(byte.value);
@@ -290,7 +290,7 @@ void Segment::storeWord (cValue& word) throws
 
 	if (word.is_valid())
 	{
-		if (word.value < -0x8000 || word.value > 0xFFFF)
+		if (word.value < -0x10000 || word.value > 0xFFFF)
 			throw SyntaxError("word value out of range");
 	}
 	store(word.value);
@@ -507,7 +507,7 @@ Validity DataSegment::validity () const
 void CodeSegment::setFillByte (cValue& v)
 {
 	if (!custom_fillbyte) fillbyte.validity = invalid;
-	check_value(fillbyte,v,"space",-0x80,0xff);
+	check_value(fillbyte,v,"space",0,0xff);
 	fillbyte = v;
 	custom_fillbyte = yes;
 }

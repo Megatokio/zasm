@@ -2391,7 +2391,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 		if (w[0]!='"') throw SyntaxError("string with source character(s) expected");
 		if (!q.testChar('=') && !q.testChar(',') && !q.testWord("to")) throw SyntaxError("keyword 'to' expected");
 		n = value(q);
-		if (n.is_valid() && (n.value < -0x80 || n.value > 0xff)) throw SyntaxError("destination char code out of range");
+		if (n.is_valid() && (n.value < 0 || n.value > 0xff)) throw SyntaxError("destination char code out of range");
 		if (!charset) charset = new CharMap();
 		charset->addMappings(unquotedstr(w),uint(n)); // throws on illegal utf-8 chars
 	}
@@ -4779,7 +4779,7 @@ IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
 
 static uint8 validatedByte (cValue& byte)
 {
-	if (byte.value >= -0x80 && byte.value <= 0xFF) return uint8(byte);
+	if (byte.value >= -0x100 && byte.value <= 0xFF) return uint8(byte);
 	if (byte.is_invalid()) return 0;
 	throw SyntaxError("byte value out of range");
 }
