@@ -1,8 +1,8 @@
 
-h3	#target BIN and ROM
-	bin, rom
+h3	#target RAM (old: BIN) and ROM
+	bin, ram, rom
 
-p	These are the simplest and most common targets. ROM is intended for creating rom files while BIN is intended to be downloaded somehow into the ram of a target system. One difference between ROM and BIN is the default fill byte used to fill gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment. The main difference (since version 4.2.8) are the addresses stored in hex files. Target RAM stores addresses based on the origin of each segment while ROM stores consecutive addresses starting at $0000.
+p	These are the simplest and most common targets. ROM is intended for creating rom files while RAM is intended to be downloaded somehow into the ram of a target system. One difference between ROM and RAM is the default fill byte used to fill gaps, e.g. in the 'defs' pseudo instruction or for the padding at the and of a #code segment. The main difference (since version 4.2.8) are the addresses stored in hex files. Target RAM stores addresses based on the origin of each segment while ROM stores consecutive addresses starting at $0000 suitable for an eprom burner.
 
 h5	#target ROM
 
@@ -28,17 +28,17 @@ pre	#target	rom
 			...
 
 
-h5	#target BIN
+h5	#target RAM
 
 p.i until version 4.2.7:
 
-p	Target BIN behaves identical to target ROM except for the default fill byte which is is $00.
+p	Target RAM behaves identical to target ROM except for the default fill byte which is is $00.
 
 p.i	since version 4.2.8:
 
 p	This file is a plain memory dump intended to be loaded by a ram loader on the target system.
 p	The default fill byte for .defs and for padding segments is $00.
-p	Binary files for ROM and BIN are identical except for the default fill pattern:
+p	Binary files for ROM and RAM are identical except for the default fill pattern:
 	multiple code segments are simply concatenated.
 p	Hex files are created by simply concatenating all code segments.
 	The padding at the end of each segment (if any) is not stored.
@@ -46,28 +46,28 @@ p	Hex files are created by simply concatenating all code segments.
 
 p.b	Cave at: Multiple segments are loaded differently for binary and hex files!
 
-p	A binary file is just a concatenation of all segments in order of definition in the source file, disregarding the segment start addresses. Eventually the segments are copied to their final position by the reset code.
+p	A binary file is just a concatenation of all segments in order of definition in the source file, disregarding the segment start addresses. Eventually the segments are copied to their final position by the bootstrap code.
 
-p	A hex file will most likely be loaded to the final position by a ram loader using the addresses in the hex file, even if segments are defined in arbitrary order or with unused space between them.
+p	A hex file will most likely be directly loaded to the final position by a ram loader using the addresses in the hex file, even if segments are defined in arbitrary order or with unused space between them.
 
-pre	#target	bin
+pre	#target	ram
 	#code	<name>,<start>,<size>
 			...
 
 
 h5	Writing Intel Hex files
 
-p	Using command line option '-x' the BIN and ROM targets can be written in the Intel Hex format. These files look like this:
+p	Using command line option '-x' the RAM and ROM targets can be written in the Intel Hex format. These files look like this:
 
 pre	:200000003E00ED79ED79ED793E40ED793EDAED793E37ED79ED780F30FB3A1027D370ED787B
 	:090020000F0F30FADB70321027DB
 	:00000001FF
 
-p	Trailing fill bytes (0xFF for ROM and 0x00 for BIN) in each segment are not stored in the file. This generally reduces file size and the time to burn the file into an eprom or to transmit it to the host system. The disadvantage is that in rare cases some last bytes are not stored and consequently not written into the ram of the target system, thus leaving these ram positions in an unset state. The target system should therefore always erase the ram before downloading the file! For eproms this is not such a problem because eproms must be erased before they can be burned and they are erased to … 0xFF of course. That's the reason why the fill byte for ROM is 0xFF.
+p	Trailing fill bytes (0xFF for ROM and 0x00 for RAM) in each segment are not stored in the file. This generally reduces file size and the time to burn the file into an eprom or to transmit it to the host system. Therefore the target system should erase the ram to 0x00 before downloading a hex file. Eproms must be erased before they can be burned and they are erased to 0xFF. That's why the fill byte for ROM is 0xFF.
 
 h5 	Writing Motorola S-Record format
 
-p	Using command line option '-s' the BIN and ROM targets can be written in the Motorola S-Record format. These files look like this:
+p	Using command line option '-s' the RAM and ROM targets can be written in the Motorola S-Record format. These files look like this:
 
 pre	S00F00007320323031352D30312D313178
 	S12C00003E00ED79ED79ED793E40ED793EDAED793E37ED79ED780F30FB3A1027D370ED780F0F30FADB7032102772

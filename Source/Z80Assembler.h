@@ -65,6 +65,7 @@ public:
 	uint	max_errors		= 30;
 	double	timestamp		= now();// for __date__ and __time__
 	CpuID	cpu				= CpuDefault;
+	Target	default_target  = ROM;	// if target == UNSET
 	bool	ixcbr2_enabled	= no;	// enable ixcb illegals: e.g. set b,(ix+d),r2
 	bool	ixcbxh_enabled	= no;	// enable ixcb illegals: e.g. bit b,xh
 	bool	syntax_8080		= no;	// use 8080 assembler syntax
@@ -97,6 +98,7 @@ private:
 	cstr	target_ext;
 	cstr	target_filepath;
 	Target	target = TARGET_UNSET;	// target file format as set by #target directive
+	Target	effective_target() const noexcept { return target != TARGET_UNSET ? target : default_target; }
 
 // source:
 	Source		source;						// SourceLine[] accumulating total source

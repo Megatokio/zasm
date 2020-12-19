@@ -9,7 +9,8 @@ p	The #target directive defines the kind of output file. If no #target directive
 
 p.b	<name> is one of:
 
-pre	bin		plain binary data, presumably to be loaded into ram
+pre	ram		plain binary data, presumably to be loaded into ram
+	bin		old name for target 'ram'
 	rom		plain binary data, presumably for a rom
 	sna		ZX Spectrum NMI snapshot
 	z80		ZX Spectrum snapshot
@@ -21,7 +22,7 @@ pre	bin		plain binary data, presumably to be loaded into ram
 	p81		ZX81 tape file
 	ace		Jupiter Ace snapshot file
 
-p	Only target bin and rom can be written as Intel hex or Motorola S-Record file. All other file types can only be written as binary file. This is controlled by the comand line options '-x' or '-s'.
+p	Only target ram and rom can be written as Intel hex or Motorola S-Record file. All other file types can only be written as binary file. This is controlled by the comand line options '-x' or '-s'.
 
 p.b	Simple source file example:
 

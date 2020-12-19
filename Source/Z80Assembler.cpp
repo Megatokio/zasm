@@ -1363,8 +1363,10 @@ hi:			n = value(q);
 		}
 		else if (eq(w,"target"))
 		{
-			if (!target && current_segment_ptr==nullptr) throw SyntaxError("#target not yet defined");
-			n = q.testWord(target ? target_ext : "ROM");
+			if (target==TARGET_UNSET && current_segment_ptr==nullptr) throw SyntaxError("#target not yet defined");
+
+			n = target_ext != nullptr ? q.testWord(target_ext) :
+				default_target != BIN ? q.testWord("rom") : q.testWord("ram") || q.testWord("bin");
 			if (!n && !is_name(q.nextWord())) throw SyntaxError("target name expected");
 			goto kzop;
 		}
@@ -3540,7 +3542,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 		else
 		{
 			assert(isCode(segment_type)||isTest(segment_type));
-			uint8 fillbyte = target==ROM || target==TARGET_UNSET ? 0xFF : 0x00;
+			uint8 fillbyte = effective_target()==ROM ? 0xFF : 0x00;
 			if (isTest(segment_type)) segment = new TestSegment(name,fillbyte);
 			else segment = new CodeSegment(name,segment_type,fillbyte);
 		}

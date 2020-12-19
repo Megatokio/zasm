@@ -50,8 +50,8 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 
 	if (target == TARGET_UNSET)
 	{
-		target = ROM;
-		target_ext = "rom";
+		target = default_target;
+		target_ext = target==BIN ? "bin" : "rom";
 	}
 
 	if (style == 'x' && (target==ROM || target==BIN)) target_ext = "hex";
