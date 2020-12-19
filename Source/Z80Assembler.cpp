@@ -2626,9 +2626,12 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 		if_pending = yes;
 		f = value(q);
 		if_pending = no;
-		if (!f.is_valid()) throw FatalError("condition not evaluatable in pass1");
-		if (pass==1) if_values.append(f.value);
-		else if (if_values[if_values_idx++] != f.value) throw FatalError("condition changed in pass%i",pass);
+		if (!f.is_valid())
+			throw FatalError("condition not evaluatable in pass1");
+		else if (pass==1)
+			if_values.append(f.value);
+		else if (if_values[if_values_idx++] != !!f.value)
+			throw FatalError("condition changed in pass%i",pass);
 	}
 
 	memmove( cond+1, cond, sizeof(cond)-sizeof(*cond) );
@@ -2662,9 +2665,12 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 			if_pending = yes;
 			f = value(q);		// else evaluate value
 			if_pending = no;
-			if (!f.is_valid()) throw FatalError("condition must be evaluatable in pass1");
-			if (pass==1) if_values.append(f.value);
-			else if (if_values[if_values_idx++] != f.value) throw FatalError("condition changed in pass%i",pass);
+			if (!f.is_valid())
+				throw FatalError("condition must be evaluatable in pass1");
+			else if (pass==1)
+				if_values.append(f.value);
+			else if (if_values[if_values_idx++] != !!f.value)
+				throw FatalError("condition changed in pass%i",pass);
 		}
 
 		cond_off -= !!f.value;	// if f==1 then clear bit 0 => enable #elif clause
