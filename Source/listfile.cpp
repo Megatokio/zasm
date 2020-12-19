@@ -217,6 +217,9 @@ static uint write_line_with_objcode_and_cycles
 
 		switch (count)
 		{
+		case 1:
+			fd.write_fmt("%04X: %02X       %s%s\n", address, peek1X(bytes), compound_cc_str(bytes,count,cc,variant), text);
+			return 1;
 		case 2:
 			fd.write_fmt("%04X: %04X     %s%s\n", address, peek2X(bytes), compound_cc_str(bytes,count,cc,variant), text);
 			return 2;
