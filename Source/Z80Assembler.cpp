@@ -1093,7 +1093,7 @@ eol:	throw SyntaxError("unexpected end of line");
 
 	if (q.testChar('('))				// test for built-in function
 	{
-		if (eq(w,"defined") || eq(w,"hi") || eq(w,"lo") || eq(w,"min") || eq(w,"max") ||
+		if (eq(w,"defined") || eq(w,"hi") || eq(w,"lo") || eq(w,"min") || eq(w,"max") || eq(w,"abs") ||
 			eq(w,"opcode") || eq(w,"target") || eq(w,"segment") || eq(w,"required") ||
 			eq(w,"sin") || eq(w,"cos"))
 		{
@@ -1325,6 +1325,12 @@ hi:			n = value(q);
 			do { n = max(m,value(q)); } while (q.testComma());
 			goto kzop;
 		}
+		else if (eq(w,"abs"))
+		{
+			n = value(q);
+			n.value = abs(n.value);
+			goto kzop;
+		}
 		else if (eq(w,"sin")||eq(w,"cos"))		// sin(rot,fullrot,maxval)
 		{
 			Value a = value(q);		// angle
@@ -1431,6 +1437,11 @@ label:	if (casefold) w = lowerstr(w);
 			}
 			n = l->value;
 			l->is_used = true;
+			if (l->is_redefinable && *q=='+' && *(q.p+1)=='+')
+			{
+				q.p += 2;
+				setLabelValue(l,l->value+1);
+			}
 			goto op;
 		}
 		else
@@ -1458,6 +1469,11 @@ label:	if (casefold) w = lowerstr(w);
 
 				n = l->value;
 				assert(l->is_used);
+				if (l->is_redefinable && *q=='+' && *(q.p+1)=='+')
+				{
+					q.p += 2;
+					setLabelValue(l,l->value+1);
+				}
 				goto op;
 			}
 		}
@@ -1684,6 +1700,7 @@ void Z80Assembler::asmLabel (SourceLine& q) throws
 			// test for SET:							// this is really really bad:
 			cptr z = q.p;								// there is a Z80 instruction SET
 			if (q.testDotWord("set"))					// and the M80 pseudo instruction SET
+			if (!doteq(name,"macro")) // "macro set ..." => opt for macro definition. this macro name may make trouble :-)
 			{											// and we'll have to figure out which it is…
 				n = value(q);
 				is_redefinable = q.testEol();
@@ -4361,7 +4378,9 @@ dw:		q.is_data = yes;
 		do { storeWord(value(q)); } while (q.testComma());
 		return;
 
+	case ' .dl':
 	case '  dl':
+	case 'defl':
 		// store long words:
 		// .long nn [,nn ..]
 dl:		q.is_data = yes;
