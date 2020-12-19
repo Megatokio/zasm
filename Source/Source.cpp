@@ -157,7 +157,7 @@ void SourceLine::expectEol () throws
 	else throw SyntaxError("end of line expected");
 }
 
-cstr SourceLine::nextWord ()
+cstr SourceLine::nextWord () noexcept
 {
 	// get next word from source line
 	// returns word is const or temp
@@ -175,7 +175,7 @@ cstr SourceLine::nextWord ()
 	{
 	case '!':	return "!";
 	case '~':	return "~";
-	case '+':	return "+";
+	case '+':	if (*p!=c) return "+"; else { p++; return "++"; }
 	case '-':	return "-";
 	case '*':	return "*";
 	case '/':	return "/";
@@ -220,6 +220,21 @@ cstr SourceLine::nextWord ()
 	}
 
 	return substr(word, p);
+}
+
+cstr SourceLine::nextName (bool dot)
+{
+	skip_spaces();
+	cstr word = p;
+	char c = *p;
+	if (is_letter(c) || c=='_' || (dot && c=='.'))
+	{
+		do { c = *++p; } while(is_idf(c) || (dot && c=='.'));
+		return substr(word,p);
+	}
+
+	p = word;
+	return "";
 }
 
 cstr SourceLine::whitestr ()
