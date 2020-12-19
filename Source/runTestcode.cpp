@@ -178,7 +178,7 @@ void Z80Assembler::runTestcode (TestSegment& test_segment, class Z80& cpu)
 		uint8 orig_byte = cpu.core[stop_pc];
 		cpu.core[stop_pc] = HALT;
 		cpu.breakpoint = stop_pc;
-		cpu.halt = 0;					// from last run
+		assert(cpu.halt==no);//cpu.halt = 0;					// from last run
 		int32 total_cc = -cpu.cc;		// for cc test
 
 		if (verbose>=2) logline("  running from pc=$%04x to $%04x", cpu.registers.pc, stop_pc);
