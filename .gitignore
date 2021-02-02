@@ -9,6 +9,7 @@ Distributions
 /sdcc/bin
 /sdcc/lib/OTHER/
 info.vh
+/Info/
 
 #make Makefile:
 tmp/
