@@ -48,14 +48,14 @@
 
 
 //static const char appl_name[] = "zasm";
-#define VERSION "4.4.6"
+#define VERSION "4.4.7"
 
 // Help text:
 // optimized for 80 characters / column
 //
 static const char version[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-"  zasm - 8080/z80/z180 assembler (c) 1994 - 2020 Günter Woigk.\n"
+"  zasm - 8080/z80/z180 assembler (c) 1994 - 2021 Günter Woigk.\n"
 "  version " VERSION ", %s, for " _PLATFORM ".\n"						// version, date, platform
 "  homepage: https://k1.spdns.de/zasm/\n"
 "  git repo: https://github.com/Megatokio/zasm\n\n";
@@ -87,7 +87,7 @@ static const char options[] =
 "  -g  --cgi       prevent access to files outside the source dir\n"
 "  --maxerrors=NN  set maximum for reported errors (default=30, max=999)\n"
 "  --date=DATETIME for reproducible __date__ and __time__\n"
-"  --target=ram    default to 'ram' not 'rom' => cpu addresses in hex files\n"
+"  --target=ram    default to target 'ram' => cpu addresses in hex files\n"
 "  -o0             don't write output file\n"
 "  -l0             don't write list file\n"
 "  --8080          target Intel 8080 (default if --asm8080)\n"

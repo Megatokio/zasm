@@ -1,11 +1,11 @@
 
 h3	Numeric expressions
 
-p	The assembler has an expression evaluator which supports various formats for numbers and operations with priority order. You may also use brackets, but don't start an expression for an immediate value with an opening bracket. The assembler thinks that an expression which starts with an opening bracket indicates direct memory addressing. If you really need to start an immediate value expression with brackets, precede it with the '+' monadic operator or a hash '#'.
+p	The assembler has an expression evaluator which supports various formats for numbers and operators with priority order. You may also use brackets, but don't start an expression for an immediate value with an opening bracket. The assembler thinks that an expression which starts with an opening bracket indicates direct memory addressing. If you really need to start an immediate value expression with brackets, precede it with the '+' monadic operator or a hash '#'.
 
-h4	Number literals
+h4	Numeric literals
 
-p	Number literals are the 'number' in an expression. They can be written in a multitude of formats:
+p	Numeric literals are the 'numbers' in an expression. They can be written in a multitude of formats:
 
 pre	12345    decimal number
 	12345d   decimal number
@@ -60,6 +60,7 @@ pre	.macro abort
 h4	hi() and lo()
 p	<b>hi(NN)</b> gets the high byte of a 2-byte word. Similar to <tt>NN >> 8</tt>.
 p	<b>lo(NN)</b> gets the low byte of a 2-byte word. Similar to <tt>NN & 0xFF</tt>.
+p	Function names must be lowercase except if --casefold or --asm8080 is selected.
 p	E.g. if you have a table which must be located completely inside a page, then you can automatically raise the table base if the table would cross a page boundary: (note: use a calculated expression for .align if the code address is not yet valid in pass 1.)
 
 pre	.align hi($) != hi($+table_size-1)  ? 256 : 1
@@ -68,6 +69,7 @@ pre	.align hi($) != hi($+table_size-1)  ? 256 : 1
 h4	min() and max()
 p	<b>min(N1,N2)</b> gets the value of the smaller of two values.
 p	<b>max(N1,N2)</b> gets the value of the bigger of two values.
+p	Function names must be lowercase except if --casefold or --asm8080 is selected.
 p	You can also pass more than 2 arguments to min and max.
 p	e.g. calculate size for a scratch pad:
 
@@ -77,6 +79,7 @@ pre	scratch: ds	max(fp_scratch,txt_scratch,gfx_scratch)
 h4	sin() and cos()
 p	<b>sin(ANGLE,N2,N3)</b> calculate the sinus of an angle.
 p	<b>cos(ANGLE,N2,N3)</b> calculate the cosinus of an angle.
+p	Function names must be lowercase except if --casefold or --asm8080 is selected.
 
 p	The angle is scaled according to argument N2, which defines the value for a full circle. The result is scaled with argument N3. E.g. to generate a sine table with 256 values scaled to range ±127 use it in conjuction with pseudo instruction .rept:
 
@@ -92,12 +95,15 @@ p	Function 'opcode(…)' can be used to get the major byte of an opcode. This is
 
 p	The 'major byte' is the first byte for most opcodes, the byte after 0xCB, 0xED, 0xDD or 0xFD for most others or the 4th byte of a 0xDD 0xCB or 0xFD 0xCB instruction. (note: 0xDD and 0xFD are the index register prefixes.)
 
-p	Currently only opcodes for the Z80 cpu are supported. The additional opcodes of the Z180 or 8080 assembler mnemonics are not recognized.
+p	'opcode' must be lowercase except if --casefold or --asm8080 is selected.
+
+p	All opcodes for the Z80 cpu as well as the additional opcodes of the Z180 cpu are supported. If 8080 assembler is selected with --asm8080 then 8080 assembler mnemonics must be used.
 
 p	Opcode names follow these rules:
 p	• names should be in lower case
 	• arguments can be:
-	  • a register name: af, af', bc, de, hl, sp, ix, iy, pc, a, f, b, c, d, e, h, l, r, i, xh, xl, yh, yl or ixh, ixl, iyh, iyl
+	  • a register name: af, af', bc, de, hl, sp, ix, iy, pc, a, f, b, c, d, e, h, l, r, i
+	    for xh, xl, yh and yl simply use h and l.
 	  • a flag name: z, nz, c, nc, po, pe, m, p
 	  • register indirect: (bc), (de), (hl), (sp), (c)
 	  • index register with offset: (ix+N), (iy+N) and variants: (ix+dis), (iy+dis), (ix+offs), (iy+offs)
@@ -113,10 +119,9 @@ pre	db opcode(nop)				just the name for opcodes without argument
 	db opcode(ld a,N)
 	db opcode(ld a,(NN))
 	db opcode(ld a,(bc))
-	db opcode(ld a,(ix+offs))	actually you can use 'ld a,(hl)' here as well
+	db opcode(ld a,(ix+offs))	you can use 'ld a,(hl)' here as well
 	db opcode(jr c,NN)
 	db opcode(ex af,af')
-	db opcode(ld a,xh)			illegals allowed
 
 p	Examples:
 pre	; jump over an opcode:
@@ -130,6 +135,7 @@ pre	; jump over an opcode:
 
 h4	defined(LABEL)
 p	This results in 0 or 1 depending on whether the named label is already defined at this position in source.
+p	'defined' must be lowercase except if --casefold or --asm8080 is selected.
 	<i>note: use of this function in a local context may malfunction if a local name of this name is defined after this test.</i>
 	E.g.:
 
@@ -149,6 +155,7 @@ pre	#if required(mul_hl_de)
 h4	target(NAME)
 p	Test whether the named #target is selected. Use this if you made it selectable for some reason in your source. Result is 0 or 1.
 p	Possible targets are: ROM, BIN, Z80, SNA, TAP, TAPE, O, P, 80, 81, P81 and ACE.
+p	'target' must be lowercase except if --casefold or --asm8080 is selected.
 p	Example:
 
 pre	; include a tape header if #target is set to TAPE:
@@ -160,6 +167,7 @@ pre	; include a tape header if #target is set to TAPE:
 
 h4	segment(NAME)
 p	Test whether the named segment is the currently selected #code or #data segment. Result is 0 or 1.
+p	'segment' must be lowercase except if --casefold or --asm8080 is selected.
 p	Example:
 
 pre	; don't include 'ret' opcode if this is in boot code:
