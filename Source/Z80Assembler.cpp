@@ -124,7 +124,7 @@ void Z80Assembler::setError (SourceLine* sourceline, cstr format, ...)
 	va_end(va);
 }
 
-static bool doteq (cptr w, cptr s)
+static bool doteq (cptr w, cptr s) noexcept
 {
 	// compare word w with string literal s
 	// s must be lower case
@@ -137,7 +137,7 @@ static bool doteq (cptr w, cptr s)
 	return *w==0;
 }
 
-static bool lceq (cptr w, cptr s)
+static bool lceq (cptr w, cptr s) noexcept
 {
 	// compare word w with string literal s
 	// s must be lower case
@@ -146,6 +146,14 @@ static bool lceq (cptr w, cptr s)
 	assert(s&&w);
 	while (*s) { if ((*w++|0x20) != *s++) return false; }
 	return *w==0;
+}
+
+static bool cfeq (cstr s1, cstr s2, bool casefold) noexcept
+{
+	// compare case-sensitive or case-folding
+	// depending on flag 'casefold'
+
+	return casefold ? lceq(s1,s2) : eq(s1,s2);
 }
 
 cstr Z80Assembler::unquotedstr (cstr s0)
@@ -1093,9 +1101,9 @@ eol:	throw SyntaxError("unexpected end of line");
 
 	if (q.testChar('('))				// test for built-in function
 	{
-		if (eq(w,"defined") || eq(w,"hi") || eq(w,"lo") || eq(w,"min") || eq(w,"max") || eq(w,"abs") ||
-			eq(w,"opcode") || eq(w,"target") || eq(w,"segment") || eq(w,"required") ||
-			eq(w,"sin") || eq(w,"cos"))
+		if (lceq(w,"defined") || lceq(w,"hi") || lceq(w,"lo") || lceq(w,"min") || lceq(w,"max") || lceq(w,"abs") ||
+			lceq(w,"opcode") || lceq(w,"target") || lceq(w,"segment") || lceq(w,"required") ||
+			lceq(w,"sin") || lceq(w,"cos"))
 		{
 			for (uint nkl = 1; nkl; )
 			{
@@ -1246,14 +1254,14 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 		}
 	}
 
-	if (*w=='_' && eq(w,"__line__"))
+	if (*w=='_' && cfeq(w,"__line__",casefold))
 	{
 		n = int(q.sourcelinenumber); /* valid = valid && yes; */ goto op;
 	}
 
 	if (q.test_char('('))		// test for built-in function
 	{
-		if (eq(w,"defined"))	// defined(NAME)  or  defined(NAME::)
+		if (lceq(w,"defined"))	// defined(NAME)  or  defined(NAME::)
 		{						// note: label value is not neccessarily valid
 								// value of 'defined()' is always valid
 			w = q.nextWord();
@@ -1262,6 +1270,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 
 			if (pass == 1)
 			{
+				if (casefold) w = lowerstr(w);
 				for (uint i=global?0:local_labels_index;;i=labels[i].outer_index)
 				{
 					Label* label = labels[i].find(w);
@@ -1276,7 +1285,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 			}
 			goto kzop;
 		}
-		if (eq(w,"required"))	// required(NAME)  or  required(NAME::)
+		if (lceq(w,"required"))	// required(NAME)  or  required(NAME::)
 		{						// note: label value is not neccessarily valid
 								// value of 'required()' is always valid
 			w = q.nextWord();
@@ -1285,6 +1294,7 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 
 			if (pass==1)
 			{
+				if (casefold) w = lowerstr(w);
 				for (uint i=global?0:local_labels_index;;i=labels[i].outer_index)
 				{
 					Label* label = labels[i].find(w);
@@ -1299,39 +1309,39 @@ bin_number:	while (is_bin_digit(*w)) { n.value += n.value + (*w&1); w++; }
 			}
 			goto kzop;
 		}
-		else if (eq(w,"lo"))
+		else if (lceq(w,"lo"))
 		{
 lo:			n = value(q);
 			n.value = uint8(n.value);
 			goto kzop;
 		}
-		else if (eq(w,"hi"))
+		else if (lceq(w,"hi"))
 		{
 hi:			n = value(q);
 			n.value = uint8(n.value>>8);
 			goto kzop;
 		}
-		else if (eq(w,"min"))
+		else if (lceq(w,"min"))
 		{
 			Value m = value(q);
 			q.expectComma();
 			do { n = min(m,value(q)); } while (q.testComma());
 			goto kzop;
 		}
-		else if (eq(w,"max"))
+		else if (lceq(w,"max"))
 		{
 			Value m = value(q);
 			q.expectComma();
 			do { n = max(m,value(q)); } while (q.testComma());
 			goto kzop;
 		}
-		else if (eq(w,"abs"))
+		else if (lceq(w,"abs"))
 		{
 			n = value(q);
 			n.value = abs(n.value);
 			goto kzop;
 		}
-		else if (eq(w,"sin")||eq(w,"cos"))		// sin(rot,fullrot,maxval)
+		else if (lceq(w,"sin")||lceq(w,"cos"))		// sin(rot,fullrot,maxval)
 		{
 			Value a = value(q);		// angle
 			q.expectComma();
@@ -1346,7 +1356,7 @@ hi:			n = value(q);
 			n.value  = int32(round((eq(w,"sin") ? sin(r) : cos(r)) * n.value));
 			goto kzop;
 		}
-		else if (eq(w,"opcode"))	// opcode(ld a,N)  or  opcode(bit 7,(hl))  etc.
+		else if (lceq(w,"opcode"))	// opcode(ld a,N)  or  opcode(bit 7,(hl))  etc.
 		{
 			cptr a = q.p;
 			uint nkl = 1;
@@ -1361,7 +1371,7 @@ hi:			n = value(q);
 			n = syntax_8080 ? major_opcode_8080(substr(a,q.p-1)) : major_opcode(substr(a,q.p-1));
 			goto op;
 		}
-		else if (eq(w,"target"))
+		else if (lceq(w,"target"))
 		{
 			if (target==TARGET_UNSET && current_segment_ptr==nullptr) throw SyntaxError("#target not yet defined");
 
@@ -1370,7 +1380,7 @@ hi:			n = value(q);
 			if (!n && !is_name(q.nextWord())) throw SyntaxError("target name expected");
 			goto kzop;
 		}
-		else if (eq(w,"segment"))
+		else if (lceq(w,"segment"))
 		{
 			if (current_segment_ptr==nullptr) throw SyntaxError("#code or #data segment not yet defined");
 			n = q.testWord(current_segment_ptr->name);
@@ -4466,10 +4476,10 @@ sh:				if (n&1) throw SyntaxError("even number of hex characters expected");
 		// pre-defined special words:
 		if (w[0]=='_')
 		{
-			if (eq(w,"__date__")) { w = datestr(timestamp); w += *w==' ';  goto cb; }
-			if (eq(w,"__time__")) { w = timestr(timestamp); w += *w==' ';  goto cb; }
-			if (eq(w,"__file__")) { w = q.sourcefile; goto cb; }
-			if (eq(w,"__line__")) { w = tostr(q.sourcelinenumber); goto cb; }
+			if (cfeq(w,"__date__",casefold)) { w = datestr(timestamp); w += *w==' ';  goto cb; }
+			if (cfeq(w,"__time__",casefold)) { w = timestr(timestamp); w += *w==' ';  goto cb; }
+			if (cfeq(w,"__file__",casefold)) { w = q.sourcefile; goto cb; }
+			if (cfeq(w,"__line__",casefold)) { w = tostr(q.sourcelinenumber); goto cb; }
 		}
 
 		// anything else:
