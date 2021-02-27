@@ -48,7 +48,7 @@
 
 
 //static const char appl_name[] = "zasm";
-#define VERSION "4.4.7"
+#define VERSION "4.4.8"
 
 // Help text:
 // optimized for 80 characters / column
@@ -331,22 +331,23 @@ static int doit( Array<cstr> argv )
 			if (eq(s,"--cgi"))      { cgi_mode = 1;    continue; }
 			if (eq(s,"--convert8080")) { convert8080 = 1; continue; }
 			if (startswith(s,"--maxerrors="))
-				{
-					char* ep; ulong n = strtoul(s+12,&ep,10);
-					if (*ep||n==0||n>999) goto h;
-					maxerrors = uint(n); continue;
-				}
+			{
+				char* ep; ulong n = strtoul(s+12,&ep,10);
+				if (*ep||n==0||n>999) goto h;
+				maxerrors = uint(n); continue;
+			}
 			if (startswith(s,"--date="))
-				{
-					timestamp = double(dateval(s));
-					continue;
-				}
+			{
+				timestamp = double(dateval(s));
+				continue;
+			}
 			if (startswith(s,"--target="))	// 4.4.6
 			{
 				cstr t = lowerstr(s+9);
 				if (eq(t,"ram")) target = BIN; else
 				if (eq(t,"bin")) target = BIN; else
 				if (eq(t,"rom")) target = ROM; else goto h;
+				continue;
 			}
 			goto h;
 		}
