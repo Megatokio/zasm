@@ -412,6 +412,7 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	starttime = now();
 
 	if (deststyle==0 && compare_to_old) deststyle = 'b';
+	if (default_target == TARGET_UNSET) default_target = ROM;
 
 	assert(!c_includes || (eq(c_includes,fullpath(c_includes)) && lastchar(c_includes)=='/' && !errno));
 	assert(!stdlib_dir || (eq(stdlib_dir,fullpath(stdlib_dir)) && lastchar(stdlib_dir)=='/' && !errno));
