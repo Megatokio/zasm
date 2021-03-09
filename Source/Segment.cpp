@@ -1088,10 +1088,10 @@ void IoList::openFile()		// befor test
 	switch(iomode)
 	{
 	case IoStdIn:
-		fd = FD::stdin;
+		fd = FD::_stdin;
 		break;
 	case IoStdOut:
-		fd = FD::stdout;
+		fd = FD::_stdout;
 		break;
 	case IoValues:
 		sequence_idx = 0;
