@@ -325,7 +325,7 @@ Z80::RVal Z80::runZ180 (CpuCycle ccx)
 
 	uint16*	rzp;			// pointer to double register, mostly IX or IY
 	#define	rz	(*rzp)				// IX or IY
-	#ifdef _BIG_ENDIAN
+	#ifdef __BIG_ENDIAN__
 	#define	rzh	((u8ptr(rzp))[0])	// XH or YH
 	#define	rzl	((u8ptr(rzp))[1])	// XL or YL
 	#else
