@@ -2234,6 +2234,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) thr
 		NAME macro ARG,ARG…
 		;
 		; some instructions
+		;	ARG  may refer to ARG
 		;	&ARG may refer to ARG
 		;	#ARG may refer to #ARG
 		;
@@ -2245,14 +2246,15 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) thr
 
 		tag = potential tag character, e.g. '&'
 		seen syntax:
-		NAME macro ARG	; def
-			NAME &ARG	; substitution in call
-		NAME macro #ARG	; def
-			NAME #ARG	; substitution in call
-		.macro NAME ARG	; def
-			NAME \ARG	; substitution in call
+		definition			substitution in call
+		NAME macro *ARG		NAME *ARG		any possible tag char
+		NAME macro ARG		NAME ARG		substitution without tag char!
+		NAME macro ( ARG )	NAME ARG		substitution without tag char!
+		NAME macro ARG		NAME &ARG		substitution uses a tag char => best guess = char tag!
+		.macro NAME ARG		NAME \ARG		""
 
-		the good thing is, they all _have_ a tag befor the argument reference…
+		'&' is a problem, because it is also an operator => tag or operator ?!?
+		'\' is a problem, because it is also the multi statement separator => tag or separator ?!?
 	*/
 
 	assert(doteq(macro,"macro"));
@@ -2269,11 +2271,13 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) thr
 	if (macros.contains(name)) throw FatalError("macro redefined");
 
 	// parse argument list:
+	bool required = false;
 	Array<cstr> args;
 	if (!q.testEol())
 	{
-		if (strchr("!#$%&.:?@\\^_|~",*q)) tag = *q;	// test whether args in def specify some kind of tag
-		do											// else use the supplied (if any)
+		required = !is_letter(*q);	// test whether args in def specify a tag
+		if (required) tag = *q;		// else use the supplied as optional
+		do
 		{
 			if (tag) q.testChar(tag);
 			cstr w = q.nextWord();
@@ -2289,7 +2293,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) thr
 	uint32 a = current_sourceline_index;
 	uint32 e = current_sourceline_index = skipMacroBlock(a,macro,".endm");
 
-	macros.add(name,Macro(std::move(args),a,e,tag)); // note: args[] & name are unprotected cstr in tempmem!
+	macros.add(name,Macro(std::move(args),a,e,tag,required)); // note: args[] & name are unprotected cstr in tempmem!
 }
 
 void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
@@ -2359,46 +2363,52 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 	}
 
 	// replace arguments:
+	// 2022-01-20: tag character now optional if no tag character used in the macro definition
+	if (args.count())					// replace arguments
 	for (i=0; i<zsource.count(); i++)	// loop over lines
 	{
 		SourceLine& s = zsource[i];
+		assert(s.p==s.text);
 
-		for (ssize_t j=0;;j++)			// loop over occurance of '&'
+		while(true)
 		{
-			cptr p = strchr(s.text+j,m.tag);	// at next '&'
-			if (!p) break;						// no more '&'
-			if (!is_name(p+1)) continue;		// not an argument
+			s.skip_spaces();
+			cptr a = s.p;				// start of word
 
-			s.p = p+1; w = s.nextWord();		// get potential argument name
-			if (casefold) w = lowerstr(w);
-
-			uint a = args.indexof(w);			// get index of argument in argument list
-			if (a == ~0u)						// no exact match
+			char c = *a;
+			if (!is_letter(c) && c != '_')
 			{
-				// test whether the word starts with a macro argument:
-				// used to compose label names, e.g. L_&Foo_&Bar => find argument Foo in Foo_
-				// NOTE: if not found by the exact match then shorter names may hide longer names
-				// e.g. macro &N, &NN --> L_&NNxx --> will never find &NN because argument &N already matched
-				for (a=0; a<args.count(); a++)
-				{
-					if (startswith(w,args[a]))	// found argument at start of word
-					{
-						s.p -= strlen(w)-strlen(args[a]);
-						break;
-					}
-				}
-				if (a == args.count()) continue;	// argument name not found
+				if (c==';' || c==0) break;	// EOL
+				else { s.p++; continue; }	// no IDF
 			}
 
-			// w is the name of argument #a
-			// it was found starting at p+1 in s.text  (p points to the '&')
+			w = s.nextWord();			// get potential argument name
+			assert (is_name(w));
+			cptr e = s.p;
+			assert(e==a+strlen(w));
 
-			j = p - s.text;						// index of '&'
-			j += strlen(rpl[a]) -1;				// index of last char of rpl after replacement
-			s.text = catstr(substr(s.text,p), rpl[a], s.p);
+			if (a != s.text && *(a-1) == m.tag) a--;	// tag present
+			else if (m.tag_required) continue;				// no tag char but required
+
+			if (casefold) w = lowerstr(w);
+
+			uint i = args.indexof(w);				// search exact match
+			if(i == ~0u)							// no exact match found
+			{
+				if (*a != m.tag) continue;			// no tag => exact match required
+
+				for (i = 0; i<args.count() && !startswith(w,args[i]); i++) {} // else try partial match
+				if (i >= args.count()) continue;	// no partial match found
+				e -= strlen(w) - strlen(args[i]);
+			}
+
+			cstr new_text = catstr(substr(s.text,a), rpl[i], e);
+			s.p += strlen(rpl[i]) - size_t(e-a);
+			s.p += new_text - s.text;
+			s.text = new_text;
 		}
 
-		s.rewind();	// superflux. but makes s.p valid
+		s.rewind();
 	}
 
 	// insert text of macro definition into source:

@@ -48,14 +48,14 @@
 
 
 //static const char appl_name[] = "zasm";
-#define VERSION "4.4.8"
+#define VERSION "4.4.9"
 
 // Help text:
 // optimized for 80 characters / column
 //
 static const char version[] =
 "–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-"  zasm - 8080/z80/z180 assembler (c) 1994 - 2021 Günter Woigk.\n"
+"  zasm - 8080/z80/z180 assembler (c) 1994 - 2022 Günter Woigk.\n"
 "  version " VERSION ", %s, for " _PLATFORM ".\n"						// version, date, platform
 "  homepage: https://k1.spdns.de/zasm/\n"
 "  git repo: https://github.com/Megatokio/zasm\n\n";
