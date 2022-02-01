@@ -76,14 +76,14 @@ pre	foo:	.macro A, B			; 1)
 
 h5	Argument processing in the macro definition
 
-p	A special character, a 'tag', must be preprended to the argument names in the head and body. This 'tag' varies from assembler to assembler. zasm supports any character from the following list:
-
-pre	! # $ % & . : ? @ \ ^ _ | ~
+p	A special character, a 'tag', should be preprended to the argument names in the head and body. This 'tag' varies from assembler to assembler. zasm treats any non-letter character at start of the argument names as this 'tag'. Most commonly used is '&'.
 
 p	Some assemblers required the tag only in the macro body, not in the head, see version 1) and 2) in the above example. zasm supports this "as seen in source examples" in the following way:
 ul
 li	If the macro is defined as <tt><name> macro <arguments…></tt> then the tag is '&'.
 li	If the macro is defined as <tt>macro <name> <arguments…></tt> then the tag is '\'.
+
+p	Also, the tag is not required in the body if it was not written in the argument list. Then argument references must be full words, whereas with tag they are also detected as part of a words.
 
 p.i	The use of '&' is recommended. All other tags are to support various sources out of the box only!
 
@@ -103,13 +103,18 @@ pre	foo:	macro &A
 
 p	In this example the argument is used as the second argument for 'ld b,N' and to construct a unique label name for each invocation. Another solution would have been to use a counter and a redefinable label.
 
-p	Since version 4.4.6 macro arguments are matched in two stages: zasm first looks for an exact match but then also tries to match the beginning of a possible argument. This allows to construct a label name with the macro argument somewhere in the middle:
-
 pre	.macro foo_define &NAME, &rr
-	ld_&NAME_&rr = ld_int_&rr
+			ld_&NAME_&rr = ld_int_&rr
 	.endm
 
-p	In this example '&NAME' in 'ld_&NAME_&rr' would not be recognized if there wasn't this second try, because of the '_' after the 'NAME'.
+p	In this example '&NAME' in 'ld_&NAME_&rr' is also replaced, though 'NAME' is only the first 4 characters of the potential 5-letter name 'NAME_'.
+
+p	An example without tag character:
+
+pre	DWA:  MACRO WHERE
+          DB    (WHERE >> 8) + 128
+          DB    WHERE & 0FFH
+          ENDM
 
 
 h5	Argument processing in the macro invocation
