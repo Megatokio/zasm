@@ -18,7 +18,12 @@ DEFINES     = -DNDEBUG -DRELEASE
 CFLAGS      = -pipe -Os -Wall -W -fPIE $(DEFINES)
 CXXFLAGS    = $(CFLAGS) -Wno-multichar -std=c++11
 INCPATH     = -I. -ISource -ILibraries
-LFLAGS      =
+ifeq ($(OS),Windows_NT)
+	# static linking for Cygwin:
+	LFLAGS  = -static
+else
+	LFLAGS  =
+endif
 LIBS        = -lpthread -lz
 
 SRCS := $(wildcard Source/*.cpp)

@@ -1,9 +1,5 @@
-## zasm
 
-#### zasm - Z80, 8080 and Z180 assembler
-
-You also need to checkout https://github.com/megatokio/Libraries. (uppercase 'L')  
-Project *zasm* already contains a symlink to '../Libraries'.
+## zasm - Z80, 8080 and Z180 assembler
 
 #### Features
 
