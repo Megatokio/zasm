@@ -1123,7 +1123,7 @@ op:
 
 	switch (q.peekChar())				// peek next character
 	{
-	// TODO: and or xor eq ne gt ge lt le
+	// TODO: and or xor eq ne gt ge lt le shr shl
 	case '+':
 	case '-':	if (pAdd<=prio) break; skip_expression(++q,pAdd); goto op;
 
@@ -1656,11 +1656,10 @@ op:	char c1,c2;
 		goto gg;
 
 	case pRot:	// >> <<
-	gg:	if (c1==c2)
-		{
-			if (c1=='<') { n = n << value(q+=2,pRot); goto op; }
-			if (c1=='>') { n = n >> value(q+=2,pRot); goto op; }
-		}
+	gg:	if (c1=='<' && c2==c1) { n = n << value(q+=2,pRot); goto op; }
+		if (c1=='>' && c2==c1) { n = n >> value(q+=2,pRot); goto op; }
+		if (c1=='s' && q.testWord("shr")) { n = n >> value(q, pRot); goto op; }
+		if (c1=='s' && q.testWord("shl")) { n = n << value(q, pRot); goto op; }
 
 	//default:	// prio >= pUna
 	//	break;
