@@ -27,6 +27,8 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 	// returns register offset 0…7: b,c,d,e,h,l,m,a
 	// target_z80 => n(X) and n(Y) returns PFX_XY<<8 + offset (offset checked)
 
+	q.skip_spaces();
+	cstr p0 = q.p;
 	cstr w = q.nextWord();
 	char c = *w; if (c==0) throw SyntaxError("unexpected end of line");
 
@@ -43,17 +45,20 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 		case 'm':	return 6; // XHL
 		case 'a':	return 7;
 		}
-		if (target_z80_or_z180)	// n(X) or n(Y)
-		{
-			Value n = value(q); if(n.is_valid() && n.value != int8(n.value)) throw SyntaxError("offset out of range");
-			q.expect('(');
-			w = q.nextWord();
-			if ((*w|0x20)=='x') n.value = (PFX_IX<<8) + (n.value & 0xff); else
-			if ((*w|0x20)=='y') n.value = (PFX_IY<<8) + (n.value & 0xff); else throw SyntaxError("register X or Y exepcted");
-			q.expectClose();
-			return n.value;
-		}
 	}
+
+	if (target_z80_or_z180)	// n(X) or n(Y)
+	{
+		q.p = p0;
+		Value n = value(q); if(n.is_valid() && n.value != int8(n.value)) throw SyntaxError("offset out of range");
+		q.expect('(');
+		w = q.nextWord();
+		if ((*w|0x20)=='x') n.value = (PFX_IX<<8) + (n.value & 0xff); else
+		if ((*w|0x20)=='y') n.value = (PFX_IY<<8) + (n.value & 0xff); else throw SyntaxError("register X or Y exepcted");
+		q.expectClose();
+		return n.value;
+	}
+
 	throw SyntaxError("register A to L or memory M expected");
 }
 
@@ -234,7 +239,7 @@ dcr:	r = get8080Register(q);
 		}
 		else		// mov d(x),r		Z80
 		{
-			if (r2<7 && r2!=6) return store(r>>8, LD_xHL_B+r2, r);	// PFX, LD_xHL_R, OFFS
+			if (r2<8 && r2!=6) return store(r>>8, LD_xHL_B+r2, r);	// PFX, LD_xHL_R, OFFS
 		}
 		// ld (hl),(hl)
 		// ld (hl),(ix+d)
