@@ -4062,9 +4062,11 @@ void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
 	if (lceq(w,".endme"))	throw SyntaxError("'.endme' without '.memorymap'");
 	if (lceq(w,".endro"))	throw SyntaxError("'.endro' without '.rombankmap'");
 	if (doteq(w,"title"))	goto ignore;
+	if (lceq(w,"page")) 	goto ignore;
 	if (lceq(w,".xlist"))	goto ignore;
 	if (lceq(w,".nolist"))	goto ignore;
 	if (lceq(w,"subttl"))	goto ignore;
+	if (lceq(w,"sbttl"))	goto ignore;
 	if (lceq(w,".sdsctag"))	goto ignore;
 	if (doteq(w,"section"))	goto ignore;
 	if (lceq(w,".bank"))	goto warn;
