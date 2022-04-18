@@ -385,8 +385,10 @@ lspd:	n = value(q);
 		storeEDopcode(instr);
 		return storeWord(n);
 
-	case ' inc':	instr = IN_B_xC;  goto outc;		// in r,(c)				kio added
-	case 'outc':	instr = OUT_xC_B; goto outc;		// out (c),r			kio added
+	case ' inp':										//				kio added to match OUTP
+	case ' inc':	instr = IN_B_xC;  goto outc;		// in r,(c)		kio added
+	case 'outp':										//				kio added seen in M80 (?)
+	case 'outc':	instr = OUT_xC_B; goto outc;		// out (c),r	kio added
 
 outc:	r = get8080Register(q);
 		if (r<8 && r!=6) return storeEDopcode(instr+r*8);
