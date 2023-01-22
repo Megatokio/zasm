@@ -187,6 +187,7 @@ p	The following operators are recognized and listed in order of precedence:
 pre	brackets            ( ... )
 	monadic operators   + - ~ !       	plus sign, minus sign, 2's complement, negation
 	shifting            << >>       	shift left or right; left operand is target
+						shl shr
 	bit masking         & | ^			bitwise and, or, xor
 						and or xor
 	mult/div            * / %     	    multiply, divide, remainder ('\' is no longer recognized)

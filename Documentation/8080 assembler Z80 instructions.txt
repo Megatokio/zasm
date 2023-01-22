@@ -81,7 +81,9 @@ pre	<b>8080 syntax     Z80 syntax</b>
 	LIXD NN			ld	ix,(NN)		""
 	LIYD NN			ld	iy,(NN)		""
 	INC	 R			in	r,(c) 		R = B C D E H L A;  note: *not* inc!
+	INP	 R			in	r,(c)		""
 	OUTC R			out	(c),r		R = B C D E H L A
+	OUTP R			out	(c),r		""
 	DADC R			adc	hl,rr		R = B D H SP
 	DSBC R			sbc hl,rr		R = B D H SP
 	DADX R			add	ix,rr		R = B D X SP
