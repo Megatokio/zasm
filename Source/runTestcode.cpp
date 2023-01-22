@@ -22,6 +22,7 @@
 #include "Z80/goodies/z80_disass.h"
 #include "Z80/goodies/z80_opcodes.h"
 
+using namespace zasm;
 
 void handleOutput(Z80::CpuCycle,uint16,uint8)
 {}

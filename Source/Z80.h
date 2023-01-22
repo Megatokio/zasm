@@ -23,6 +23,7 @@
 #include "Z80Registers.h"
 
 
+namespace zasm{
 
 class Z80
 {
@@ -67,7 +68,7 @@ public:
 	void poke  (Address a, Byte c) noexcept	{ core[a] = c; }
 };
 
-
+} // namespace
 
 
 

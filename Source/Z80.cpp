@@ -25,6 +25,8 @@
 #include "Z80.h"
 #include "z80macros.h"
 
+namespace zasm{
+
 const uint8 Z80::zlog_flags[256] =
 {
 	// conversion table: A -> Z80-flags with S, Z, V=parity and C=0
@@ -1297,7 +1299,7 @@ x:	SAVE_REGISTERS;
 }
 
 
-
+} // namespace
 
 
 
