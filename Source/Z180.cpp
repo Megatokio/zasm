@@ -292,7 +292,7 @@ static const uint8 cc_z180_ED[256] =
 
 
 
-Z80::RVal Z80::runZ180 (CpuCycle ccx)
+zasm::Z80::RVal zasm::Z80::runZ180 (CpuCycle ccx)
 {
 	CpuCycle cc;			// cpu cycle counter
 	CpuCycle ccx0 = ccx;
