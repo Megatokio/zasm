@@ -24,7 +24,7 @@
 
 ; reset vector
 RST0::  di
-        ld      sp,$10000
+        ld      sp,0    	; $10000
         jp      init
         defs    0x08-$
 
