@@ -32,7 +32,7 @@
 //			Source = Array<SourceLine>
 // ----------------------------------------------
 
-void Source::includeFile (cstr filename_fqn, uint sourceAE_index) throws
+void Source::includeFile (cstr filename_fqn, uint sourceAE_index)
 {
 	// include another assembler source file at sourceAE_index into this.source[]
 	// die Text-Pointer der SourceLines zeigen alle in tempmem!
@@ -137,7 +137,7 @@ bool SourceLine::testEol()
 	return c==';' || c==0 || c=='\\';
 }
 
-void SourceLine::expect (char c) throws
+void SourceLine::expect (char c)
 {
 	// skip spaces and test for and skip char
 	// throw error if char does not match
@@ -145,7 +145,7 @@ void SourceLine::expect (char c) throws
 	if (!testChar(c)) throw SyntaxError("'%c' expected", c);
 }
 
-void SourceLine::expectEol () throws
+void SourceLine::expectEol ()
 {
 	// test for logical end of line
 	// which may be physical end of line or start of a comment

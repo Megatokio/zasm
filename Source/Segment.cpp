@@ -151,8 +151,8 @@ CodeSegment::CodeSegment (cstr _name, SegmentType _type, uint8 _fillbyte)
 	is_code = yes;
 }
 
-void Segment::throw_data_segment_required () throws { throw SyntaxError("#code or #data segment required"); }
-void Segment::throw_code_segment_required () throws { throw SyntaxError("#code segment required"); }
+void Segment::throw_data_segment_required() { throw SyntaxError("#code or #data segment required"); }
+void Segment::throw_code_segment_required() { throw SyntaxError("#code segment required"); }
 
 void DataSegment::rewind ()
 {
@@ -175,7 +175,7 @@ void CodeSegment::rewind ()
 	DataSegment::rewind();
 }
 
-void DataSegment::setAddress (cValue& new_address) throws
+void DataSegment::setAddress (cValue& new_address)
 {
 	// set "physical" and "logical" segment start address
 	// should be set between assembly passes
@@ -209,7 +209,7 @@ void DataSegment::setAddress (cValue& new_address) throws
 	dpos = 0;
 }
 
-void DataSegment::setSize (cValue& newsize) throws
+void DataSegment::setSize (cValue& newsize)
 {
 	// set segment size
 	// should be set between assembly passes
@@ -238,7 +238,7 @@ void DataSegment::setSize (cValue& newsize) throws
 	size = newsize;
 }
 
-void DataSegment::setOrigin (cValue& address) throws
+void DataSegment::setOrigin (cValue& address)
 {
 	// set "logical" code address
 	// valid range: -0x8000 … +0xFFFF
@@ -259,7 +259,7 @@ void DataSegment::setOrigin (cValue& address) throws
 //			Store Code
 // -------------------------------------------------------
 
-void Segment::storeOffset (cValue& offset) throws
+void Segment::storeOffset (cValue& offset)
 {
 	if (offset.is_valid())
 	{
@@ -269,7 +269,7 @@ void Segment::storeOffset (cValue& offset) throws
 	store(offset.value);
 }
 
-void Segment::storeByte (cValue& byte) throws
+void Segment::storeByte (cValue& byte)
 {
 	// store signed or unsigned byte
 	// validates byte
@@ -283,7 +283,7 @@ void Segment::storeByte (cValue& byte) throws
 	store(byte.value);
 }
 
-void Segment::storeWord (cValue& word) throws
+void Segment::storeWord (cValue& word)
 {
 	// store 2 bytes (z80 byte order: lsb first)
 	// validates word
@@ -297,7 +297,7 @@ void Segment::storeWord (cValue& word) throws
 	store(word.value>>8);
 }
 
-void Segment::storeHexBytes (cptr data, uint n) throws
+void Segment::storeHexBytes (cptr data, uint n)
 {
 	// store block of bytes
 	// source bytes are stuffed as hex
@@ -318,7 +318,7 @@ void Segment::storeHexBytes (cptr data, uint n) throws
 
 
 
-void DataSegment::skipExistingData (uint n) throws
+void DataSegment::skipExistingData (uint n)
 {
 	// skip over existing data in pass 2++:
 	// in case of an error
@@ -332,7 +332,7 @@ void DataSegment::skipExistingData (uint n) throws
 		throw SyntaxError("segment overflow");
 }
 
-void DataSegment::store (int byte) throws
+void DataSegment::store (int byte)
 {
 	// store byte
 	// byte must be zero
@@ -346,7 +346,7 @@ void DataSegment::store (int byte) throws
 		throw FatalError("segment overflow");
 }
 
-void DataSegment::storeBlock (cptr data, uint n) throws
+void DataSegment::storeBlock (cptr data, uint n)
 {
 	// store block of raw bytes which must be all zero
 	// implemented for completeness
@@ -354,7 +354,7 @@ void DataSegment::storeBlock (cptr data, uint n) throws
 	while (n--) DataSegment::store(*data++);
 }
 
-void DataSegment::storeSpace (cValue& sz) throws
+void DataSegment::storeSpace (cValue& sz)
 {
 	// store space
 
@@ -390,7 +390,7 @@ void DataSegment::storeSpace (cValue& sz) throws
 		throw SyntaxError("segment overflow");
 }
 
-void DataSegment::storeSpace (cValue& sz, int c) throws
+void DataSegment::storeSpace (cValue& sz, int c)
 {
 	// store space filled with byte
 	// byte must be zero
@@ -400,7 +400,7 @@ void DataSegment::storeSpace (cValue& sz, int c) throws
 }
 
 
-void CodeSegment::store (int byte) throws
+void CodeSegment::store (int byte)
 {
 	if (dpos.value < 0x10000) core[dpos.value] = uint8(byte);
 
@@ -411,7 +411,7 @@ void CodeSegment::store (int byte) throws
 		throw FatalError("segment overflow");
 }
 
-void CodeSegment::storeBlock (cptr data, uint n) throws
+void CodeSegment::storeBlock (cptr data, uint n)
 {
 	// store block of raw bytes
 
@@ -426,7 +426,7 @@ void CodeSegment::storeBlock (cptr data, uint n) throws
 		throw SyntaxError("segment overflow");
 }
 
-void CodeSegment::storeSpace (cValue& sz, int c) throws
+void CodeSegment::storeSpace (cValue& sz, int c)
 {
 	// store space
 
@@ -460,20 +460,20 @@ void CodeSegment::storeSpace (cValue& sz, int c) throws
 		throw SyntaxError("segment overflow");
 }
 
-void CodeSegment::storeSpace (cValue& sz) throws
+void CodeSegment::storeSpace (cValue& sz)
 {
 	// store space with default fillbyte
 
 	CodeSegment::storeSpace(sz,fillbyte.value);
 }
 
-void DataSegment::storeSpaceUpToAddress (cValue& addr) throws
+void DataSegment::storeSpaceUpToAddress (cValue& addr)
 {
 	storeSpace(addr-lpos);
 	lpos = addr;	// set value and validity
 }
 
-void DataSegment::storeSpaceUpToAddress(cValue& addr, int c) throws
+void DataSegment::storeSpaceUpToAddress(cValue& addr, int c)
 {
 	storeSpace(addr-lpos, c);
 	lpos = addr;	// set value and validity
@@ -512,7 +512,7 @@ void CodeSegment::setFillByte (cValue& v)
 	custom_fillbyte = yes;
 }
 
-void CodeSegment::setFlag (cValue& v) throws
+void CodeSegment::setFlag (cValue& v)
 {
 	// Set segment flag
 	// used for .z80 and .tap files
@@ -1713,7 +1713,7 @@ CodeSegments::CodeSegments (Segments const& segments)
 	}
 }
 
-void CodeSegments::checkNoFlagsSet () const throws
+void CodeSegments::checkNoFlagsSet () const
 {
 	for (uint i=0; i<count(); i++)
 	{

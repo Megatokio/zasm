@@ -97,23 +97,23 @@ public:
 // store object code
 	virtual void rewind () {}
 
-	virtual void store		(int)				throws { throw_code_segment_required(); }
-	virtual void storeBlock	(cptr, uint)		throws { throw_code_segment_required(); }
-	virtual void storeSpace	(cValue&, int)		throws { throw_code_segment_required(); }
-	virtual void storeSpace	(cValue&)			throws { throw_data_segment_required(); }
+	virtual void store		(int)				{ throw_code_segment_required(); }
+	virtual void storeBlock	(cptr, uint)		{ throw_code_segment_required(); }
+	virtual void storeSpace	(cValue&, int)		{ throw_code_segment_required(); }
+	virtual void storeSpace	(cValue&)			{ throw_data_segment_required(); }
 
-	void	store		(int a,int b)			throws { store(a); store(b); }
-	void	store		(int a,int b,int c)		throws { store(a); store(b); store(c); }
-	void	store		(int a,int b,int c,int d) throws { store(a); store(b); store(c); store(d); }
-	void	storeWord	(cValue&)				throws;
-	void	storeOffset (cValue&)				throws;
-	void	storeByte	(cValue&)				throws;
-	void	storeHexBytes (cptr data, uint sz)	throws;
+	void	store		(int a,int b)			{ store(a); store(b); }
+	void	store		(int a,int b,int c)		{ store(a); store(b); store(c); }
+	void	store		(int a,int b,int c,int d) { store(a); store(b); store(c); store(d); }
+	void	storeWord	(cValue&);
+	void	storeOffset (cValue&);
+	void	storeByte	(cValue&);
+	void	storeHexBytes (cptr data, uint sz);
 
 protected:
 	Segment (SegmentType, cstr name = nullptr);
-	static void throw_data_segment_required () throws __attribute__((noreturn));
-	static void throw_code_segment_required () throws __attribute__((noreturn));
+	static void throw_data_segment_required() __attribute__((noreturn));
+	static void throw_code_segment_required() __attribute__((noreturn));
 };
 
 
@@ -142,18 +142,18 @@ public:
 
 	Validity validity	() const				override;
 	void	rewind		()						override;
-	void	setAddress	(cValue&)			throws;
-	void	setSize		(cValue&)			throws;
-	void	setOrigin	(cValue&)			throws;
+	void	setAddress	(cValue&)			;
+	void	setSize		(cValue&)			;
+	void	setOrigin	(cValue&)			;
 
-	void	store		(int)					throws override;
-	void	storeBlock	(cptr data, uint sz)	throws override;
-	void	storeSpace	(cValue& sz, int)	throws override;
-	void	storeSpace	(cValue& sz)		throws override;
+	void	store		(int)					 override;
+	void	storeBlock	(cptr data, uint sz)	 override;
+	void	storeSpace	(cValue& sz, int)	 override;
+	void	storeSpace	(cValue& sz)		 override;
 
-	void	storeSpaceUpToAddress(cValue&)	throws;
-	void	storeSpaceUpToAddress(cValue&, int) throws;
-	void	skipExistingData (uint sz)			throws;
+	void	storeSpaceUpToAddress(cValue&)	;
+	void	storeSpaceUpToAddress(cValue&, int) ;
+	void	skipExistingData (uint sz)			;
 
 protected:
 	DataSegment (cstr name, SegmentType, bool relocatable, bool resizable);
@@ -201,16 +201,16 @@ public:
 	Validity validity () const override;
 	void	rewind() override;
 
-	void	store		(int)					throws override;
-	void	storeBlock	(cptr data, uint sz)	throws override;
-	void	storeSpace	(cValue&, int)		throws override;
-	void	storeSpace	(cValue&)			throws override;
+	void	store		(int)					 override;
+	void	storeBlock	(cptr data, uint sz)	 override;
+	void	storeSpace	(cValue&, int)		 override;
+	void	storeSpace	(cValue&)			 override;
 	void	clearTrailingBytes ()				noexcept;
 
 	uint8&	operator[]	(uint32 i)				{ return core[i]; }
 	uint8	popLastByte	()						{ assert(dpos.value>0); --lpos.value; return core[--dpos.value]; }
 
-	void	setFlag		(cValue&)			throws;
+	void	setFlag		(cValue&)			;
 	void	setPause	(cValue&);
 	void	setLastBits	(cValue&);
 	void	setNoFlag ();
@@ -578,7 +578,7 @@ class CodeSegments : public RCArray<CodeSegment>
 {
 public:
 	CodeSegments (Segments const& segments);	// extract CodeSegments (CODE, TZX, no TEST) from source array
-	void	checkNoFlagsSet () const throws;
+	void	checkNoFlagsSet () const;
 	uint32	totalCodeSize() const;
 };
 

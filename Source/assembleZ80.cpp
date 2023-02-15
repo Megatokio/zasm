@@ -35,7 +35,7 @@ static bool lceq (cptr w, cptr s)
 }
 
 
-void Z80Assembler::storeEDopcode (int n) throws
+void Z80Assembler::storeEDopcode (int n)
 {
 	if (target_z80_or_z180) return store(PFX_ED,n);
 	throw SyntaxError(syntax_8080 ?
@@ -43,7 +43,7 @@ void Z80Assembler::storeEDopcode (int n) throws
 		: "no i8080 opcode (option --8080)");
 }
 
-void Z80Assembler::storeIXopcode (int n) throws
+void Z80Assembler::storeIXopcode (int n)
 {
 	if (target_z80_or_z180) return store(PFX_IX,n);
 	throw SyntaxError(syntax_8080 ?
@@ -51,7 +51,7 @@ void Z80Assembler::storeIXopcode (int n) throws
 		: "no i8080 opcode (option --8080)");
 }
 
-void Z80Assembler::storeIYopcode (int n) throws
+void Z80Assembler::storeIYopcode (int n)
 {
 	if (target_z80_or_z180) return store(PFX_IY,n);
 	throw SyntaxError(syntax_8080 ?
@@ -82,7 +82,7 @@ enum // enumeration of Z80 identifiers
 	XMMBC, XMMDE, XMMHL, XBCPP, XDEPP, XHLPP,	// (hl++) etc. for compound opcodes
 };
 
-int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
+int Z80Assembler::getCondition (SourceLine& q, bool expect_comma)
 {
 	// test and skip over condition
 	// returns NIX or enum [Z, NZ .. P]
@@ -113,7 +113,7 @@ int Z80Assembler::getCondition (SourceLine& q, bool expect_comma) throws
 	throw SyntaxError("illegal condition");
 }
 
-int Z80Assembler::getRegister (SourceLine& q, Value& n, bool with_qreg) throws
+int Z80Assembler::getRegister (SourceLine& q, Value& n, bool with_qreg)
 {
 	// test and skip over register or value
 	// returns register enum:
@@ -241,7 +241,7 @@ no_8080:
 	throw SyntaxError("no 8080 register");
 }
 
-void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w) throws
+void Z80Assembler::asmZ80Instr (SourceLine& q, cstr w)
 {
 	// Assemble Z80 opcode
 

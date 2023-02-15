@@ -21,7 +21,7 @@
 #include "Z80/goodies/z80_opcodes.h"
 
 
-int Z80Assembler::get8080Register (SourceLine& q) throws
+int Z80Assembler::get8080Register (SourceLine& q)
 {
 	// get 8080 register
 	// returns register offset 0…7: b,c,d,e,h,l,m,a
@@ -64,7 +64,7 @@ int Z80Assembler::get8080Register (SourceLine& q) throws
 
 enum { BD, BDHSP,BDHAF };
 
-int Z80Assembler::get8080WordRegister (SourceLine& q, uint what) throws
+int Z80Assembler::get8080WordRegister (SourceLine& q, uint what)
 {
 	// get 8080 word register
 	// what -> which register set
@@ -95,7 +95,7 @@ int Z80Assembler::get8080WordRegister (SourceLine& q, uint what) throws
 	throw SyntaxError("word register %s expected", what==0 ? "B or D" : what==1 ? "B, D, H or SP" : "B, D, H or PSW");
 }
 
-void Z80Assembler::asm8080Instr (SourceLine& q, cstr w) throws
+void Z80Assembler::asm8080Instr (SourceLine& q, cstr w)
 {
 	// assemble z80 or 8080 opcode: 8080 assembler syntax
 	// no illegals.

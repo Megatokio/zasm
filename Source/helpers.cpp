@@ -59,7 +59,7 @@ uint32 compressed_page_size_z80 (uint8 const* q, uint qsize)
 	return sz;
 }
 
-void write_compressed_page_z80 (FD& fd, int page_id , uint8 const* q, uint32 qsize) throws
+void write_compressed_page_z80 (FD& fd, int page_id , uint8 const* q, uint32 qsize)
 {
 	// write compressed data in .z80 format
 	//
@@ -116,7 +116,7 @@ void write_compressed_page_z80 (FD& fd, int page_id , uint8 const* q, uint32 qsi
 	fd.write_bytes(zbu,zsize);
 }
 
-void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz ) throws
+void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz )
 {
 	// write block of data in intel hex file format
 	// format of one line:
@@ -178,7 +178,7 @@ void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz ) throws
 	}
 }
 
-uint write_motorola_s19 (FD& fd, uint32 address, uint8 const* data, uint32 count) throws
+uint write_motorola_s19 (FD& fd, uint32 address, uint8 const* data, uint32 count)
 {
 	// write block of data in motorola s-record file format
 	// format of one line:
@@ -219,7 +219,7 @@ uint write_motorola_s19 (FD& fd, uint32 address, uint8 const* data, uint32 count
 	return cnt;
 }
 
-void write_srecord (FD& fd, S19Type type, uint32 address, uint8 const* data, uint count) throws
+void write_srecord (FD& fd, S19Type type, uint32 address, uint8 const* data, uint count)
 {
 	// write one line into a s-record file:
 	// type = S19_InfoHeader  = 0 -> info header: S0 record
@@ -257,7 +257,7 @@ void write_srecord (FD& fd, S19Type type, uint32 address, uint8 const* data, uin
 	fd.write_fmt("%02X\r\n", ~checksum & 0xff);		// write 1's complement of checksum
 }
 
-void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize) throws
+void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize)
 {
 	// write compressed data in .ace format
 	//
@@ -292,7 +292,7 @@ void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize) throws
 	fd.write_bytes(zbu,uint32(z-zbu));
 }
 
-void write_segment (FD& fd, const CodeSegment& s) throws
+void write_segment (FD& fd, const CodeSegment& s)
 {
 	// write segment to file
 	// depending on flag s.compressed write compressed or uncompressed data

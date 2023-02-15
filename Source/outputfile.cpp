@@ -42,7 +42,7 @@
 			to the actually used name (unprotected tempstr)
 ============================================================== */
 
-void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
+void Z80Assembler::writeTargetfile (cstr& dname, int style)
 {
 	assert(errors.count()==0);
 	assert(dname != nullptr);
@@ -80,7 +80,7 @@ void Z80Assembler::writeTargetfile (cstr& dname, int style) throws
 	throw SyntaxError("internal error: writeTargetfile: unknown target");
 }
 
-void Z80Assembler::writeBinFile (FD& fd) throws
+void Z80Assembler::writeBinFile (FD& fd)
 {
 	// no error checking!
 	// just concatenate everything
@@ -93,7 +93,7 @@ void Z80Assembler::writeBinFile (FD& fd) throws
 	}
 }
 
-void Z80Assembler::writeSnaFile (FD& fd) throws
+void Z80Assembler::writeSnaFile (FD& fd)
 {
 	// no error checking!
 	// just concatenate everything
@@ -101,7 +101,7 @@ void Z80Assembler::writeSnaFile (FD& fd) throws
 	writeBinFile(fd);
 }
 
-void Z80Assembler::writeZX80File (FD& fd) throws
+void Z80Assembler::writeZX80File (FD& fd)
 {
 	// no error checking!
 	// just concatenate everything
@@ -109,7 +109,7 @@ void Z80Assembler::writeZX80File (FD& fd) throws
 	writeBinFile(fd);
 }
 
-void Z80Assembler::writeZX81File (FD& fd) throws
+void Z80Assembler::writeZX81File (FD& fd)
 {
 	// no error checking!
 	// just concatenate everything
@@ -117,7 +117,7 @@ void Z80Assembler::writeZX81File (FD& fd) throws
 	writeBinFile(fd);
 }
 
-void Z80Assembler::writeHexFile (FD& fd) throws
+void Z80Assembler::writeHexFile (FD& fd)
 {
 	// store data from segments into hex file
 	// no error checking!
@@ -149,7 +149,7 @@ void Z80Assembler::writeHexFile (FD& fd) throws
 	fd.write_str(":00000001FF\r\n");
 }
 
-void Z80Assembler::writeS19File (FD& fd) throws
+void Z80Assembler::writeS19File (FD& fd)
 {
 	// store data from segments into hex file
 	// no error checking!
@@ -187,7 +187,7 @@ void Z80Assembler::writeS19File (FD& fd) throws
 	write_srecord(fd,S19_BlockEnd,0,nullptr,0);
 }
 
-void Z80Assembler::writeTapFile (FD& fd) throws
+void Z80Assembler::writeTapFile (FD& fd)
 {
 	// no error checking!
 
@@ -250,7 +250,7 @@ void Z80Assembler::writeTapFile (FD& fd) throws
 	}
 }
 
-void Z80Assembler::writeZ80File (FD& fd) throws
+void Z80Assembler::writeZ80File (FD& fd)
 {
 	// no error checking!
 
@@ -281,7 +281,7 @@ void Z80Assembler::writeZ80File (FD& fd) throws
 	}
 }
 
-void Z80Assembler::writeAceFile (FD& fd) throws
+void Z80Assembler::writeAceFile (FD& fd)
 {
 	// no error checking!
 	// just compress & concatenate everything
@@ -299,7 +299,7 @@ void Z80Assembler::writeAceFile (FD& fd) throws
 	fd.write_uint8(0);
 }
 
-void Z80Assembler::writeTzxFile (FD& fd) throws
+void Z80Assembler::writeTzxFile (FD& fd)
 {
 	// no error checking!
 
@@ -723,7 +723,7 @@ void Z80Assembler::writeTzxFile (FD& fd) throws
 		check segments[] for #target
 ============================================================== */
 
-void Z80Assembler::checkTargetfile () throws
+void Z80Assembler::checkTargetfile ()
 {
 	// Prevent empty output:
 	if (CodeSegments(segments).totalCodeSize()==0) throw SyntaxError("code size = 0");
@@ -745,7 +745,7 @@ void Z80Assembler::checkTargetfile () throws
 	throw SyntaxError("internal error: checkTargetfile: unknown target");
 }
 
-void Z80Assembler::checkTapFile () throws
+void Z80Assembler::checkTapFile ()
 {
 	// Check segments[] for target "TAP":
 	// Segments are either a tape block on their own and have their tape block flag defined
@@ -861,7 +861,7 @@ static void set_default_data_symbols(CodeSegment* s)
 	}
 }
 
-void Z80Assembler::checkTzxFile () throws
+void Z80Assembler::checkTzxFile ()
 {
 	// Check segments[] for target "TZX":
 
@@ -1265,12 +1265,12 @@ void Z80Assembler::checkTzxFile () throws
 	}
 }
 
-void Z80Assembler::checkBinFile () throws
+void Z80Assembler::checkBinFile ()
 {
 	CodeSegments(segments).checkNoFlagsSet();
 }
 
-void Z80Assembler::checkSnaFile () throws
+void Z80Assembler::checkSnaFile ()
 {
 	// Check target SNA
 	// 48k version only (there is also a rarely used 128k variant)
@@ -1331,7 +1331,7 @@ void Z80Assembler::checkSnaFile () throws
 		"target SNA: total ram size must be 0xC000 bytes (size=0x%04X)", uint(addr-0x4000));
 }
 
-void Z80Assembler::checkAceFile () throws
+void Z80Assembler::checkAceFile ()
 {
 	// Check target ACE
 	// Checks for presence of all the empty pages
@@ -1446,7 +1446,7 @@ void Z80Assembler::checkAceFile () throws
 	}
 }
 
-void Z80Assembler::checkZX80File () throws
+void Z80Assembler::checkZX80File ()
 {
 	// Check segments for ZX80 targets: O or 80:
 	// Checks min. and max. size
@@ -1523,7 +1523,7 @@ void Z80Assembler::checkZX80File () throws
 	}
 }
 
-void Z80Assembler::checkZX81File () throws
+void Z80Assembler::checkZX81File ()
 {
 	// Check segments for ZX81 targets: P, 81 or P81:
 	// Checks min. and max. size
@@ -1632,7 +1632,7 @@ a:		CodeSegment& s = segments[hi++];
 	}
 }
 
-void Z80Assembler::checkZ80File () throws
+void Z80Assembler::checkZ80File ()
 {
 	// Check segments[] for target Z80
 

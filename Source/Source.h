@@ -78,11 +78,11 @@ public:
 	bool	testEol		();
 	bool	testCommaNoGKauf ()		{ cptr a=p; if (testComma() && peekChar()!='{') return yes; p=a; return no; }
 
-	void	expect		(char)		throws ;
-	void	expectComma	()			throws 		{ expect(','); }
-	void	expectOpen	()			throws 		{ expect('('); }
-	void	expectClose	()			throws 		{ expect(')'); }
-	void	expectEol	()			throws ;
+	void	expect		(char);
+	void	expectComma	()			{ expect(','); }
+	void	expectOpen	()			{ expect('('); }
+	void	expectClose	()			{ expect(')'); }
+	void	expectEol	();
 
 	cstr	nextWord	() noexcept;
 	cstr	nextName	( bool dot=no );

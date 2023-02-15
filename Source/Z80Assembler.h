@@ -154,63 +154,63 @@ private:
 	int			c_zi;			// index for output file in c_flags[] or -1
 
 private:
-	void	replaceCurlyBraces (SourceLine&)			throws;
-	uint	skipMacroBlock	(uint i, cstr a, cstr e)	throws;
-	void	parseBytes		(SourceLine&, Array<uint8>&)throws;
-	IoSequence parseIoSequence (SourceLine&)			throws;
-	Value	value			(SourceLine&, int prio=0)	throws;
-	void	skip_expression	(SourceLine&, int prio)		throws;
-	void	asmLabel		(SourceLine&)				throws;
-	void	asmDirect		(SourceLine&)				throws;		// #directives
-	void	asmIf			(SourceLine&)				throws;
-	void	asmElif			(SourceLine&)				throws;
-	void	asmElse			(SourceLine&)				throws;
-	void	asmEndif		(SourceLine&)				throws;
-	void	asmTarget		(SourceLine&)				throws;
-	void	asmInclude		(SourceLine&)				throws;
-	void	asmInsert		(SourceLine&)				throws;
-	void	asmTzx			(SourceLine&)				throws;
-	void	asmSegment		(SourceLine&,SegmentType)	throws;
-	void	asmCFlags		(SourceLine&)				throws;
-	void	asmCPath		(SourceLine&)				throws;
-	void	asmLocal		(SourceLine&)				throws;
-	void	asmEndLocal		(SourceLine&)				throws;
-	void	asmEnd			(SourceLine&)				throws;
-	void	asmAssert		(SourceLine&)				throws;
-	void	asmDefine		(SourceLine&)				throws;
-	void	asmCompress		(SourceLine&)				throws;
-	void	asmCharset		(SourceLine&)				throws;
-	void	asmFirstOrg		(SourceLine&)				throws;
-	void	asmRept			(SourceLine&, cstr rept, cstr endm)	throws;
-	void	asmMacro		(SourceLine&, cstr macro, cstr name, char tag)	throws;
-	void	asmMacroCall	(SourceLine&, Macro&)		throws;
-	void	asmShebang		(SourceLine&)				throws;
-	cstr	compileFile		(cstr)						throws;
-	void	compressSegments ()							throws;
+	void	replaceCurlyBraces (SourceLine&);
+	uint	skipMacroBlock	(uint i, cstr a, cstr e);
+	void	parseBytes		(SourceLine&, Array<uint8>&);
+	IoSequence parseIoSequence (SourceLine&);
+	Value	value			(SourceLine&, int prio=0);
+	void	skip_expression	(SourceLine&, int prio);
+	void	asmLabel		(SourceLine&);
+	void	asmDirect		(SourceLine&);		// #directives
+	void	asmIf			(SourceLine&);
+	void	asmElif			(SourceLine&);
+	void	asmElse			(SourceLine&);
+	void	asmEndif		(SourceLine&);
+	void	asmTarget		(SourceLine&);
+	void	asmInclude		(SourceLine&);
+	void	asmInsert		(SourceLine&);
+	void	asmTzx			(SourceLine&);
+	void	asmSegment		(SourceLine&,SegmentType);
+	void	asmCFlags		(SourceLine&);
+	void	asmCPath		(SourceLine&);
+	void	asmLocal		(SourceLine&);
+	void	asmEndLocal		(SourceLine&);
+	void	asmEnd			(SourceLine&);
+	void	asmAssert		(SourceLine&);
+	void	asmDefine		(SourceLine&);
+	void	asmCompress		(SourceLine&);
+	void	asmCharset		(SourceLine&);
+	void	asmFirstOrg		(SourceLine&);
+	void	asmRept			(SourceLine&, cstr rept, cstr endm);
+	void	asmMacro		(SourceLine&, cstr macro, cstr name, char tag);
+	void	asmMacroCall	(SourceLine&, Macro&);
+	void	asmShebang		(SourceLine&);
+	cstr	compileFile		(cstr);
+	void	compressSegments();
 
-	void	(Z80Assembler::*asmInstr) (SourceLine&,cstr)throws;
-	void	asmPseudoInstr	(SourceLine&,cstr)			throws;
-	void	asmZ80Instr		(SourceLine&,cstr)			throws;
-	void	asm8080Instr	(SourceLine&,cstr)			throws;
-	void	asmNoSegmentInstr (SourceLine&,cstr)   		throws;
-	void	asmRawDataInstr (SourceLine&,cstr)			throws;
-	void	asmTzxPulses	(SourceLine&,cstr)			throws;
-	void	asmTzxHardwareInfo(SourceLine&,cstr)  		throws;
-	void	asmTzxArchiveInfo(SourceLine&,cstr)			throws;
+	void	(Z80Assembler::*asmInstr) (SourceLine&,cstr);
+	void	asmPseudoInstr	(SourceLine&,cstr);
+	void	asmZ80Instr		(SourceLine&,cstr);
+	void	asm8080Instr	(SourceLine&,cstr);
+	void	asmNoSegmentInstr (SourceLine&,cstr);
+	void	asmRawDataInstr (SourceLine&,cstr);
+	void	asmTzxPulses	(SourceLine&,cstr);
+	void	asmTzxHardwareInfo(SourceLine&,cstr);
+	void	asmTzxArchiveInfo(SourceLine&,cstr);
 
-	void	store			(int n)						throws { current_segment().store(n); }
-	void	store			(int n, int m)				throws { current_segment().store(n,m); }
-	void	store			(int n, int m, int u)		throws { current_segment().store(n,m,u); }
-	void	store			(int a, int b, int c, int d)throws { current_segment().store(a,b,c,d); }
-	void	storeIXopcode	(int n)						throws;
-	void	storeEDopcode	(int n)						throws;
-	void	storeIYopcode	(int n)						throws;
+	void	store			(int n)						 { current_segment().store(n); }
+	void	store			(int n, int m)				 { current_segment().store(n,m); }
+	void	store			(int n, int m, int u)		 { current_segment().store(n,m,u); }
+	void	store			(int a, int b, int c, int d) { current_segment().store(a,b,c,d); }
+	void	storeIXopcode	(int n);
+	void	storeEDopcode	(int n);
+	void	storeIYopcode	(int n);
 
-	void 	storeWord		(cValue& n)					throws	{ current_segment().storeWord(n); }
-	void	storeBlock		(cptr blk, uint n)			throws	{ current_segment().storeBlock(blk,n); }
-	void	storeHexbytes	(cptr hex, uint n)			throws	{ current_segment().storeHexBytes(hex,n); }
-	void	storeByte 		(cValue& n)					throws { current_segment().storeByte(n); }
-	void	storeOffset 	(cValue& n)					throws { current_segment().storeOffset(n); }
+	void 	storeWord		(cValue& n)					{ current_segment().storeWord(n); }
+	void	storeBlock		(cptr blk, uint n)			{ current_segment().storeBlock(blk,n); }
+	void	storeHexbytes	(cptr hex, uint n)			{ current_segment().storeHexBytes(hex,n); }
+	void	storeByte 		(cValue& n)					{ current_segment().storeByte(n); }
+	void	storeOffset 	(cValue& n)					{ current_segment().storeOffset(n); }
 
 	cValue& currentPosition ()							{ return current_segment_ptr->dpos; }
 	Value	dollar ()
@@ -227,26 +227,26 @@ private:
 				else throw SyntaxError("current segment does not provide a '$$' address");
 			}
 
-	int 	getCondition	(SourceLine&, bool expect_comma) throws ;
-	int 	getRegister		(SourceLine&, Value&, bool quad_reg=no) throws;
-	int		get8080Register	(SourceLine& q)				throws;
-	int		get8080WordRegister	(SourceLine& q, uint)	throws;
+	int 	getCondition	(SourceLine&, bool expect_comma);
+	int 	getRegister		(SourceLine&, Value&, bool quad_reg=no);
+	int		get8080Register	(SourceLine& q);
+	int		get8080WordRegister	(SourceLine& q, uint);
 
-	void	setLabelValue(Label*, int32, Validity) throws ;
-	void	setLabelValue(Label*, cValue&) throws ;
+	void	setLabelValue(Label*, int32, Validity);
+	void	setLabelValue(Label*, cValue&);
 
 	void	setError		(const AnyError&);					  // set error for current file, line & column
 	void	setError		(cstr format, ...) __printflike(2,3); // set error for current file, line & column
 	void	setError		(SourceLine*, cstr format, ...) __printflike(3,4); // set error for file, line & column
 	void	init_c_flags	();
-	void	init_c_tempdir	()							throws;
-	void	init_c_compiler	(cstr cc = nullptr)			throws;
+	void	init_c_tempdir	();
+	void	init_c_compiler	(cstr cc = nullptr);
 
 	bool	is_name			(cstr w)					{ return is_letter(*w)||*w=='_'||(allow_dotnames&&*w=='.'); }
 	cstr	unquotedstr		(cstr);
-	cstr	get_filename	(SourceLine&, bool dir=no)	throws;
-	cstr	get_directory	(SourceLine& q)				throws		{ return get_filename(q,yes); }
-	uint8	charcode_from_utf8 (cptr& s) throws;
+	cstr	get_filename	(SourceLine&, bool dir=no);
+	cstr	get_directory	(SourceLine& q)				{ return get_filename(q,yes); }
+	uint8	charcode_from_utf8 (cptr& s);
 
 public:
 			Z80Assembler	();
@@ -261,35 +261,35 @@ public:
 							 bool clean=no)			noexcept;
 	void	assemble		(StrArray& sourcelines, cstr sourcepath) noexcept;
 	void	assembleOnePass	(uint pass) noexcept;
-	void	assembleLine	(SourceLine&)			throws;
+	void	assembleLine	(SourceLine&);
 	uint	assembleSingleLine(uint address, cstr z80_instruction, char buffer[]);
 	void	convert8080toZ80(cstr source, cstr dest);
 	void	runTestcode		();
 	void	runTestcode		(TestSegment&, zasm::Z80&);
 
-	void	checkTargetfile	()		throws;
-	void	writeListfile	(cstr filepath, int style) throws;
-	void	writeTargetfile	(cstr &filepath, int style) throws;
-	void	writeBinFile	(FD&)	throws;
-	void	writeHexFile	(FD&)	throws;
-	void	writeS19File	(FD&)	throws;
-	void	writeTapFile	(FD&)	throws;
-	void	writeTzxFile	(FD&)	throws;
-	void	writeZ80File	(FD&)	throws;
-	void	writeSnaFile	(FD&)	throws;
-	void	writeAceFile	(FD&)	throws;
-	void	writeZX80File	(FD&)	throws;
-	void	writeZX81File	(FD&)	throws;
-	void	checkBinFile	()		throws;
-	void	checkTapFile	()		throws;
-	void	checkTzxFile	()		throws;
-	void	checkZ80File	()		throws;
-	void	checkSnaFile	()		throws;
-	void	checkAceFile	()		throws;
-	void	checkZX80File	()		throws;
-	void	checkZX81File	()		throws;
+	void	checkTargetfile	();
+	void	writeListfile	(cstr filepath, int style);
+	void	writeTargetfile	(cstr &filepath, int style);
+	void	writeBinFile	(FD&);
+	void	writeHexFile	(FD&);
+	void	writeS19File	(FD&);
+	void	writeTapFile	(FD&);
+	void	writeTzxFile	(FD&);
+	void	writeZ80File	(FD&);
+	void	writeSnaFile	(FD&);
+	void	writeAceFile	(FD&);
+	void	writeZX80File	(FD&);
+	void	writeZX81File	(FD&);
+	void	checkBinFile	();
+	void	checkTapFile	();
+	void	checkTzxFile	();
+	void	checkZ80File	();
+	void	checkSnaFile	();
+	void	checkAceFile	();
+	void	checkZX80File	();
+	void	checkZX81File	();
 
-	void	checkCpuOptions	() throws;
+	void	checkCpuOptions	();
 	uint	numErrors		() const noexcept { return errors.count(); }
 	cstr	targetFilepath	() const noexcept { return target_filepath; }
 	uint	numPasses		() const noexcept { return pass; }

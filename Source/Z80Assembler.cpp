@@ -176,7 +176,7 @@ cstr Z80Assembler::unquotedstr (cstr s0)
 	return s;
 }
 
-cstr Z80Assembler::get_filename (SourceLine& q, bool dir) throws
+cstr Z80Assembler::get_filename (SourceLine& q, bool dir)
 {
 	// read quoted filename from sourceline
 	// in cgi_mode check for attempt to escape from source directory
@@ -221,7 +221,7 @@ void Z80Assembler::init_c_flags ()
 	}
 }
 
-void Z80Assembler::init_c_tempdir () throws
+void Z80Assembler::init_c_tempdir ()
 {
 	// initialize c_tempdir:
 	// c_tempdir = subdir in temp_directory for the c_compiler .s output files
@@ -248,7 +248,7 @@ void Z80Assembler::init_c_tempdir () throws
 inline bool utf8_is_ucs4 (char c) { return uchar(c)> 0xf0; }	// 2015-01-02 doesn't fit in ucs2?
 #define     RMASK(n)	 (~(0xFFFFFFFF<<(n)))					// mask to select n bits from the right
 
-uint8 Z80Assembler::charcode_from_utf8 (cptr& s) throws
+uint8 Z80Assembler::charcode_from_utf8 (cptr& s)
 {
 	// read next character
 	// decode UTF-8 char
@@ -299,7 +299,7 @@ err:	s = s0;
 	else return uint8(n);
 }
 
-void Z80Assembler::checkCpuOptions() throws
+void Z80Assembler::checkCpuOptions()
 {
 	if (convert_8080) syntax_8080 = yes;	// implied
 	if (syntax_8080)  casefold = yes; 		// implied
@@ -554,12 +554,12 @@ void Z80Assembler::assembleFile (cstr sourcefile, cstr destpath, cstr listpath, 
 	}
 }
 
-void Z80Assembler::setLabelValue (Label* label, cValue& value) throws
+void Z80Assembler::setLabelValue (Label* label, cValue& value)
 {
 	setLabelValue(label,value.value,value.validity);
 }
 
-void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity) throws
+void Z80Assembler::setLabelValue (Label* label, int32 value, Validity validity)
 {
 	if (label->segment==nullptr)
 	{
@@ -904,7 +904,7 @@ void Z80Assembler::assembleOnePass (uint pass) noexcept
 	}
 }
 
-void Z80Assembler::replaceCurlyBraces (SourceLine& q) throws
+void Z80Assembler::replaceCurlyBraces (SourceLine& q)
 {
 	assert(pass==1);
 	assert(!cond_off);
@@ -946,7 +946,7 @@ void Z80Assembler::replaceCurlyBraces (SourceLine& q) throws
 	q.rewind();
 }
 
-void Z80Assembler::assembleLine (SourceLine& q) throws
+void Z80Assembler::assembleLine (SourceLine& q)
 {
 	// Assemble SourceLine
 
@@ -1068,7 +1068,7 @@ uint Z80Assembler::assembleSingleLine (uint address, cstr instruction, char buff
 	return uint(segment.size);
 }
 
-void Z80Assembler::skip_expression (SourceLine& q, int prio) throws
+void Z80Assembler::skip_expression (SourceLine& q, int prio)
 {
 	cstr w = q.nextWord();				// get next word
 	if (w[0]==0)						// end of line
@@ -1154,7 +1154,7 @@ op:
 	}
 }
 
-Value Z80Assembler::value (SourceLine& q, int prio) throws
+Value Z80Assembler::value (SourceLine& q, int prio)
 {
 	// evaluate expression
 	// stops if end of expression reached or
@@ -1671,7 +1671,7 @@ x:	this->validity = min(n.validity, this->validity);
 	return n;
 }
 
-void Z80Assembler::asmLabel (SourceLine& q) throws
+void Z80Assembler::asmLabel (SourceLine& q)
 {
 	// Handle potential Label Definition
 
@@ -1787,7 +1787,7 @@ a:	Labels& labels = is_global ? global_labels() : local_labels();
 	l->is_reusable = is_reusable;
 }
 
-void Z80Assembler::asmDirect (SourceLine& q) throws /*fatal_error*/
+void Z80Assembler::asmDirect (SourceLine& q)
 {
 	// handle #directive
 	// all errors are fatal
@@ -1827,7 +1827,7 @@ void Z80Assembler::asmDirect (SourceLine& q) throws /*fatal_error*/
 	catch (AnyError& e)   { throw FatalError("%s",e.what()); }
 }
 
-void Z80Assembler::asmShebang (SourceLine& q) throws
+void Z80Assembler::asmShebang (SourceLine& q)
 {
 	// skip over "#!/path/to/zasm" in line 1
 
@@ -1835,7 +1835,7 @@ void Z80Assembler::asmShebang (SourceLine& q) throws
 	q.skip_to_eol();
 }
 
-void Z80Assembler::asmCompress (SourceLine& q) throws
+void Z80Assembler::asmCompress (SourceLine& q)
 {
 	// #compress NAME
 	// #compress NAME1 to NAME2
@@ -2008,7 +2008,7 @@ void Z80Assembler::compressSegments ()
 	}
 }
 
-void Z80Assembler::asmDefine (SourceLine& q) throws
+void Z80Assembler::asmDefine (SourceLine& q)
 {
 	// #define <macro> <replacement>
 	// define some kind of replacement
@@ -2117,7 +2117,7 @@ unknown_instr:
 	q.label = l;				// this source line defines a label
 }
 
-uint Z80Assembler::skipMacroBlock (uint idx, cstr macro, cstr endm) throws
+uint Z80Assembler::skipMacroBlock (uint idx, cstr macro, cstr endm)
 {
 	/*	must be called with line of 'macro', 'rept' or 'dup'
 		returns line with 'endm' or 'edup' or throws
@@ -2179,7 +2179,7 @@ uint Z80Assembler::skipMacroBlock (uint idx, cstr macro, cstr endm) throws
 	throw FatalError("end of '%s' block (instruction '%s') not found", macro, endm);
 }
 
-void Z80Assembler::asmRept (SourceLine& q, cstr rept, cstr endm) throws
+void Z80Assembler::asmRept (SourceLine& q, cstr rept, cstr endm)
 {
 	/*  rept N
 		;
@@ -2227,7 +2227,7 @@ void Z80Assembler::asmRept (SourceLine& q, cstr rept, cstr endm) throws
 	source.insertat(e+1,zsource);
 }
 
-void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) throws
+void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag)
 {
 	/*	NAME macro
 		NAME macro ARG,ARG…
@@ -2295,7 +2295,7 @@ void Z80Assembler::asmMacro (SourceLine& q, cstr macro, cstr name, char tag) thr
 	macros.add(name,Macro(std::move(args),a,e,tag,required)); // note: args[] & name are unprotected cstr in tempmem!
 }
 
-void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
+void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m)
 {
 	// Expand macro in pass1:
 
@@ -2414,7 +2414,7 @@ void Z80Assembler::asmMacroCall (SourceLine& q, Macro& m) throws
 	source.insertat(current_sourceline_index+1,zsource);
 }
 
-void Z80Assembler::asmCharset (SourceLine& q) throws
+void Z80Assembler::asmCharset (SourceLine& q)
 {
 	//  #charset zxspectrum			; zx80, zx81, zxspectrum, jupiterace, ascii
 	//  #charset none				;			 reset to no mapping
@@ -2455,7 +2455,7 @@ void Z80Assembler::asmCharset (SourceLine& q) throws
 	}
 }
 
-void Z80Assembler::asmAssert (SourceLine& q) throws
+void Z80Assembler::asmAssert (SourceLine& q)
 {
 	Value n = value(q);
 
@@ -2463,7 +2463,7 @@ void Z80Assembler::asmAssert (SourceLine& q) throws
 	if (n.is_valid() && !n) throw FatalError("assertion failed");
 }
 
-void Z80Assembler::init_c_compiler (cstr cc) throws
+void Z80Assembler::init_c_compiler (cstr cc)
 {
 	// init c_compiler, c_tempdir and c_flags
 	// cc: NULL, "vcc", "sdcc", "fullpath/vcc" or "fullpath/sdcc"
@@ -2486,7 +2486,7 @@ void Z80Assembler::init_c_compiler (cstr cc) throws
 	init_c_tempdir();
 }
 
-void Z80Assembler::asmCPath (SourceLine& q) throws
+void Z80Assembler::asmCPath (SourceLine& q)
 {
 	// #CPATH "/path/to/c-compiler"
 	// Set path to c compiler executable
@@ -2502,7 +2502,7 @@ void Z80Assembler::asmCPath (SourceLine& q) throws
 	init_c_compiler(cc);
 }
 
-void Z80Assembler::asmCFlags (SourceLine& q) throws
+void Z80Assembler::asmCFlags (SourceLine& q)
 {
 	// #CFLAGS -opt1 -opt2 …
 	// arguments may be quoted
@@ -2608,7 +2608,7 @@ void Z80Assembler::asmCFlags (SourceLine& q) throws
 	init_c_tempdir();
 }
 
-void Z80Assembler::asmEnd (SourceLine& q) throws
+void Z80Assembler::asmEnd (SourceLine& q)
 {
 	// #end
 	// force end of assembler source
@@ -2625,7 +2625,7 @@ void Z80Assembler::asmEnd (SourceLine& q) throws
 //	for(uint i=current_sourceline_index+1; i<source.count();i++) { source[i].segment = &segments[0]; }
 }
 
-void Z80Assembler::asmIf (SourceLine& q) throws
+void Z80Assembler::asmIf (SourceLine& q)
 {
 	// #if <condition>
 	// start block of source which is only assembled if value==true
@@ -2661,7 +2661,7 @@ void Z80Assembler::asmIf (SourceLine& q) throws
 	cond_off = (cond_off<<1) + !f.value;
 }
 
-void Z80Assembler::asmElif (SourceLine& q) throws
+void Z80Assembler::asmElif (SourceLine& q)
 {
 	// #elif <condition>
 	// condition must be evaluatable in pass 1
@@ -2701,7 +2701,7 @@ void Z80Assembler::asmElif (SourceLine& q) throws
 	}
 }
 
-void Z80Assembler::asmElse (SourceLine&) throws
+void Z80Assembler::asmElse (SourceLine&)
 {
 	// #else
 
@@ -2723,7 +2723,7 @@ void Z80Assembler::asmElse (SourceLine&) throws
 	}
 }
 
-void Z80Assembler::asmEndif (SourceLine&) throws
+void Z80Assembler::asmEndif (SourceLine&)
 {
 	// #endif
 
@@ -2734,7 +2734,7 @@ void Z80Assembler::asmEndif (SourceLine&) throws
 	cond_off = cond_off>>1;
 }
 
-void Z80Assembler::asmTarget (SourceLine& q) throws
+void Z80Assembler::asmTarget (SourceLine& q)
 {
 	if (pass > 1) { q.skip_to_eol(); return; }
 	if (target != TARGET_UNSET) throw FatalError("#target redefined");
@@ -2764,7 +2764,7 @@ void Z80Assembler::asmTarget (SourceLine& q) throws
 	if (target == TARGET_UNSET) throw SyntaxError("target name expected");
 }
 
-void Z80Assembler::asmInclude (SourceLine& q) throws
+void Z80Assembler::asmInclude (SourceLine& q)
 {
 	// #INCLUDE "sourcefile"
 	// the file is included in pass 1
@@ -2915,7 +2915,7 @@ void Z80Assembler::asmInclude (SourceLine& q) throws
 	}
 }
 
-cstr Z80Assembler::compileFile (cstr fqn) throws
+cstr Z80Assembler::compileFile (cstr fqn)
 {
 	assert(c_compiler);
 
@@ -3038,7 +3038,7 @@ cstr Z80Assembler::compileFile (cstr fqn) throws
 	return fqn_z;
 }
 
-void Z80Assembler::asmInsert (SourceLine& q) throws
+void Z80Assembler::asmInsert (SourceLine& q)
 {
 	// #insert <"path/filename">
 	// insert file's contents into code
@@ -3058,7 +3058,7 @@ void Z80Assembler::asmInsert (SourceLine& q) throws
 	storeBlock(bu.get(),uint(sz));
 }
 
-void Z80Assembler::asmTzx (SourceLine& q) throws
+void Z80Assembler::asmTzx (SourceLine& q)
 {
 	if (target!=TZX) throw FatalError("#target TZX required");
 	if (q.peekChar() == 0) throw FatalError("block type expected");
@@ -3501,7 +3501,7 @@ void Z80Assembler::asmTzx (SourceLine& q) throws
 	throw SyntaxError("invalid or unsupported block type");
 }
 
-void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
+void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type)
 {
 	assert(isData(segment_type)||isCode(segment_type)||isTest(segment_type));
 
@@ -3737,7 +3737,7 @@ void Z80Assembler::asmSegment (SourceLine& q, SegmentType segment_type) throws
 	if (target==TAP) return;	// TAP: no required values
 }
 
-void Z80Assembler::asmFirstOrg (SourceLine& q) throws
+void Z80Assembler::asmFirstOrg (SourceLine& q)
 {
 	// Handle FIRST occurance of pseudo instruction ORG
 	// ORG is handled differently for first occurance or later occurances:
@@ -3803,7 +3803,7 @@ void Z80Assembler::asmFirstOrg (SourceLine& q) throws
 	s->setAddress(n);
 }
 
-void Z80Assembler::asmLocal (SourceLine&) throws
+void Z80Assembler::asmLocal (SourceLine&)
 {
 	// #local
 	// startet einen lokalen Codeblock
@@ -3825,7 +3825,7 @@ void Z80Assembler::asmLocal (SourceLine&) throws
 	local_labels_index = local_blocks_count++;
 }
 
-void Z80Assembler::asmEndLocal (SourceLine&) throws
+void Z80Assembler::asmEndLocal (SourceLine&)
 {
 	// #endlocal
 	// beendet lokalen Codeblock
@@ -3871,7 +3871,7 @@ void Z80Assembler::asmEndLocal (SourceLine&) throws
 //				Assemble Opcode
 // --------------------------------------------------
 
-void Z80Assembler::asmTzxPulses (SourceLine& q, cstr w) throws
+void Z80Assembler::asmTzxPulses (SourceLine& q, cstr w)
 {
 	// assemble source lines after #TZX PULSES
 	//
@@ -3891,7 +3891,7 @@ void Z80Assembler::asmTzxPulses (SourceLine& q, cstr w) throws
 	}
 }
 
-void Z80Assembler::asmTzxHardwareInfo (SourceLine& q, cstr w) throws
+void Z80Assembler::asmTzxHardwareInfo (SourceLine& q, cstr w)
 {
 	// assemble source lines after #TZX HARDWARE-INFO
 	//
@@ -3924,7 +3924,7 @@ void Z80Assembler::asmTzxHardwareInfo (SourceLine& q, cstr w) throws
 	}
 }
 
-void Z80Assembler::asmTzxArchiveInfo (SourceLine& q, cstr w) throws
+void Z80Assembler::asmTzxArchiveInfo (SourceLine& q, cstr w)
 {
 	// assemble source lines after #TZX ARCHIVE-INFO
 	//
@@ -3952,7 +3952,7 @@ void Z80Assembler::asmTzxArchiveInfo (SourceLine& q, cstr w) throws
 	}
 }
 
-void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w) throws
+void Z80Assembler::asmNoSegmentInstr (SourceLine& q, cstr w)
 {
 	// Assemble instructions which need no segment
 	// e.g. before first .org
@@ -4233,7 +4233,7 @@ warn:	if (pass>1 || verbose<1) return q.skip_to_eol();
 		log("%s%s^ warning: instruction '%s' ignored\n", spacestr(int(strlen(linenumber))+2), q.whitestr(), w);
 }
 
-void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
+void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w)
 {
 	// assemble segment which must only contain raw bytes
 	// e.g. some TZX blocks
@@ -4331,7 +4331,7 @@ void Z80Assembler::asmRawDataInstr (SourceLine& q, cstr w) throws
 	return asmNoSegmentInstr(q,w);
 }
 
-void Z80Assembler::asmPseudoInstr (SourceLine& q, cstr w) throws
+void Z80Assembler::asmPseudoInstr (SourceLine& q, cstr w)
 {
 	// Assemble pseudo instruction
 
@@ -4791,7 +4791,7 @@ longer:
 	return asmNoSegmentInstr(q,w);
 }
 
-IoSequence Z80Assembler::parseIoSequence (SourceLine& q) throws
+IoSequence Z80Assembler::parseIoSequence (SourceLine& q)
 {
 	// "...", value, ...
 	// { values } * reps
@@ -4833,7 +4833,7 @@ static uint8 validatedByte (cValue& byte)
 	throw SyntaxError("byte value out of range");
 }
 
-void Z80Assembler::parseBytes (SourceLine& q, Array<uint8>& dest) throws
+void Z80Assembler::parseBytes (SourceLine& q, Array<uint8>& dest)
 {
 	// store bytes:
 	// 'xy' and "xy" are both text strings

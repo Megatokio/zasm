@@ -34,7 +34,7 @@
 #define	RMASK(n)	(~(0xFFFFFFFF<<(n)))	// mask to select n bits from the right
 
 
-static UCS2Char ucs2_from_utf8 (cptr s) throws
+static UCS2Char ucs2_from_utf8 (cptr s)
 {
 	// Helper:
 	// convert UTF-8 char to UCS-2
@@ -179,7 +179,7 @@ void CharMap::remove (UCS2Char key)
 	if (key<128) charmap[key] = NC;
 }
 
-void CharMap::addMappings (cUTF8Str map, uint first_char_in_map) throws
+void CharMap::addMappings (cUTF8Str map, uint first_char_in_map)
 {
 	uint c = first_char_in_map;
 	cptr p = map;
@@ -191,7 +191,7 @@ void CharMap::addMappings (cUTF8Str map, uint first_char_in_map) throws
 	}
 }
 
-void CharMap::removeMappings (cUTF8Str s) throws
+void CharMap::removeMappings (cUTF8Str s)
 {
 	while (*s)
 	{
@@ -206,7 +206,7 @@ uchar CharMap::get (UCS2Char key, uchar dflt) const
 	return HashMap::get(key,dflt);
 }
 
-uchar CharMap::get (UCS2Char key) const throws
+uchar CharMap::get (UCS2Char key) const
 {
 	if (key<128 && charmap[key]!=NC) return charmap[key];
 	uchar c = HashMap::get(key,0); if(c) return c;
@@ -222,7 +222,7 @@ uchar CharMap::operator[] (UCS2Char key) const noexcept
 	return HashMap::operator[](key);
 }
 
-pstr CharMap::translate (cptr q) throws
+pstr CharMap::translate (cptr q)
 {
 	pstr zstr = pstr(tempstr(strlen(q)));
 	uint len = 0;
