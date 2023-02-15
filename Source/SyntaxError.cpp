@@ -25,25 +25,21 @@
 */
 
 
-#include "kio/kio.h"
 #include "SyntaxError.h"
+#include "kio/kio.h"
 
-SyntaxError::SyntaxError (cstr s, ...) noexcept
-:
-	AnyError(customerror)
+SyntaxError::SyntaxError(cstr s, ...) noexcept : AnyError(customerror)
 {
 	va_list va;
-	va_start(va,s);
-	msg = newcopy(usingstr(s,va));
+	va_start(va, s);
+	msg = newcopy(usingstr(s, va));
 	va_end(va);
 }
 
-FatalError::FatalError (cstr s, ...) noexcept
-:
-	AnyError(customerror)
+FatalError::FatalError(cstr s, ...) noexcept : AnyError(customerror)
 {
 	va_list va;
-	va_start(va,s);
-	msg = newcopy(usingstr(s,va));
+	va_start(va, s);
+	msg = newcopy(usingstr(s, va));
 	va_end(va);
 }

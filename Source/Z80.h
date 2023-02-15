@@ -17,58 +17,57 @@
 */
 
 #pragma once
-#include "kio/kio.h"
 #include "Z80/goodies/z80_goodies.h"
-#include <functional>
 #include "Z80Registers.h"
+#include <functional>
 
-
-namespace zasm{
+namespace zasm
+{
 
 class Z80
 {
 public:
-	typedef uint8  CoreByte;
-	typedef int32  CpuCycle;		// cpu clock cycle
-	typedef uint16 Address;
-	typedef uint8  Byte;
-	typedef uint16 Word;
-	typedef std::function<uint8(CpuCycle,uint16)> InputHandler;
-	typedef std::function<void(CpuCycle,uint16,uint8)> OutputHandler;
+	typedef uint8										 CoreByte;
+	typedef int32										 CpuCycle; // cpu clock cycle
+	typedef uint16										 Address;
+	typedef uint8										 Byte;
+	typedef uint16										 Word;
+	typedef std::function<uint8(CpuCycle, uint16)>		 InputHandler;
+	typedef std::function<void(CpuCycle, uint16, uint8)> OutputHandler;
 
 	static const uint8 zlog_flags[256];
 
-	Z80Registers registers;
-	CoreByte* core = nullptr;
-	InputHandler input;
+	Z80Registers  registers;
+	CoreByte*	  core = nullptr;
+	InputHandler  input;
 	OutputHandler output;
 
 	CpuID cpu_type;
-	bool ixcbr2_enabled = no;	// Z80
-	bool ixcbxh_enabled = no;	// Z80
+	bool  ixcbr2_enabled = no; // Z80
+	bool  ixcbxh_enabled = no; // Z80
 
-	CpuCycle cc = 0;
-	uint int_ack_byte = 255;	// RST 0x38
-	bool halt = no;
-	bool int_off = yes;			// interrupt was automatically switched off in int ack cycle
-	CpuCycle int_start = 0;
-	CpuCycle int_end = 0;		// interrupt duration: -1 = no interrupts, 0 = automatic switch-off mode, else cc
+	CpuCycle cc			  = 0;
+	uint	 int_ack_byte = 255; // RST 0x38
+	bool	 halt		  = no;
+	bool	 int_off	  = yes; // interrupt was automatically switched off in int ack cycle
+	CpuCycle int_start	  = 0;
+	CpuCycle int_end	  = 0; // interrupt duration: -1 = no interrupts, 0 =
+							   // automatic switch-off mode, else cc
 	Address breakpoint = 0;
 
-	enum RVal { TimeOut=0, BreakPoint, IllegalInstruction, UnsupportedIntAckByte };
+	enum RVal { TimeOut = 0, BreakPoint, IllegalInstruction, UnsupportedIntAckByte };
 
-	Z80 (CpuID, CoreByte[0x10000], InputHandler, OutputHandler);
-	~Z80(){}
+	Z80(CpuID, CoreByte[0x10000], InputHandler, OutputHandler);
+
+	~Z80() {}
 
 	void reset() noexcept;
-	RVal run (CpuCycle cc_exit);
-	RVal runZ180 (CpuCycle);
+	RVal run(CpuCycle cc_exit);
+	RVal runZ180(CpuCycle);
 
-	Byte peek  (Address a) const noexcept	{ return core[a]; }
-	void poke  (Address a, Byte c) noexcept	{ core[a] = c; }
+	Byte peek(Address a) const noexcept { return core[a]; }
+
+	void poke(Address a, Byte c) noexcept { core[a] = c; }
 };
 
-} // namespace
-
-
-
+} // namespace zasm

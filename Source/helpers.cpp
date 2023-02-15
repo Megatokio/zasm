@@ -30,36 +30,47 @@
 #include <sys/time.h>
 
 
-uint32 compressed_page_size_z80 (uint8 const* q, uint qsize)
+uint32 compressed_page_size_z80(const uint8* q, uint qsize)
 {
 	// calculate size of compressed data in .z80 format
 
 	xlogIn("compressed_page_size_z80");
 
-	uint8 const* qe = q + qsize;
-	uint32 sz = 0;
+	const uint8* qe = q + qsize;
+	uint32		 sz = 0;
 
 	while (q < qe)
 	{
 		uint8 c = *q++;
-		if (q==qe || *q!=c)				// single byte
+		if (q == qe || *q != c) // single byte
 		{
 			sz++;
 			// special care for compressible sequence after single 0xed:
-			if (c==0xed && q+2<=qe && *q==*(q+1)) { sz++; q++; }
+			if (c == 0xed && q + 2 <= qe && *q == *(q + 1))
+			{
+				sz++;
+				q++;
+			}
 		}
-		else							// sequence of same bytes
+		else // sequence of same bytes
 		{
-			uint n=1; while (n<255 && q<qe && *q==c) { n++; q++; }
-			if (n>=4 || c==0xed)	sz+=4; 	// compress ?
-			else					sz+=n; 	// don't compress
+			uint n = 1;
+			while (n < 255 && q < qe && *q == c)
+			{
+				n++;
+				q++;
+			}
+			if (n >= 4 || c == 0xed)
+				sz += 4; // compress ?
+			else
+				sz += n; // don't compress
 		}
 	}
 
 	return sz;
 }
 
-void write_compressed_page_z80 (FD& fd, int page_id , uint8 const* q, uint32 qsize)
+void write_compressed_page_z80(FD& fd, int page_id, const uint8* q, uint32 qsize)
 {
 	// write compressed data in .z80 format
 	//
@@ -77,46 +88,60 @@ void write_compressed_page_z80 (FD& fd, int page_id , uint8 const* q, uint32 qsi
 	// 	compression scheme:
 	// 		dc.b $ed, $ed, count, char
 
-	xlogIn("write_compressed_page_z80 %i",page_id);
+	xlogIn("write_compressed_page_z80 %i", page_id);
 
-	assert(qsize>=1 kB && qsize<=64 kB);
-	assert(page_id>=0 || qsize==0xC000);	// v1.45 must be 48k
+	assert(qsize >= 1 kB && qsize <= 64 kB);
+	assert(page_id >= 0 || qsize == 0xC000); // v1.45 must be 48k
 
-	uint8 const* qe = q + qsize;
-	std::unique_ptr<uint8[]> buffer(new uint8[qsize*5/3+9]);
-	uint8* zbu = buffer.get();				// worst case size: 5/3*qsize
-	uint8* z = zbu;
+	const uint8*			 qe = q + qsize;
+	std::unique_ptr<uint8[]> buffer(new uint8[qsize * 5 / 3 + 9]);
+	uint8*					 zbu = buffer.get(); // worst case size: 5/3*qsize
+	uint8*					 z	 = zbu;
 
 	while (q < qe)
 	{
 		uint8 c = *q++;
-		if (q==qe || *q!=c)					// single byte: next byte is different
+		if (q == qe || *q != c) // single byte: next byte is different
 		{
 			*z++ = c;
 			// special care for compressible sequence after single 0xed:
 			// prevent triple 0xed
-			if (c==0xed && q+2<=qe && *q==*(q+1)) { *z++ = *q++; }
+			if (c == 0xed && q + 2 <= qe && *q == *(q + 1)) { *z++ = *q++; }
 		}
-		else								// sequence of same bytes
+		else // sequence of same bytes
 		{
-			int n=1; while (n<255 && q<qe && *q==c) { n++; q++; }
-			if (n>=4 || c==0xed) { *z++ = 0xed; *z++ = 0xed; *z++ = uint8(n); *z++ = c; }	// compress ?
-			else				 { while (n--) *z++ = c; }									// don't compress
+			int n = 1;
+			while (n < 255 && q < qe && *q == c)
+			{
+				n++;
+				q++;
+			}
+			if (n >= 4 || c == 0xed)
+			{
+				*z++ = 0xed;
+				*z++ = 0xed;
+				*z++ = uint8(n);
+				*z++ = c;
+			} // compress ?
+			else
+			{
+				while (n--) *z++ = c;
+			} // don't compress
 		}
 	}
 
-	if (z-zbu > 0xffff) throw AnyError("compressed buffer exceeds 0xffff bytes");
-	uint16 zsize = uint16(z-zbu);
+	if (z - zbu > 0xffff) throw AnyError("compressed buffer exceeds 0xffff bytes");
+	uint16 zsize = uint16(z - zbu);
 
-	if (page_id >= 0)	// v2.0++
+	if (page_id >= 0) // v2.0++
 	{
 		fd.write_uint16_z(zsize);
 		fd.write_uint8(uint8(page_id));
 	}
-	fd.write_bytes(zbu,zsize);
+	fd.write_bytes(zbu, zsize);
 }
 
-void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz )
+void write_intel_hex(FD& fd, uint32 addr, const uint8* bu, uint32 sz)
 {
 	// write block of data in intel hex file format
 	// format of one line:
@@ -130,19 +155,19 @@ void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz )
 	// 	 cc   = 2's complement of checksum of ll, aaaa, tt and data
 	// 	 \r\n = dos line end
 
-	if (sz==0) return;
+	if (sz == 0) return;
 
 	// do we cross a 16 bit boundary?
 
-	while ((addr>>16) != ((addr+sz-1)>>16))
+	while ((addr >> 16) != ((addr + sz - 1) >> 16))
 	{
-		uint16 n = /*0x10000*/ - uint16(addr);		// bytes left in current 16-bit address block
+		uint16 n = /*0x10000*/ -uint16(addr); // bytes left in current 16-bit address block
 
 		write_intel_hex(fd, addr, bu, n);
 
 		addr += n;
-		bu   += n;
-		sz   -= n;
+		bu += n;
+		sz -= n;
 	}
 
 	// do we need an extended address block?
@@ -150,35 +175,35 @@ void write_intel_hex( FD& fd, uint32 addr, uint8 const* bu, uint32 sz )
 	// caller might have skipped some bytes at start of block.
 	// therefore this block may be written unneccessarily multiple times.
 
-	if (addr>>16)
+	if (addr >> 16)
 	{
-		uint8 checksum = uint8( - 2u - 0 - 0 - 4 - (addr>>24) - (addr>>16) );
-		fd.write_fmt(":02000004%04X%02X\r\n", uint(addr>>16), uint(checksum));
+		uint8 checksum = uint8(-2u - 0 - 0 - 4 - (addr >> 24) - (addr >> 16));
+		fd.write_fmt(":02000004%04X%02X\r\n", uint(addr >> 16), uint(checksum));
 	}
 
 	// store data:
 
 	while (sz)
 	{
-		uint n = min(sz,32u);									// bytes dumped in this line
+		uint n = min(sz, 32u); // bytes dumped in this line
 
-		fd.write_fmt(":%02X%04X00", n, uint(uint16(addr)));		// ":", len, address, type
-		uint8 checksum = uint8( - n - addr - (addr>>8) - 0 );	// checksum
+		fd.write_fmt(":%02X%04X00", n, uint(uint16(addr)));	 // ":", len, address, type
+		uint8 checksum = uint8(-n - addr - (addr >> 8) - 0); // checksum
 
 		addr += n;
-		sz   -= n;
+		sz -= n;
 
-		while (n--)												// write data bytes
+		while (n--) // write data bytes
 		{
 			fd.write_fmt("%02X", uint(*bu));
 			checksum -= *bu++;
 		}
 
-		fd.write_fmt("%02X\r\n", uint(checksum));				// write 2's complement of checksum
+		fd.write_fmt("%02X\r\n", uint(checksum)); // write 2's complement of checksum
 	}
 }
 
-uint write_motorola_s19 (FD& fd, uint32 address, uint8 const* data, uint32 count)
+uint write_motorola_s19(FD& fd, uint32 address, const uint8* data, uint32 count)
 {
 	// write block of data in motorola s-record file format
 	// format of one line:
@@ -208,18 +233,18 @@ uint write_motorola_s19 (FD& fd, uint32 address, uint8 const* data, uint32 count
 
 	while (count)
 	{
-		uint n = min(count,64u);
-		write_srecord(fd,S19_Data,address,data,n);
-		data    += n;
+		uint n = min(count, 64u);
+		write_srecord(fd, S19_Data, address, data, n);
+		data += n;
 		address += n;
-		count   -= n;
-		cnt     += 1;
+		count -= n;
+		cnt += 1;
 	}
 
 	return cnt;
 }
 
-void write_srecord (FD& fd, S19Type type, uint32 address, uint8 const* data, uint count)
+void write_srecord(FD& fd, S19Type type, uint32 address, const uint8* data, uint count)
 {
 	// write one line into a s-record file:
 	// type = S19_InfoHeader  = 0 -> info header: S0 record
@@ -227,37 +252,37 @@ void write_srecord (FD& fd, S19Type type, uint32 address, uint8 const* data, uin
 	// type = S19_RecordCount = 5 -> records written: S5 record
 	// type = S19_BlockEnd    = 9 -> block end: S9 or S8 record
 
-	assert(type==S19_InfoHeader || type==S19_Data || type==S19_RecordCount || type==S19_BlockEnd);
-	assert(address<=0xffffff);
-	assert(type<=S19_Data ? count<=64 : count==0);
+	assert(type == S19_InfoHeader || type == S19_Data || type == S19_RecordCount || type == S19_BlockEnd);
+	assert(address <= 0xffffff);
+	assert(type <= S19_Data ? count <= 64 : count == 0);
 
 	uint checksum = 0;
 
 	if (address > 0xffff)
 	{
-		char c = type==S19_BlockEnd ? type-1 : type+1;
-		fd.write_fmt("S%c%02X%06X", c, count+4, address);
-		checksum = count+4 + address + (address>>8) + (address>>16);
+		char c = type == S19_BlockEnd ? type - 1 : type + 1;
+		fd.write_fmt("S%c%02X%06X", c, count + 4, address);
+		checksum = count + 4 + address + (address >> 8) + (address >> 16);
 	}
 	else
 	{
-		fd.write_fmt("S%c%02X%04X", type, count+3, address);
-		checksum = count+3 + address + (address>>8);
+		fd.write_fmt("S%c%02X%04X", type, count + 3, address);
+		checksum = count + 3 + address + (address >> 8);
 	}
 
-	uint8 bu[128], *z = bu;
-	uint8 const *q = data, *e = data+count;
-	while (q<e)
+	uint8		 bu[128], *z = bu;
+	const uint8 *q = data, *e = data + count;
+	while (q < e)
 	{
-		*z++ = uint8(hexchar(*q/16));
+		*z++ = uint8(hexchar(*q / 16));
 		*z++ = uint8(hexchar(*q));
 		checksum += *q++;
 	}
-	fd.write_bytes(bu,count*2);
-	fd.write_fmt("%02X\r\n", ~checksum & 0xff);		// write 1's complement of checksum
+	fd.write_bytes(bu, count * 2);
+	fd.write_fmt("%02X\r\n", ~checksum & 0xff); // write 1's complement of checksum
 }
 
-void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize)
+void write_compressed_page_ace(FD& fd, const uint8* q, uint qsize)
 {
 	// write compressed data in .ace format
 	//
@@ -265,19 +290,24 @@ void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize)
 	// 	  dc.b $ed, count, char
 
 	if (qsize == 0) return;
-	assert(/*qsize>=1 kB &&*/ qsize<=64 kB);
+	assert(/*qsize>=1 kB &&*/ qsize <= 64 kB);
 
-	std::unique_ptr<uint8[]> buffer(new uint8[qsize*2+8]);
-	uint8* zbu = buffer.get();			// worst case size: 2*qsize
-	uint8* z = zbu;						// dest. ptr
-	uint8 const* qe = q + qsize;		// source end ptr
+	std::unique_ptr<uint8[]> buffer(new uint8[qsize * 2 + 8]);
+	uint8*					 zbu = buffer.get(); // worst case size: 2*qsize
+	uint8*					 z	 = zbu;			 // dest. ptr
+	const uint8*			 qe	 = q + qsize;	 // source end ptr
 
 	while (q < qe)
 	{
 		uint8 c = *q++;
-		uint8 n = 1; while (q<qe && *q==c && n<240) { q++; n++; }
+		uint8 n = 1;
+		while (q < qe && *q == c && n < 240)
+		{
+			q++;
+			n++;
+		}
 
-		if (c==0xed || n>3)
+		if (c == 0xed || n > 3)
 		{
 			*z++ = 0xed;
 			*z++ = n;
@@ -289,53 +319,13 @@ void write_compressed_page_ace (FD& fd, uint8 const* q, uint qsize)
 		}
 	}
 
-	fd.write_bytes(zbu,uint32(z-zbu));
+	fd.write_bytes(zbu, uint32(z - zbu));
 }
 
-void write_segment (FD& fd, const CodeSegment& s)
+void write_segment(FD& fd, const CodeSegment& s)
 {
 	// write segment to file
 	// depending on flag s.compressed write compressed or uncompressed data
 
-	fd.write_bytes(s.outputData(),s.outputSize());
+	fd.write_bytes(s.outputData(), s.outputSize());
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

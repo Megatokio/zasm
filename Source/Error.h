@@ -18,53 +18,20 @@
 */
 
 #include "kio/kio.h"
-#include "Templates/Array.h"
 #include "Source.h"
+#include "Templates/Array.h"
 
 
 class Error
 {
 public:
 	cstr		text;
-	SourceLine*	sourceline;			// reference to source line or NULL
+	SourceLine* sourceline; // reference to source line or NULL
 
 public:
-	Error (cstr text, SourceLine* sourceline);
-	Error (cstr text, SourceLine* sourceline, va_list va) __printflike(2,0);
+	Error(cstr text, SourceLine* sourceline);
+	Error(cstr text, SourceLine* sourceline, va_list va) __printflike(2, 0);
 };
 
 
 typedef Array<Error> Errors;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

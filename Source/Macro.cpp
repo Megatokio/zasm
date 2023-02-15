@@ -26,5 +26,3 @@
 
 #define LIST 1
 #include "Macro.h"
-
-

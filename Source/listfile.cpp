@@ -24,21 +24,21 @@
 	PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include "Z80Assembler.h"
-#include "unix/files.h"
-#include "helpers.h"
 #include "Z80/goodies/z80_goodies.h"
+#include "Z80Assembler.h"
+#include "helpers.h"
 #include "kio/peekpoke.h"
+#include "unix/files.h"
 
 static cstr oo_str(uint n)
 {
-	static constexpr char ns[5][9] = {"        ","00      ","0000    ","000000  ","00000000"};
-	return n<4 ? ns[n] : ns[4];
-	static_assert(ns[4][7]=='0',"");
+	static constexpr char ns[5][9] = {"        ", "00      ", "0000    ", "000000  ", "00000000"};
+	return n < 4 ? ns[n] : ns[4];
+	static_assert(ns[4][7] == '0', "");
 }
 
-static uint write_line_with_objcode
-			(FD& fd, uint address, uint8* bytes, uint count, uint offset, bool is_data, cstr text, CpuID variant)
+static uint write_line_with_objcode(
+	FD& fd, uint address, uint8* bytes, uint count, uint offset, bool is_data, cstr text, CpuID variant)
 {
 	// Helper: write one line with address, code and text to log file
 	// address	= base address of opcode
@@ -56,54 +56,56 @@ static uint write_line_with_objcode
 	// format:
 	// 1234: 12345678	sourceline
 
-	if(bytes==nullptr)
+	if (bytes == nullptr)
 	{
-		assert(is_data || count==0);
-		assert(offset==0);
+		assert(is_data || count == 0);
+		assert(offset == 0);
 
 		fd.write_fmt("%04X: %s\t%s\n", address, oo_str(count), text);
-		if(count>4)
-			if(count>8) fd.write_fmt("%04X: 00...   \t%s\n", address+4, "");
-			else        fd.write_fmt("%04X: %s\t%s\n", address+4, oo_str(count-4), "");
-		else{}
+		if (count > 4)
+			if (count > 8)
+				fd.write_fmt("%04X: 00...   \t%s\n", address + 4, "");
+			else
+				fd.write_fmt("%04X: %s\t%s\n", address + 4, oo_str(count - 4), "");
+		else {}
 		return count;
 	}
 
 	address += offset;
-	bytes   += offset;
-	count   -= offset;
+	bytes += offset;
+	count -= offset;
 
 	// special handling for compound opcodes:
 	// limit number of bytes to 4; break on opcode boundary
-	if (count>4 && !is_data)
+	if (count > 4 && !is_data)
 	{
-		for (count=0;;)
+		for (count = 0;;)
 		{
-			uint n = opcode_length(variant,bytes+count);
-			if (count+n>4) break;
+			uint n = opcode_length(variant, bytes + count);
+			if (count + n > 4) break;
 			count += n;
 		}
 	}
 
 	switch (count)
 	{
-	case 0:	fd.write_fmt("%04X:         \t%s\n",  address&0xffff,		  text); return 0;
-	case 1:	fd.write_fmt("%04X: %02X      \t%s\n",address, peek1X(bytes), text); return 1;
-	case 2: fd.write_fmt("%04X: %04X    \t%s\n",  address, peek2X(bytes), text); return 2;
-	case 3: fd.write_fmt("%04X: %06X  \t%s\n",    address, peek3X(bytes), text); return 3;
+	case 0: fd.write_fmt("%04X:         \t%s\n", address & 0xffff, text); return 0;
+	case 1: fd.write_fmt("%04X: %02X      \t%s\n", address, peek1X(bytes), text); return 1;
+	case 2: fd.write_fmt("%04X: %04X    \t%s\n", address, peek2X(bytes), text); return 2;
+	case 3: fd.write_fmt("%04X: %06X  \t%s\n", address, peek3X(bytes), text); return 3;
 	case 4:
 	default:
 		// wenn zuletzt 4 gleiche Bytes geloggt wurden
 		// und noch mehr als 4 Bytes folgen
 		// und nur noch diese Bytes folgen
 		// dann verkürze die ausgegebenen Datenbytes mit "...":
-		if (offset>=4 && count>4)
+		if (offset >= 4 && count > 4)
 		{
-			uint8* p = bytes-4;
-			uint8* e = bytes+count;
+			uint8* p = bytes - 4;
+			uint8* e = bytes + count;
 			uint8  c = *p++;
-			while (p<e && *p==c) ++p;
-			if (p==e)
+			while (p < e && *p == c) ++p;
+			if (p == e)
 			{
 				fd.write_fmt("%04X: %02X...   \t%s\n", address, peek1X(bytes), text);
 				return count;
@@ -128,37 +130,38 @@ static cstr cc_str(uint8* bytes, uint count, uint32& cc, bool is_data, CpuID var
 	//   "[123|123]" for branching opcodes
 	//   "[123]    " for all other opcodes
 
-	if (is_data) return "         ";		// spacestr(9)
+	if (is_data) return "         "; // spacestr(9)
 
-	assert(count>=1 && count<=4); (void)count;
+	assert(count >= 1 && count <= 4);
+	(void)count;
 
 	// TODO: verify opcode length
 
 	uint8 op1 = bytes[0];
 
-	bool can_branch = opcode_can_branch(variant,bytes);
+	bool can_branch = opcode_can_branch(variant, bytes);
 	if (can_branch)
 	{
-		uint a = cc + clock_cycles(variant,bytes);					 // print accumulated time after instruction
-		uint b = op1==0xed ? clock_cycles_on_branch(variant,bytes) : // for ldir etc. print loop time
-				 cc + clock_cycles_on_branch(variant,bytes);		 // for other instructions print accum. time as for a
-		cc = a;
+		uint a = cc + clock_cycles(variant, bytes);						// print accumulated time after instruction
+		uint b = op1 == 0xed ? clock_cycles_on_branch(variant, bytes) : // for ldir etc. print loop time
+					 cc + clock_cycles_on_branch(variant, bytes); // for other instructions print accum. time as for a
+		cc	   = a;
 
 		str s = usingstr("[%2u|%2u]  ", a, b);
-		if (strlen(s)>9) s[9] = 0;
+		if (strlen(s) > 9) s[9] = 0;
 		return s;
 	}
 	else
 	{
-		cc += clock_cycles(variant,bytes);
+		cc += clock_cycles(variant, bytes);
 
 		str s = usingstr("[%2u]     ", cc);
-		s[9] = 0;
+		s[9]  = 0;
 		return s;
 	}
 }
 
-static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc, CpuID variant)
+static cstr compound_cc_str(uint8* bytes, uint count, uint32& cc, CpuID variant)
 {
 	// calculate string with accumulated cpu clock cycles for compound instruction
 	// same as cc_str() but for compound instructions
@@ -166,68 +169,73 @@ static cstr compound_cc_str (uint8* bytes, uint count, uint32& cc, CpuID variant
 
 	while (count)
 	{
-		cc += clock_cycles(variant,bytes);
-		uint len = opcode_length(variant,bytes);
-		assert(len<=count);
+		cc += clock_cycles(variant, bytes);
+		uint len = opcode_length(variant, bytes);
+		assert(len <= count);
 		bytes += len;
 		count -= len;
 	}
 
 	str s = usingstr("[%2u]     ", cc);
-	s[9] = 0;
+	s[9]  = 0;
 	return s;
 }
 
-static uint write_line_with_objcode_and_cycles
-			(FD& fd, uint address, uint8* bytes, uint count, uint offset, uint32& cc, bool is_data, cstr text, CpuID variant)
+static uint write_line_with_objcode_and_cycles(
+	FD& fd, uint address, uint8* bytes, uint count, uint offset, uint32& cc, bool is_data, cstr text, CpuID variant)
 {
 	// format:
 	// 1234: 12345678 [234|235]sourceline
 
-	if(bytes==nullptr)
+	if (bytes == nullptr)
 	{
-		assert(is_data || count==0);
-		assert(offset==0);
+		assert(is_data || count == 0);
+		assert(offset == 0);
 
 		fd.write_fmt("%04X: %s          %s\n", address, oo_str(count), text);
-		if(count>4)
-			if(count>8) fd.write_fmt("%04X: 00...             %s\n", address+4, "");
-			else        fd.write_fmt("%04X: %s          %s\n", address+4, oo_str(count-4), "");
-		else{}
+		if (count > 4)
+			if (count > 8)
+				fd.write_fmt("%04X: 00...             %s\n", address + 4, "");
+			else
+				fd.write_fmt("%04X: %s          %s\n", address + 4, oo_str(count - 4), "");
+		else {}
 		return count;
 	}
 
 	address += offset;
-	bytes   += offset;
-	count   -= offset;
+	bytes += offset;
+	count -= offset;
 
 	// special handling for compound opcodes:
-	if (count>1 && !is_data && count>opcode_length(variant,bytes))
+	if (count > 1 && !is_data && count > opcode_length(variant, bytes))
 	{
-		if (count>4)	// limit number of accounted bytes to 4; break on opcode boundary:
+		if (count > 4) // limit number of accounted bytes to 4; break on opcode boundary:
 		{
-			for (count=0;;)
+			for (count = 0;;)
 			{
-				uint n = opcode_length(variant,bytes+count);
-				if (count+n>4) break;
+				uint n = opcode_length(variant, bytes + count);
+				if (count + n > 4) break;
 				count += n;
-				//if (n>=2 && z80_opcode_can_branch(bytes[0],bytes[1])) break;			denk...
+				// if (n>=2 && z80_opcode_can_branch(bytes[0],bytes[1])) break;			denk...
 			}
 		}
 
 		switch (count)
 		{
 		case 1:
-			fd.write_fmt("%04X: %02X       %s%s\n", address, peek1X(bytes), compound_cc_str(bytes,count,cc,variant), text);
+			fd.write_fmt(
+				"%04X: %02X       %s%s\n", address, peek1X(bytes), compound_cc_str(bytes, count, cc, variant), text);
 			return 1;
 		case 2:
-			fd.write_fmt("%04X: %04X     %s%s\n", address, peek2X(bytes), compound_cc_str(bytes,count,cc,variant), text);
+			fd.write_fmt(
+				"%04X: %04X     %s%s\n", address, peek2X(bytes), compound_cc_str(bytes, count, cc, variant), text);
 			return 2;
 		case 3:
-			fd.write_fmt("%04X: %06X   %s%s\n",   address, peek3X(bytes), compound_cc_str(bytes,count,cc,variant), text);
+			fd.write_fmt(
+				"%04X: %06X   %s%s\n", address, peek3X(bytes), compound_cc_str(bytes, count, cc, variant), text);
 			return 3;
 		case 4:
-			fd.write_fmt("%04X: %08X %s%s\n",     address, peek4X(bytes), compound_cc_str(bytes,count,cc,variant), text);
+			fd.write_fmt("%04X: %08X %s%s\n", address, peek4X(bytes), compound_cc_str(bytes, count, cc, variant), text);
 			return 4;
 		}
 		IERR();
@@ -236,20 +244,19 @@ static uint write_line_with_objcode_and_cycles
 	// normal opcodes or data:
 	switch (count)
 	{
-	case 0:
-		fd.write_fmt("%04X:                   %s\n",  address&0xffff, text);
-		return 0;
+	case 0: fd.write_fmt("%04X:                   %s\n", address & 0xffff, text); return 0;
 	case 1:
-		fd.write_fmt("%04X: %02X       %s%s\n", address, peek1X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
+		fd.write_fmt(
+			"%04X: %02X       %s%s\n", address, peek1X(bytes), cc_str(bytes, count, cc, is_data, variant), text);
 		return 1;
 	case 2:
-		fd.write_fmt("%04X: %04X     %s%s\n",  address, peek2X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
+		fd.write_fmt("%04X: %04X     %s%s\n", address, peek2X(bytes), cc_str(bytes, count, cc, is_data, variant), text);
 		return 2;
 	case 3:
-		fd.write_fmt("%04X: %06X   %s%s\n",    address, peek3X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
+		fd.write_fmt("%04X: %06X   %s%s\n", address, peek3X(bytes), cc_str(bytes, count, cc, is_data, variant), text);
 		return 3;
 	case 4:
-		fd.write_fmt("%04X: %08X %s%s\n",    address, peek4X(bytes), cc_str(bytes,count,cc,is_data,variant), text);
+		fd.write_fmt("%04X: %08X %s%s\n", address, peek4X(bytes), cc_str(bytes, count, cc, is_data, variant), text);
 		return 4;
 	default:
 		assert(is_data);
@@ -257,13 +264,13 @@ static uint write_line_with_objcode_and_cycles
 		// und noch mehr als 4 Bytes folgen
 		// und nur noch diese Bytes folgen
 		// dann verkürze die ausgegebenen Datenbytes mit "...":
-		if (offset>=4 && count>4)
+		if (offset >= 4 && count > 4)
 		{
-			uint8* p = bytes-4;
-			uint8* e = bytes+count;
+			uint8* p = bytes - 4;
+			uint8* e = bytes + count;
 			uint8  c = *p++;
-			while (p<e && *p==c) ++p;
-			if (p==e)
+			while (p < e && *p == c) ++p;
+			if (p == e)
 			{
 				fd.write_fmt("%04X: %02X...             %s\n", address, peek1X(bytes), text);
 				return count;
@@ -275,16 +282,16 @@ static uint write_line_with_objcode_and_cycles
 	}
 }
 
-static bool gt_by_name (RCPtr<Label> const& a, RCPtr<Label> const& b)
+static bool gt_by_name(const RCPtr<Label>& a, const RCPtr<Label>& b)
 {
 	// compare two labels by name
 	// for sort()
 
-	return gt(a->name,b->name);
-	//return gt_tolower(a->name,b->name);
+	return gt(a->name, b->name);
+	// return gt_tolower(a->name,b->name);
 }
 
-static cstr calc_padding (Array<uint32>& lens)
+static cstr calc_padding(Array<uint32>& lens)
 {
 	// calculate a padding string for names
 	// padding string is used to make all names align properly
@@ -293,56 +300,59 @@ static cstr calc_padding (Array<uint32>& lens)
 	//
 	// printf("%s%s",name,padding+strlen(name))
 
-	if (lens.count()==0) return "";
+	if (lens.count() == 0) return "";
 
 	lens.sort();
-	uint32 maxlen = max(7u,lens.last());
-	str padding = spacestr(int(maxlen));
-	if (maxlen<=19) return padding;
+	uint32 maxlen  = max(7u, lens.last());
+	str	   padding = spacestr(int(maxlen));
+	if (maxlen <= 19) return padding;
 
-	uint32 bestlen = lens[lens.count()*95/100];
-	memset(padding+bestlen,0,sizeof(char)*(maxlen-bestlen));
+	uint32 bestlen = lens[lens.count() * 95 / 100];
+	memset(padding + bestlen, 0, sizeof(char) * (maxlen - bestlen));
 	return padding;
 }
 
-static cstr calc_padding (DataSegments& segments)
+static cstr calc_padding(DataSegments& segments)
 {
 	// convenience
 
 	Array<uint32> lens(segments.count());
-	for (uint i=0; i<segments.count(); i++) { lens[i] = uint32(strlen(segments[i]->name)); }
+	for (uint i = 0; i < segments.count(); i++) { lens[i] = uint32(strlen(segments[i]->name)); }
 	return calc_padding(lens);
 }
 
-static cstr calc_padding (Array<RCPtr<Label>>& labels)
+static cstr calc_padding(Array<RCPtr<Label>>& labels)
 {
 	// convenience
 
 	Array<uint32> lens(labels.count());
-	for (uint j=0; j<labels.count(); j++) { lens[j] = uint(strlen(labels[j]->name)); }
+	for (uint j = 0; j < labels.count(); j++) { lens[j] = uint(strlen(labels[j]->name)); }
 	return calc_padding(lens);
 }
 
-inline cstr calc_padding (Labels& labels)
+inline cstr calc_padding(Labels& labels)
 {
 	// convenience
 
 	return calc_padding(labels.getItems());
 }
 
-static cstr u5str (cValue& n)
+static cstr u5str(cValue& n)
 {
 	if (n.is_invalid()) return "VOID ";
 	str s = spacestr(5);
-	sprintf(s, "%u", n.value&0xffff); if (n.value<10000) *strchr(s,0)=' ';
+	sprintf(s, "%u", n.value & 0xffff);
+	if (n.value < 10000) *strchr(s, 0) = ' ';
 	return s;
 }
 
-static cstr h4u5str (cValue& n)
+static cstr h4u5str(cValue& n)
 {
-	if (n.is_valid())		return usingstr("= $%04X =%6u", n.value & 0xffff, int(n));
-	if (n.is_preliminary())	return usingstr("~ $%04X =%6u", n.value & 0xffff, int(n));
-	else					return "=  ***VOID***  ";
+	if (n.is_valid()) return usingstr("= $%04X =%6u", n.value & 0xffff, int(n));
+	if (n.is_preliminary())
+		return usingstr("~ $%04X =%6u", n.value & 0xffff, int(n));
+	else
+		return "=  ***VOID***  ";
 }
 
 
@@ -356,81 +366,83 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 	// style: 0=none, 1=plain, 2=w/ocode, 4=w/labels, 8=w/clkcycles
 
 	assert(listpath && *listpath);
-	assert(source.count()); 	// da muss zumindest das selbst erzeugte #include in Zeile 0 drin sein
+	assert(source.count()); // da muss zumindest das selbst erzeugte #include in Zeile 0 drin sein
 
-	FD fd(listpath,'w');
+	FD			fd(listpath, 'w');
 	TempMemPool tempmempool;	// be nice in case zasm is included in another project
-	uint si=0,ei=0;				// source[] index, errors[] index
-	if (source.count() && eq(source[0]->sourcefile,"") && startswith(lowerstr(source[0]->text),"#include")) si=1;
+	uint		si = 0, ei = 0; // source[] index, errors[] index
+	if (source.count() && eq(source[0]->sourcefile, "") && startswith(lowerstr(source[0]->text), "#include")) si = 1;
 
-	if (style&8) style |= 2;
+	if (style & 8) style |= 2;
 
 	// indentation string for lines without opcodes:
-	cstr indentstr = style&8 ? "                        " :	// format: 1234: 12345678 [234|235]sourceline
-					 style&2 ? "              \t" : "";		// format: 1234: 12345678\tsourceline
+	cstr indentstr = style & 8 ? "                        " : // format: 1234: 12345678 [234|235]sourceline
+						 style & 2 ? "              \t" :
+									 ""; // format: 1234: 12345678\tsourceline
 
-	if (style>1)
+	if (style > 1)
 	{
-		fd.write_fmt("%s; --------------------------------------\n",	indentstr);
-		fd.write_fmt("%s; zasm: assemble \"%s\"\n",						indentstr, source_filename);
+		fd.write_fmt("%s; --------------------------------------\n", indentstr);
+		fd.write_fmt("%s; zasm: assemble \"%s\"\n", indentstr, source_filename);
 
-		if(	syntax_8080 || target_z180 ||  target_8080 ||
-			flat_operators || casefold || allow_dotnames ||
-			require_colon || ixcbr2_enabled || ixcbxh_enabled )
+		if (syntax_8080 || target_z180 || target_8080 || flat_operators || casefold || allow_dotnames ||
+			require_colon || ixcbr2_enabled || ixcbxh_enabled)
 		{
-			fd.write_fmt("%s; opts:%s%s%s%s%s%s%s%s%s%s\n", indentstr,
-				syntax_8080					? " --asm8080"  : "",
-				cpu==CpuZ180				? " --z180"     : "",
-				cpu==CpuZ80 && syntax_8080  ? " --z80"		: "",
-				cpu==Cpu8080 && !syntax_8080 ? " --8080"	: "",
-				flat_operators				? " --flatops"  : "",
-				casefold && !syntax_8080	? " --casefold" : "",
-				allow_dotnames				? " --dotnames" : "",
-				require_colon				? " --reqcolon" : "",
-				ixcbr2_enabled				? " --ixcbr2"   : "",
-				ixcbxh_enabled				? " --ixcbxh"   : "" );
+			fd.write_fmt(
+				"%s; opts:%s%s%s%s%s%s%s%s%s%s\n",
+				indentstr,
+				syntax_8080 ? " --asm8080" : "",
+				cpu == CpuZ180 ? " --z180" : "",
+				cpu == CpuZ80 && syntax_8080 ? " --z80" : "",
+				cpu == Cpu8080 && !syntax_8080 ? " --8080" : "",
+				flat_operators ? " --flatops" : "",
+				casefold && !syntax_8080 ? " --casefold" : "",
+				allow_dotnames ? " --dotnames" : "",
+				require_colon ? " --reqcolon" : "",
+				ixcbr2_enabled ? " --ixcbr2" : "",
+				ixcbxh_enabled ? " --ixcbxh" : "");
 		}
 
-		fd.write_fmt("%s; date: %s\n",									indentstr, datetimestr(timestamp));
-		fd.write_fmt("%s; --------------------------------------\n\n\n",indentstr);
+		fd.write_fmt("%s; date: %s\n", indentstr, datetimestr(timestamp));
+		fd.write_fmt("%s; --------------------------------------\n\n\n", indentstr);
 	}
 
 	// Listing with object code:
 
-	if (style&2)	// with opcodes:
+	if (style & 2) // with opcodes:
 	{
-		uint32 cc = 0;
-		CpuID variant = target_z180 ? CpuZ180 : target_8080 ? Cpu8080 : CpuZ80;
+		uint32 cc	   = 0;
+		CpuID  variant = target_z180 ? CpuZ180 : target_8080 ? Cpu8080 : CpuZ80;
 
-		while (si<source.count())
+		while (si < source.count())
 		{
 			SourceLine& sourceline = source[si++];
 
-			DataSegment* segment = dynamic_cast<DataSegment*>(sourceline.segment);
+			DataSegment* segment	 = dynamic_cast<DataSegment*>(sourceline.segment);
 			CodeSegment* codesegment = dynamic_cast<CodeSegment*>(segment);
-			//if(segment==NULL) break;		// after #END or final error or before ORG or not #code and not #data
+			// if(segment==NULL) break;		// after #END or final error or before ORG or not #code and not #data
 
-			assert(!segment || !segment->size.is_valid() || sourceline.bytecount<=0x10000);
-			assert(!segment || !segment->size.is_valid()
-					  || sourceline.byteptr+sourceline.bytecount <= uint32(segment->size)
-					  || sourceline.bytecount==0);
+			assert(!segment || !segment->size.is_valid() || sourceline.bytecount <= 0x10000);
+			assert(
+				!segment || !segment->size.is_valid() ||
+				sourceline.byteptr + sourceline.bytecount <= uint32(segment->size) || sourceline.bytecount == 0);
 
-			uint count   = sourceline.bytecount;			// bytes to print
-			uint offset  = sourceline.byteptr;				// offset from segment start
-			uint8* bytes = codesegment ? codesegment->core.getData() + offset : nullptr;	// ptr -> opcode
-			uint address = segment ? uint(segment->address) + offset : 0;	// "physical" address of opcode
-			bool is_data = sourceline.is_data;
-			Label* label = sourceline.label;
+			uint   count   = sourceline.bytecount;										   // bytes to print
+			uint   offset  = sourceline.byteptr;										   // offset from segment start
+			uint8* bytes   = codesegment ? codesegment->core.getData() + offset : nullptr; // ptr -> opcode
+			uint   address = segment ? uint(segment->address) + offset : 0; // "physical" address of opcode
+			bool   is_data = sourceline.is_data;
+			Label* label   = sourceline.label;
 
 			bool is_defl = label && !count && uint16(label->value) != uint16(address) && !label->is_invalid();
 
 			// line contains a label?
 			if (label)
 			{
-				if (is_defl)							// for labels defined with EQU
+				if (is_defl)								 // for labels defined with EQU
 					address = uint(sourceline.label->value); // print label value instead of address
-				else									// at program labels
-					cc = 0;								// reset cc
+				else										 // at program labels
+					cc = 0;									 // reset cc
 			}
 
 			if (!count && !label)
@@ -443,16 +455,17 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 			{
 				// print line with address, up to 4 opcode bytes and source line:
 				// note: real z80 opcodes have max. 4 bytes
-				offset = style&8 ?
-					write_line_with_objcode_and_cycles(fd, address, bytes, count, 0, cc, is_data, sourceline.text, variant)
-				  : write_line_with_objcode(fd, address, bytes, count, 0, is_data, sourceline.text, variant);
+				offset = style & 8 ?
+							 write_line_with_objcode_and_cycles(
+								 fd, address, bytes, count, 0, cc, is_data, sourceline.text, variant) :
+							 write_line_with_objcode(fd, address, bytes, count, 0, is_data, sourceline.text, variant);
 			}
 
 
 			// print errors and suppress printing of further opcode bytes:
-			while (ei<errors.count() && errors[ei].sourceline == &sourceline)
+			while (ei < errors.count() && errors[ei].sourceline == &sourceline)
 			{
-				if (style&8)
+				if (style & 8)
 					fd.write_fmt("***ERROR***             %s^ %s\n", sourceline.whitestr(), errors[ei++].text);
 				else
 					fd.write_fmt("***ERROR***   \t%s^ %s\n", sourceline.whitestr(), errors[ei++].text);
@@ -462,11 +475,11 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 			// print remaining opcode bytes
 			// note: real z80 opcodes have max. 4 bytes
 			// but some compound opcodes and pseudo opcodes like 'defm' or 'defs' may have more:
-			while (offset<count)
+			while (offset < count)
 			{
-				offset += style&8 ?
-					write_line_with_objcode_and_cycles(fd, address, bytes, count, offset, cc, is_data, "", variant)
-				  : write_line_with_objcode(fd, address, bytes, count, offset, is_data, "", variant);
+				offset += style & 8 ? write_line_with_objcode_and_cycles(
+										  fd, address, bytes, count, offset, cc, is_data, "", variant) :
+									  write_line_with_objcode(fd, address, bytes, count, offset, is_data, "", variant);
 			}
 		}
 	}
@@ -474,17 +487,18 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 	// Plain listing without object code:
 	// all lines are included in the list file
 	//
-	else	// without opcodes:
+	else // without opcodes:
 	{
-		while (si<source.count())
+		while (si < source.count())
 		{
 			SourceLine& sourceline = source[si++];
 
 			// print source line
-			fd.write_str(sourceline.text); fd.write_char('\n');
+			fd.write_str(sourceline.text);
+			fd.write_char('\n');
 
 			// print errors and suppress printing of further opcode bytes:
-			while (ei<errors.count() && errors[ei].sourceline == &sourceline)
+			while (ei < errors.count() && errors[ei].sourceline == &sourceline)
 			{
 				fd.write_fmt("%s^ ***ERROR*** %s\n", sourceline.whitestr(), errors[ei++].text);
 			}
@@ -494,10 +508,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 	// List remaining errors:
 	// without associated source line
 	//
-	while (ei<errors.count())
-	{
-		fd.write_fmt("***ERROR*** %s\n",errors[ei++].text);
-	}
+	while (ei < errors.count()) { fd.write_fmt("***ERROR*** %s\n", errors[ei++].text); }
 
 	// List Labels:
 	// labels are listed in groups by locality, globals first
@@ -507,7 +518,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 	//		 Segment + Name
 	//		 File
 	//
-	if (style&4)	// with label listing:
+	if (style & 4) // with label listing:
 	{
 		DataSegments segments(this->segments);
 
@@ -517,19 +528,28 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 		// "#CODE|#DATA name: start=n, len=n, flag=n"
 
 		fd.write_str("\n\n; +++ segments +++\n\n");
-		for (uint i=0; i<segments.count(); i++)
+		for (uint i = 0; i < segments.count(); i++)
 		{
 			DataSegment& s = segments[i];
-			if (i==0 && s.size.value==0 && segments.count()>1) continue;
+			if (i == 0 && s.size.value == 0 && segments.count() > 1) continue;
 			if (s.isCode() && static_cast<CodeSegment&>(s).has_flag)
-				fd.write_fmt("#CODE %s %s %s,  size %s,  flag = %s\n",
-					s.name,spadding+strlen(s.name),
-					h4u5str(s.address), h4u5str(s.size), u5str(static_cast<CodeSegment&>(s).flag));
+				fd.write_fmt(
+					"#CODE %s %s %s,  size %s,  flag = %s\n",
+					s.name,
+					spadding + strlen(s.name),
+					h4u5str(s.address),
+					h4u5str(s.size),
+					u5str(static_cast<CodeSegment&>(s).flag));
 			else
-				fd.write_fmt("#%s %s %s %s,  size %s\n",
-					s.isCode()?"CODE":s.isTest()?"TEST":"DATA",
-					s.name,spadding+strlen(s.name),
-					h4u5str(s.address), h4u5str(s.size));
+				fd.write_fmt(
+					"#%s %s %s %s,  size %s\n",
+					s.isCode() ? "CODE" :
+					s.isTest() ? "TEST" :
+								 "DATA",
+					s.name,
+					spadding + strlen(s.name),
+					h4u5str(s.address),
+					h4u5str(s.size));
 		}
 
 		// list labels:
@@ -537,37 +557,43 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 		// don't list invalid _and_ unused labels
 		// don't list sdcc-reusable labels except if verbose ≥ 2
 
-		for (uint i=0; i<labels.count(); i++)
+		for (uint i = 0; i < labels.count(); i++)
 		{
-			fd.write_str(i?"\n; +++ local symbols +++\n\n":"\n; +++ global symbols +++\n\n");
+			fd.write_str(i ? "\n; +++ local symbols +++\n\n" : "\n; +++ global symbols +++\n\n");
 
 			Array<RCPtr<Label>> labels(this->labels[i].getItems()); // copy
-			labels.sort(&gt_by_name);							// sort by name
+			labels.sort(&gt_by_name);								// sort by name
 			cstr lpadding = calc_padding(labels);
 
-			for (uint j=0; j<labels.count(); j++)
+			for (uint j = 0; j < labels.count(); j++)
 			{
 				Label* l = labels[j];
-				if (i && l->is_global) continue;		// don't list .globl labels in locals[]
+				if (i && l->is_global) continue; // don't list .globl labels in locals[]
 				if (l->is_invalid() && !l->is_used) continue;
-				if (l->is_reusable && verbose<2) continue;
+				if (l->is_reusable && verbose < 2) continue;
 
-				cstr		name = l->name; if(name==DEFAULT_CODE_SEGMENT) continue; // Vergleich der Adresse!
-				DataSegment* segment = dynamic_cast<DataSegment*>(l->segment); // may be NULL or no data/code segment
-				SourceLine&	sourceline = source[l->sourceline];
-				cstr		sourcefile = filename_from_path(sourceline.sourcefile);
-				uint		linenumber = sourceline.sourcelinenumber;
-				cstr		segmentname = segment ? segment->name : "";
+				cstr name = l->name;
+				if (name == DEFAULT_CODE_SEGMENT) continue;						  // Vergleich der Adresse!
+				DataSegment* segment	= dynamic_cast<DataSegment*>(l->segment); // may be NULL or no data/code segment
+				SourceLine&	 sourceline = source[l->sourceline];
+				cstr		 sourcefile = filename_from_path(sourceline.sourcefile);
+				uint		 linenumber = sourceline.sourcelinenumber;
+				cstr		 segmentname = segment ? segment->name : "";
 
 				if (!l->is_defined)
-					fd.write_fmt("%s%s = ***UNDEFINED***",
-						name, lpadding+strlen(name));
+					fd.write_fmt("%s%s = ***UNDEFINED***", name, lpadding + strlen(name));
 				else
-					fd.write_fmt("%s%s %s  %s%s %s:%u",
-						name, lpadding+strlen(name), h4u5str(l->value),
-						segmentname, spadding+strlen(segmentname), sourcefile, linenumber+1);
+					fd.write_fmt(
+						"%s%s %s  %s%s %s:%u",
+						name,
+						lpadding + strlen(name),
+						h4u5str(l->value),
+						segmentname,
+						spadding + strlen(segmentname),
+						sourcefile,
+						linenumber + 1);
 
-				fd.write_str(l->is_used?"\n":" (unused)\n");
+				fd.write_str(l->is_used ? "\n" : " (unused)\n");
 			}
 		}
 
@@ -576,19 +602,22 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 		// list all invalid labels
 		// list preliminary labels except sdcc-reusable labels except if verbose ≥ 2
 
-		if (pass>1 && errors.count())
+		if (pass > 1 && errors.count())
 		{
 			Array<RCPtr<Label>> unresolved_labels;
 
-			for (uint i=0;i<labels.count();i++)
+			for (uint i = 0; i < labels.count(); i++)
 			{
 				Array<RCPtr<Label>>& labels = this->labels[i].getItems();
-				for (uint j=0;j<labels.count();j++)
+				for (uint j = 0; j < labels.count(); j++)
 				{
 					Label* l = labels[j];
-					if (l->is_valid() || !l->is_used) continue;
-					else if (verbose<2 && l->is_preliminary() && l->is_reusable) continue;
-					else unresolved_labels.append(l);
+					if (l->is_valid() || !l->is_used)
+						continue;
+					else if (verbose < 2 && l->is_preliminary() && l->is_reusable)
+						continue;
+					else
+						unresolved_labels.append(l);
 				}
 			}
 
@@ -598,48 +627,23 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 
 				cstr lpadding = calc_padding(unresolved_labels);
 
-				for (uint i=0;i<unresolved_labels.count(); i++)
+				for (uint i = 0; i < unresolved_labels.count(); i++)
 				{
 					Label* l = unresolved_labels[i];
-					fd.write_fmt("%s%s = %s\n",
-						l->name,lpadding+strlen(l->name),
+					fd.write_fmt(
+						"%s%s = %s\n",
+						l->name,
+						lpadding + strlen(l->name),
 						l->is_preliminary() ? "***preliminary***" :
-						l->is_defined ? "***unresolved***" : "***undefined***");
+						l->is_defined		? "***unresolved***" :
+											  "***undefined***");
 				}
 			}
 		}
 	}
 
 	// list elapsed time and errors:
-	fd.write_fmt("\n\ntotal time: %3.4f sec.\n", now()-starttime);
-	fd.write_fmt("%s error%s\n", errors.count()?tostr(errors.count()):"no", errors.count()==1?"":"s");
+	fd.write_fmt("\n\ntotal time: %3.4f sec.\n", now() - starttime);
+	fd.write_fmt("%s error%s\n", errors.count() ? tostr(errors.count()) : "no", errors.count() == 1 ? "" : "s");
 	fd.close_file();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

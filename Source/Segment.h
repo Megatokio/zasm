@@ -17,51 +17,50 @@
 	TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 */
 
+#include "SyntaxError.h"
 #include "Templates/RCObject.h"
 #include "Templates/RCPtr.h"
-#include "SyntaxError.h"
 typedef Array<uint8> Core;
 #include "Label.h"
-#include "Z80Registers.h"
 #include "Source.h"
+#include "Z80Registers.h"
 
 
 class Z80Assembler;
 enum // compression flags
 {
-	middle_cseg=1,
-	first_cseg_mask=2,
-	last_cseg_mask=4,
-	first_cseg=3,
-	last_cseg=5,
-	single_cseg=7
+	middle_cseg		= 1,
+	first_cseg_mask = 2,
+	last_cseg_mask	= 4,
+	first_cseg		= 3,
+	last_cseg		= 5,
+	single_cseg		= 7
 };
 
 
-enum SegmentType
-{
-	DATA,						// #data
-	CODE,						// #code
-	TEST,						// ~ CODE, not written to file
-	TZX_STANDARD = 0x10,		// ~ CODE
-	TZX_TURBO = 0x11,			// ~ CODE with changed pulse settings
-	TZX_PURE_TONE = 0x12,		// empty body
-	TZX_PULSES = 0x13,			// only DW in body
-	TZX_PURE_DATA = 0x14,		// ~ CODE
-	//TZX_DIRECT_RECORDING = 0x15,// only DB or raw audio binary data
-	TZX_CSW_RECORDING = 0x18,	// only DB or raw audio binary data
-	TZX_GENERALIZED = 0x19,		// ~ CODE
-	TZX_PAUSE = 0x20,			// empty body
-	TZX_GROUP_START = 0x21,		// empty body
-	TZX_GROUP_END = 0x22,		// empty body
-	TZX_LOOP_START = 0x24,		// empty body
-	TZX_LOOP_END = 0x25,		// empty body
-	TZX_STOP_48K = 0x2A,		// empty body
-	TZX_POLARITY = 0x2B,		// empty body
-	TZX_INFO = 0x30,			// empty body
-	TZX_MESSAGE = 0x31,			// empty body
-	TZX_ARCHIVE_INFO = 0x32,	// only DB in body
-	TZX_HARDWARE_INFO = 0x33,	// only DB in body
+enum SegmentType {
+	DATA,				  // #data
+	CODE,				  // #code
+	TEST,				  // ~ CODE, not written to file
+	TZX_STANDARD  = 0x10, // ~ CODE
+	TZX_TURBO	  = 0x11, // ~ CODE with changed pulse settings
+	TZX_PURE_TONE = 0x12, // empty body
+	TZX_PULSES	  = 0x13, // only DW in body
+	TZX_PURE_DATA = 0x14, // ~ CODE
+	// TZX_DIRECT_RECORDING = 0x15,// only DB or raw audio binary data
+	TZX_CSW_RECORDING = 0x18, // only DB or raw audio binary data
+	TZX_GENERALIZED	  = 0x19, // ~ CODE
+	TZX_PAUSE		  = 0x20, // empty body
+	TZX_GROUP_START	  = 0x21, // empty body
+	TZX_GROUP_END	  = 0x22, // empty body
+	TZX_LOOP_START	  = 0x24, // empty body
+	TZX_LOOP_END	  = 0x25, // empty body
+	TZX_STOP_48K	  = 0x2A, // empty body
+	TZX_POLARITY	  = 0x2B, // empty body
+	TZX_INFO		  = 0x30, // empty body
+	TZX_MESSAGE		  = 0x31, // empty body
+	TZX_ARCHIVE_INFO  = 0x32, // only DB in body
+	TZX_HARDWARE_INFO = 0x33, // only DB in body
 };
 
 extern bool isData(SegmentType);
@@ -69,53 +68,66 @@ extern bool isCode(SegmentType);
 extern bool isTest(SegmentType);
 
 
-
 // ---- Base Class ---------------------
 
 class Segment : public RCObject
 {
 public:
-	SegmentType	type;			// DATA => no actual code storing allowed
+	SegmentType type; // DATA => no actual code storing allowed
 	cstr		name;
 
-	bool		is_data;		// DATA
-	bool		is_code;		// CODE, TZX_STANDARD,TURBO,PURE_DATA,GENERALIZED
-	bool		is_test;		// TEST
-	bool		is_tzx;			// TzxSegment subclasses
+	bool is_data; // DATA
+	bool is_code; // CODE, TZX_STANDARD,TURBO,PURE_DATA,GENERALIZED
+	bool is_test; // TEST
+	bool is_tzx;  // TzxSegment subclasses
 
-	Value		dpos;			// code deposition index
+	Value dpos; // code deposition index
 
 public:
-	bool	isData	() const			{ return is_data; }
-	bool	isCode	() const			{ return is_code; }
-	bool	isTest	() const			{ return is_test; }
-	bool	isTzx	() const			{ return is_tzx; }
-	virtual Validity validity () const	{ return Validity::valid; }
+	bool			 isData() const { return is_data; }
+	bool			 isCode() const { return is_code; }
+	bool			 isTest() const { return is_test; }
+	bool			 isTzx() const { return is_tzx; }
+	virtual Validity validity() const { return Validity::valid; }
 
-	cValue& currentPosition ()			{ return dpos; }		// offset in core
+	cValue& currentPosition() { return dpos; } // offset in core
 
-// store object code
-	virtual void rewind () {}
+	// store object code
+	virtual void rewind() {}
 
-	virtual void store		(int)				{ throw_code_segment_required(); }
-	virtual void storeBlock	(cptr, uint)		{ throw_code_segment_required(); }
-	virtual void storeSpace	(cValue&, int)		{ throw_code_segment_required(); }
-	virtual void storeSpace	(cValue&)			{ throw_data_segment_required(); }
+	virtual void store(int) { throw_code_segment_required(); }
+	virtual void storeBlock(cptr, uint) { throw_code_segment_required(); }
+	virtual void storeSpace(cValue&, int) { throw_code_segment_required(); }
+	virtual void storeSpace(cValue&) { throw_data_segment_required(); }
 
-	void	store		(int a,int b)			{ store(a); store(b); }
-	void	store		(int a,int b,int c)		{ store(a); store(b); store(c); }
-	void	store		(int a,int b,int c,int d) { store(a); store(b); store(c); store(d); }
-	void	storeWord	(cValue&);
-	void	storeOffset (cValue&);
-	void	storeByte	(cValue&);
-	void	storeHexBytes (cptr data, uint sz);
+	void store(int a, int b)
+	{
+		store(a);
+		store(b);
+	}
+	void store(int a, int b, int c)
+	{
+		store(a);
+		store(b);
+		store(c);
+	}
+	void store(int a, int b, int c, int d)
+	{
+		store(a);
+		store(b);
+		store(c);
+		store(d);
+	}
+	void storeWord(cValue&);
+	void storeOffset(cValue&);
+	void storeByte(cValue&);
+	void storeHexBytes(cptr data, uint sz);
 
 protected:
-	Segment (SegmentType, cstr name = nullptr);
+	Segment(SegmentType, cstr name = nullptr);
 	static void throw_data_segment_required() __attribute__((noreturn));
 	static void throw_code_segment_required() __attribute__((noreturn));
 };
-
 
 
 // ---- class DataSegment ---------------------
@@ -126,39 +138,38 @@ class DataSegment : public Segment
 	// Segment has address, size, deposition pointer like a CodeSegment
 
 public:
-	bool		relocatable;	// address has not been explicitely set => append to prev. segment
-	bool		resizable;		// size has not been explicitely set    => shrink to fit
-	Value		address;		// "physical" segment start address
-	Value		size;			// segment size
-	Value		lpos;			// logical position ('$') at dpos
+	bool  relocatable; // address has not been explicitely set => append to prev. segment
+	bool  resizable;   // size has not been explicitely set    => shrink to fit
+	Value address;	   // "physical" segment start address
+	Value size;		   // segment size
+	Value lpos;		   // logical position ('$') at dpos
 
 public:
-	DataSegment (cstr name);
+	DataSegment(cstr name);
 
-	//bool	isAtStart	()						{ return dpos.is_valid() && dpos==0; }
-	Value	physicalAddress	()					{ return address + dpos; }		// segment_address + dpos
-	cValue& logicalAddress	()				{ return lpos; }				// org + dpos
-	Value&	getAddress	()						{ return address; }
+	// bool	isAtStart	()						{ return dpos.is_valid() && dpos==0; }
+	Value	physicalAddress() { return address + dpos; } // segment_address + dpos
+	cValue& logicalAddress() { return lpos; }			 // org + dpos
+	Value&	getAddress() { return address; }
 
-	Validity validity	() const				override;
-	void	rewind		()						override;
-	void	setAddress	(cValue&)			;
-	void	setSize		(cValue&)			;
-	void	setOrigin	(cValue&)			;
+	Validity validity() const override;
+	void	 rewind() override;
+	void	 setAddress(cValue&);
+	void	 setSize(cValue&);
+	void	 setOrigin(cValue&);
 
-	void	store		(int)					 override;
-	void	storeBlock	(cptr data, uint sz)	 override;
-	void	storeSpace	(cValue& sz, int)	 override;
-	void	storeSpace	(cValue& sz)		 override;
+	void store(int) override;
+	void storeBlock(cptr data, uint sz) override;
+	void storeSpace(cValue& sz, int) override;
+	void storeSpace(cValue& sz) override;
 
-	void	storeSpaceUpToAddress(cValue&)	;
-	void	storeSpaceUpToAddress(cValue&, int) ;
-	void	skipExistingData (uint sz)			;
+	void storeSpaceUpToAddress(cValue&);
+	void storeSpaceUpToAddress(cValue&, int);
+	void skipExistingData(uint sz);
 
 protected:
-	DataSegment (cstr name, SegmentType, bool relocatable, bool resizable);
+	DataSegment(cstr name, SegmentType, bool relocatable, bool resizable);
 };
-
 
 
 // ---- class CodeSegment ---------------------
@@ -169,94 +180,97 @@ class CodeSegment : public DataSegment
 	// Segment has address, size, deposition pointer etc.
 
 public:
-	Value		flag;			// flag for .z80 and tape code segments
-	Value		pause;			// TZX: pause after block [ms]
-	Value		lastbits;		// TZX: used bits in last byte [1..8]
-	Value		fillbyte;		// $FF for ROM else $00
-	bool		custom_fillbyte;
-	bool		has_flag;		// this is a first segment of a block
-	bool		has_pause;		// TZX: pause was set
-	bool		has_lastbits;	// TZX: lastbits was set
-	bool		no_flagbyte;	// TZX, TAP: don't write flagbyte to tape
-	bool		no_checksum;	// TZX: don't write checksum to tape
-	bool		no_pilot;		// TZX:
-	bool		checksum_ace;	// TZX: calculate checksum for Jupiter Ace and write ACE-style tape block
-	uint		compressed;		// ZX7 compression flags
-	Core		core;
-	Core		ccore;			// ZX7: if this is compressed & first_cseg_mask: compressed data of compressed range
-	Core		ucore;			// ZX7: if this is compressed & first_cseg_mask: uncompressed data of compressed range
+	Value flag;		// flag for .z80 and tape code segments
+	Value pause;	// TZX: pause after block [ms]
+	Value lastbits; // TZX: used bits in last byte [1..8]
+	Value fillbyte; // $FF for ROM else $00
+	bool  custom_fillbyte;
+	bool  has_flag;		// this is a first segment of a block
+	bool  has_pause;	// TZX: pause was set
+	bool  has_lastbits; // TZX: lastbits was set
+	bool  no_flagbyte;	// TZX, TAP: don't write flagbyte to tape
+	bool  no_checksum;	// TZX: don't write checksum to tape
+	bool  no_pilot;		// TZX:
+	bool  checksum_ace; // TZX: calculate checksum for Jupiter Ace and write ACE-style tape block
+	uint  compressed;	// ZX7 compression flags
+	Core  core;
+	Core  ccore; // ZX7: if this is compressed & first_cseg_mask: compressed data of compressed range
+	Core  ucore; // ZX7: if this is compressed & first_cseg_mask: uncompressed data of compressed range
 
 	Array<Values> pilotsym;		// TZX: custom pulse timing and encoding
-	Values pilot;				// TZX
+	Values		  pilot;		// TZX
 	Array<Values> datasym;		// TZX
-	uint		pilotsym_idx;	// TZX
-	uint		datasym_idx;	// TZX
+	uint		  pilotsym_idx; // TZX
+	uint		  datasym_idx;	// TZX
 
-	CodeSegment (cstr name, SegmentType, uint8 fillbyte);
+	CodeSegment(cstr name, SegmentType, uint8 fillbyte);
 
-	uint8*	getData ()					{ return core.getData(); }
-	uint	outputSize () const			{ return compressed ? ccore.count() : uint(size); }
-	uint	outputSizeUpToDpos () const { return compressed ? ccore.count() : uint(dpos); }
-	uint8 const* outputData () const	{ return compressed ? ccore.getData() : core.getData(); }
-	Validity validity () const override;
-	void	rewind() override;
+	uint8*		 getData() { return core.getData(); }
+	uint		 outputSize() const { return compressed ? ccore.count() : uint(size); }
+	uint		 outputSizeUpToDpos() const { return compressed ? ccore.count() : uint(dpos); }
+	const uint8* outputData() const { return compressed ? ccore.getData() : core.getData(); }
+	Validity	 validity() const override;
+	void		 rewind() override;
 
-	void	store		(int)					 override;
-	void	storeBlock	(cptr data, uint sz)	 override;
-	void	storeSpace	(cValue&, int)		 override;
-	void	storeSpace	(cValue&)			 override;
-	void	clearTrailingBytes ()				noexcept;
+	void store(int) override;
+	void storeBlock(cptr data, uint sz) override;
+	void storeSpace(cValue&, int) override;
+	void storeSpace(cValue&) override;
+	void clearTrailingBytes() noexcept;
 
-	uint8&	operator[]	(uint32 i)				{ return core[i]; }
-	uint8	popLastByte	()						{ assert(dpos.value>0); --lpos.value; return core[--dpos.value]; }
+	uint8& operator[](uint32 i) { return core[i]; }
+	uint8  popLastByte()
+	{
+		assert(dpos.value > 0);
+		--lpos.value;
+		return core[--dpos.value];
+	}
 
-	void	setFlag		(cValue&)			;
-	void	setPause	(cValue&);
-	void	setLastBits	(cValue&);
-	void	setNoFlag ();
-	void	setNoChecksum ();
-	void	setFillByte	(cValue&);
+	void setFlag(cValue&);
+	void setPause(cValue&);
+	void setLastBits(cValue&);
+	void setNoFlag();
+	void setNoChecksum();
+	void setFillByte(cValue&);
 
-	void	setNumPilotPulses (cValue&);
-	void	addPilotSymbol (Values);
-	void	addDataSymbol (Values);
-	void	setPilot	(Values);
+	void setNumPilotPulses(cValue&);
+	void addPilotSymbol(Values);
+	void addDataSymbol(Values);
+	void setPilot(Values);
 
-	void	check_pilot_symbol(uint idx) const;
-	void	check_data_symbol(uint idx) const;
+	void check_pilot_symbol(uint idx) const;
+	void check_data_symbol(uint idx) const;
 };
-
 
 
 // ---- class TestSegment ---------------------
 
-enum IoMode
-{
-	IoValues,		// data[count] = input values or to compare output values
-	IoStdIn,		// stdin & stdout
-	IoStdOut,		// stdin & stdout
-	IoInFile,		// data = filename for sequential input or output
-	IoOutFile,		// data = filename for sequential input or output
-	IoAppendFile,	// data = filename for output, append mode
-	IoCompareFile,	// data = filename for output, compare mode
-	IoBlockDevice	// data = filename for block addressed input and output
+enum IoMode {
+	IoValues,	   // data[count] = input values or to compare output values
+	IoStdIn,	   // stdin & stdout
+	IoStdOut,	   // stdin & stdout
+	IoInFile,	   // data = filename for sequential input or output
+	IoOutFile,	   // data = filename for sequential input or output
+	IoAppendFile,  // data = filename for output, append mode
+	IoCompareFile, // data = filename for output, compare mode
+	IoBlockDevice  // data = filename for block addressed input and output
 };
 
 struct IoSequence
 {
 	// a series of bytes with optional repetition
 
-	uint8* data = nullptr;
-	uint count  = 0;
-	uint repetitions = 1;
+	uint8* data		   = nullptr;
+	uint   count	   = 0;
+	uint   repetitions = 1;
 
 	IoSequence() = default;
-	IoSequence(const uint8* data, uint count, uint repetitions=1);
+	IoSequence(const uint8* data, uint count, uint repetitions = 1);
 	~IoSequence() { delete[] data; }
 	IoSequence(IoSequence&& q) noexcept;
-	IoSequence& operator= (IoSequence&& q) noexcept;
-	IoSequence(const IoSequence&) = delete;
-	IoSequence& operator= (const IoSequence&) = delete;
+	IoSequence& operator=(IoSequence&& q) noexcept;
+	IoSequence(const IoSequence&)			 = delete;
+	IoSequence& operator=(const IoSequence&) = delete;
 };
 
 using IoSequences = Array<IoSequence>;
@@ -266,59 +280,59 @@ struct IoList
 	IoMode iomode = IoValues;
 	uint32 filler = 0;
 
-	union	// note: extra union for FD, because C++ doesn't allow complex type in anon struct
+	union // note: extra union for FD, because C++ doesn't allow complex type in anon struct
 	{
-		IoSequences* data;			// IoValues
-		FD  fd;						// IoFile
+		IoSequences* data; // IoValues
+		FD			 fd;   // IoFile
 	};
 
 	union
 	{
-		struct	// IoValues
+		struct // IoValues
 		{
-			uint sequence_idx;		// during test run
-			uint in_sequence_idx;	// during test run
-			uint repetition; 		// during test run
+			uint sequence_idx;	  // during test run
+			uint in_sequence_idx; // during test run
+			uint repetition;	  // during test run
 			uint filler2;
 		};
-		struct	// IoFile*
+		struct // IoFile*
 		{
 			uint blocksize;
-			uint blockstate;		// during io
-			uint memory_address;	// during io
-			uint block_idx;			// during io
+			uint blockstate;	 // during io
+			uint memory_address; // during io
+			uint block_idx;		 // during io
 		};
 	};
 
 	IoList() = delete;
-	IoList(IoSequence&&);			// ctor for iomode=Values with first IoSequence
-	IoList(IoMode, cstr filename, uint blocksize=0); // ctor iomode=File etc.
+	IoList(IoSequence&&);							   // ctor for iomode=Values with first IoSequence
+	IoList(IoMode, cstr filename, uint blocksize = 0); // ctor iomode=File etc.
 	~IoList();
 	IoList(IoList&&);
 	IoList& operator=(IoList&&);
-	IoList(const IoList&)=delete;
-	IoList& operator=(const IoList&)=delete;
+	IoList(const IoList&)			 = delete;
+	IoList& operator=(const IoList&) = delete;
 
 	void append(IoSequence&&);
 
-	void openFile();					// befor test
-	uint8 inputByte();					// during test
-	void outputByte(uint8, uint8* core);// during test
-	bool isAtEnd();						// after test
-	void closeFile() noexcept;			// after test
+	void  openFile();					  // befor test
+	uint8 inputByte();					  // during test
+	void  outputByte(uint8, uint8* core); // during test
+	bool  isAtEnd();					  // after test
+	void  closeFile() noexcept;			  // after test
 };
 
 struct Expectation
 {
-	cstr  name;		// not retained: register name, cc, cc_min or cc_max
-	int32 value;	// validity is managed by a single Validity instance in TestSegment
-	uint16 pc;		// ""
-	int16 padding;
+	cstr			  name;	 // not retained: register name, cc, cc_min or cc_max
+	int32			  value; // validity is managed by a single Validity instance in TestSegment
+	uint16			  pc;	 // ""
+	int16			  padding;
 	RCPtr<SourceLine> sourceline;
 
-	Expectation (cstr name, int32 v, int pc, SourceLine* q) : name(name), value(v), pc(uint16(pc)), sourceline(q) {}
-	Expectation (Expectation&& q) = default;
-	~Expectation () = default;
+	Expectation(cstr name, int32 v, int pc, SourceLine* q) : name(name), value(v), pc(uint16(pc)), sourceline(q) {}
+	Expectation(Expectation&& q) = default;
+	~Expectation()				 = default;
 };
 
 using Expectations = Array<Expectation>;
@@ -326,51 +340,55 @@ using Expectations = Array<Expectation>;
 class TestSegment : public CodeSegment
 {
 public:
-	HashMap<uint16,IoList> inputdata;		// <io_addr,data[]>
-	HashMap<uint16,IoList> outputdata;		// <io_addr,data[]>
+	HashMap<uint16, IoList> inputdata;	// <io_addr,data[]>
+	HashMap<uint16, IoList> outputdata; // <io_addr,data[]>
 
-	mutable Value cpu_clock{-1,invalid};	static constexpr uint32 cpu_unlimited = 0;
-	mutable Value int_per_sec{-1,invalid};	static constexpr uint   no_interrupts = 0;
-	mutable Value int_duration{-1,invalid}; static constexpr uint   dflt_int_duration = 0; // automatic switch-off mode
-	mutable Value int_ack_byte{-1,invalid};	static constexpr uint8  floating_bus_byte = 255;
-	mutable Value timeout_ms{-1,invalid};	static constexpr uint32 no_timeout = 0;
+	mutable Value			cpu_clock {-1, invalid};
+	static constexpr uint32 cpu_unlimited = 0;
+	mutable Value			int_per_sec {-1, invalid};
+	static constexpr uint	no_interrupts = 0;
+	mutable Value			int_duration {-1, invalid};
+	static constexpr uint	dflt_int_duration = 0; // automatic switch-off mode
+	mutable Value			int_ack_byte {-1, invalid};
+	static constexpr uint8	floating_bus_byte = 255;
+	mutable Value			timeout_ms {-1, invalid};
+	static constexpr uint32 no_timeout = 0;
 
 	Expectations expectations;
-	bool expectations_valid = yes;
-	bool iodata_valid = yes;
+	bool		 expectations_valid = yes;
+	bool		 iodata_valid		= yes;
 
 public:
-	TestSegment (cstr name, uint8 fillbyte);
-	~TestSegment () override;
+	TestSegment(cstr name, uint8 fillbyte);
+	~TestSegment() override;
 
-	Validity validity () const override;
-	void rewind() override;
+	Validity validity() const override;
+	void	 rewind() override;
 
-	void setCpuClock (cValue& frequency);
-	void setIntPerSec (cValue& frequency);	// set timer int using frequency
-	void setCcPerInt (cValue& cc);			// set timer int using cpu cycles
-	void setIntDuration (cValue& cc);		// how long is the int signal active
-	void setIntAckByte (cValue& byte);
-	void setTimeoutMsec (cValue& msecs);
-	void setExpectedCcMin (SourceLine* q, Value cc);
-	void setExpectedCcMax (SourceLine* q, Value cc);
-	void setExpectedCc (SourceLine* q, Value cc);
-	void setExpectedRegisterValue (SourceLine* q, cstr reg, Value v);
-	void setInputData (cValue& ioaddr, IoSequence&&);
-	void setInputFile (cValue& ioaddr, cstr filename, IoMode=IoInFile);
-	void setOutputData (cValue& ioaddr, IoSequence&&);
-	void setOutputFile (cValue& ioaddr, cstr filename, IoMode);
-	void setBlockDevice (cValue& ioaddr, cstr filename, cValue& blocksize);
-	void setConsole (cValue& ioaddr);
+	void setCpuClock(cValue& frequency);
+	void setIntPerSec(cValue& frequency); // set timer int using frequency
+	void setCcPerInt(cValue& cc);		  // set timer int using cpu cycles
+	void setIntDuration(cValue& cc);	  // how long is the int signal active
+	void setIntAckByte(cValue& byte);
+	void setTimeoutMsec(cValue& msecs);
+	void setExpectedCcMin(SourceLine* q, Value cc);
+	void setExpectedCcMax(SourceLine* q, Value cc);
+	void setExpectedCc(SourceLine* q, Value cc);
+	void setExpectedRegisterValue(SourceLine* q, cstr reg, Value v);
+	void setInputData(cValue& ioaddr, IoSequence&&);
+	void setInputFile(cValue& ioaddr, cstr filename, IoMode = IoInFile);
+	void setOutputData(cValue& ioaddr, IoSequence&&);
+	void setOutputFile(cValue& ioaddr, cstr filename, IoMode);
+	void setBlockDevice(cValue& ioaddr, cstr filename, cValue& blocksize);
+	void setConsole(cValue& ioaddr);
 
-	void openFiles();					// befor test
-	uint8 inputByte(uint16 addr);		// during test
-	void outputByte(uint16 addr, uint8, uint8* core);// during test
-	void checkAllBytesRead();			// after test
-	void checkAllBytesWritten();		// after test
-	void closeFiles() noexcept;			// after test
+	void  openFiles();								   // befor test
+	uint8 inputByte(uint16 addr);					   // during test
+	void  outputByte(uint16 addr, uint8, uint8* core); // during test
+	void  checkAllBytesRead();						   // after test
+	void  checkAllBytesWritten();					   // after test
+	void  closeFiles() noexcept;					   // after test
 };
-
 
 
 // ---- TZX segments except CodeSegments ---------
@@ -378,7 +396,7 @@ public:
 class TzxSegment : public Segment
 {
 protected:
-	TzxSegment (SegmentType s)		:Segment(s){ is_tzx=yes; }
+	TzxSegment(SegmentType s) : Segment(s) { is_tzx = yes; }
 };
 
 
@@ -387,126 +405,126 @@ protected:
 class TzxPureToneSegment : public TzxSegment
 {
 public:
-	Value pulse_length;		// T-states
+	Value pulse_length; // T-states
 	Value num_pulses;
-	TzxPureToneSegment()	:TzxSegment(TZX_PURE_TONE){}
-	void setPulseLength(Value);
-	void setNumPulses(Value);
-	Validity validity () const override;
-	//void rewind() override;
+	TzxPureToneSegment() : TzxSegment(TZX_PURE_TONE) {}
+	void	 setPulseLength(Value);
+	void	 setNumPulses(Value);
+	Validity validity() const override;
+	// void rewind() override;
 };
 
 class TzxPauseSegment : public TzxSegment
 {
 public:
 	Value duration;
-	TzxPauseSegment() :TzxSegment(TZX_PAUSE){}
-	void setDuration(Value);
-	Validity validity () const override		{ return duration.validity; }
-	//void rewind() override;	nothing to do
+	TzxPauseSegment() : TzxSegment(TZX_PAUSE) {}
+	void	 setDuration(Value);
+	Validity validity() const override { return duration.validity; }
+	// void rewind() override;	nothing to do
 };
 
 class TzxGroupStartSegment : public TzxSegment
 {
 public:
-	cstr	groupname;	// group name, Ascii, max. 30 char
-	TzxGroupStartSegment(cstr groupname) :TzxSegment(TZX_GROUP_START),groupname(groupname){}
-	//Validity validity () const override;
-	//void rewind() override;	nothing to do
+	cstr groupname; // group name, Ascii, max. 30 char
+	TzxGroupStartSegment(cstr groupname) : TzxSegment(TZX_GROUP_START), groupname(groupname) {}
+	// Validity validity () const override;
+	// void rewind() override;	nothing to do
 };
 
 class TzxGroupEndSegment : public TzxSegment
 {
 public:
-	TzxGroupEndSegment() :TzxSegment(TZX_GROUP_END){}
-	//Validity validity () const override;		no data members to check => return valid
-	//void rewind() override;	nothing to do
+	TzxGroupEndSegment() : TzxSegment(TZX_GROUP_END) {}
+	// Validity validity () const override;		no data members to check => return valid
+	// void rewind() override;	nothing to do
 };
 
 class TzxLoopStartSegment : public TzxSegment
 {
 public:
 	Value repetitions;
-	TzxLoopStartSegment() :TzxSegment(TZX_LOOP_START){}
-	void setRepetitions(Value);
-	Validity validity () const override		{ return repetitions.validity; }
-	//void rewind() override;	nothing to do
+	TzxLoopStartSegment() : TzxSegment(TZX_LOOP_START) {}
+	void	 setRepetitions(Value);
+	Validity validity() const override { return repetitions.validity; }
+	// void rewind() override;	nothing to do
 };
 
 class TzxLoopEndSegment : public TzxSegment
 {
 public:
-	TzxLoopEndSegment() :TzxSegment(TZX_LOOP_END){}
-	//Validity validity () const override;		no data members to check => return valid
-	//void rewind() override;	nothing to do
+	TzxLoopEndSegment() : TzxSegment(TZX_LOOP_END) {}
+	// Validity validity () const override;		no data members to check => return valid
+	// void rewind() override;	nothing to do
 };
 
 class TzxStop48kSegment : public TzxSegment
 {
 public:
-	TzxStop48kSegment() :TzxSegment(TZX_STOP_48K){}
-	//Validity validity () const override;		no data members to check => return valid
-	//void rewind() override;	nothing to do
+	TzxStop48kSegment() : TzxSegment(TZX_STOP_48K) {}
+	// Validity validity () const override;		no data members to check => return valid
+	// void rewind() override;	nothing to do
 };
 
 class TzxPolaritySegment : public TzxSegment
 {
 public:
-	Value polarity;		// 0 or 1
-	TzxPolaritySegment() :TzxSegment(TZX_POLARITY){}
-	void setPolarity(Value);
-	Validity validity () const override		{ return polarity.validity; }
-	//void rewind() override;	nothing to do
+	Value polarity; // 0 or 1
+	TzxPolaritySegment() : TzxSegment(TZX_POLARITY) {}
+	void	 setPolarity(Value);
+	Validity validity() const override { return polarity.validity; }
+	// void rewind() override;	nothing to do
 };
 
 class TzxInfoSegment : public TzxSegment
 {
 public:
-	cstr text;	// Ascii, max. 255, pls. ~30 char
-	TzxInfoSegment (cstr text) : TzxSegment(TZX_INFO),text(text){}
-	//Validity validity () const override;
-	//void rewind() override;	nothing to do
+	cstr text; // Ascii, max. 255, pls. ~30 char
+	TzxInfoSegment(cstr text) : TzxSegment(TZX_INFO), text(text) {}
+	// Validity validity () const override;
+	// void rewind() override;	nothing to do
 };
 
 class TzxMessageSegment : public TzxSegment
 {
 public:
-	Value duration;		// seconds
-	Array<cstr> text;	// max. 8 line à 30 char; delim = 0x0D
-	TzxMessageSegment(Array<cstr> text) :TzxSegment(TZX_MESSAGE),text(text){}
-	void setDuration(Value);
-	Validity validity () const override		{ return duration.validity; }
-	//void rewind() override;
+	Value		duration; // seconds
+	Array<cstr> text;	  // max. 8 line à 30 char; delim = 0x0D
+	TzxMessageSegment(Array<cstr> text) : TzxSegment(TZX_MESSAGE), text(text) {}
+	void	 setDuration(Value);
+	Validity validity() const override { return duration.validity; }
+	// void rewind() override;
 };
 
 class TzxCswRecording : public TzxSegment
 {
 public:
-	cstr	filename;
-	bool	compressed;
-	bool	raw;
-	Value	pause;
-	Value	header_size;		// may be read from file header
-	Value	first_frame;		// may be read from file header
-	Value	last_frame;			// may be read from file header
-	uint32	sample_rate;		// may be read from file header
-	uint	num_channels;		// may be read from file header
-	uint	sample_size;		// may be read from file header
-	bool	signed_samples;		// may be read from file header
-	bool	little_endian;		// may be read from file header
+	cstr   filename;
+	bool   compressed;
+	bool   raw;
+	Value  pause;
+	Value  header_size;	   // may be read from file header
+	Value  first_frame;	   // may be read from file header
+	Value  last_frame;	   // may be read from file header
+	uint32 sample_rate;	   // may be read from file header
+	uint   num_channels;   // may be read from file header
+	uint   sample_size;	   // may be read from file header
+	bool   signed_samples; // may be read from file header
+	bool   little_endian;  // may be read from file header
 
 	TzxCswRecording(cstr filename);
-	void	setCompression(bool);
-	void	setPause(Value);		// ms
-	void	setHeaderSize(Value);
-	void	setFirstFrame(Value);
-	void	setLastFrame(Value);
-	void	setSampleRate(uint32);
-	void	setNumChannels(uint);
-	void	setSampleFormat(uint,bool,bool);
+	void setCompression(bool);
+	void setPause(Value); // ms
+	void setHeaderSize(Value);
+	void setFirstFrame(Value);
+	void setLastFrame(Value);
+	void setSampleRate(uint32);
+	void setNumChannels(uint);
+	void setSampleFormat(uint, bool, bool);
 
-	Validity validity () const override;
-	//void rewind() override;
+	Validity validity() const override;
+	// void rewind() override;
 };
 
 
@@ -516,11 +534,11 @@ class TzxPulses : public TzxSegment
 {
 public:
 	Values pulses;
-	uint count;
-	TzxPulses()					:TzxSegment(TZX_PULSES),count(0){pulses.grow(255);}
-	void appendPulse(Value);
-	Validity validity () const override;
-	void rewind() override;
+	uint   count;
+	TzxPulses() : TzxSegment(TZX_PULSES), count(0) { pulses.grow(255); }
+	void	 appendPulse(Value);
+	Validity validity() const override;
+	void	 rewind() override;
 };
 
 class TzxArchiveInfo : public TzxSegment
@@ -529,15 +547,17 @@ class TzxArchiveInfo : public TzxSegment
 public:
 	struct ArchInfo
 	{
-		uint8 id; uint8 padding[7]; cstr text;
-		ArchInfo(uint id, cstr text) :id(uint8(id)),text(text){}
+		uint8 id;
+		uint8 padding[7];
+		cstr  text;
+		ArchInfo(uint id, cstr text) : id(uint8(id)), text(text) {}
 	};
 	Array<ArchInfo> archinfo;
 
-	TzxArchiveInfo()			:TzxSegment (TZX_ARCHIVE_INFO){}
+	TzxArchiveInfo() : TzxSegment(TZX_ARCHIVE_INFO) {}
 	void addArchiveInfo(uint8 id, cstr text);
-	//Validity validity () const override;
-	//void rewind() override;
+	// Validity validity () const override;
+	// void rewind() override;
 };
 
 class TzxHardwareInfo : public TzxSegment
@@ -546,17 +566,21 @@ class TzxHardwareInfo : public TzxSegment
 public:
 	struct HwInfo
 	{
-		uint8 type; uint8 id; uint8 support;
-		HwInfo(uint8 a,uint8 b,uint8 c) :type(a),id(b),support(c){}
-		bool operator > (HwInfo const& b) const noexcept
-			{ return (type<<11)+(id<<3)+support > (b.type<<11)+(b.id<<3)+b.support; }
+		uint8 type;
+		uint8 id;
+		uint8 support;
+		HwInfo(uint8 a, uint8 b, uint8 c) : type(a), id(b), support(c) {}
+		bool operator>(const HwInfo& b) const noexcept
+		{
+			return (type << 11) + (id << 3) + support > (b.type << 11) + (b.id << 3) + b.support;
+		}
 	};
 	Array<HwInfo> hwinfo;
 
-	TzxHardwareInfo()				:TzxSegment (TZX_HARDWARE_INFO){}
+	TzxHardwareInfo() : TzxSegment(TZX_HARDWARE_INFO) {}
 	void addInfo(uint8 type, uint8 id, uint8 support);
-	//Validity validity () const override;
-	//void rewind() override;
+	// Validity validity () const override;
+	// void rewind() override;
 };
 
 
@@ -565,63 +589,31 @@ public:
 class Segments : public RCArray<Segment>
 {
 public:
-	DataSegment*	find(cstr name) const;
+	DataSegment* find(cstr name) const;
 };
 
 class DataSegments : public RCArray<DataSegment>
 {
 public:
-	DataSegments (Segments const& segments);	// extract DataSegments and subclasses
+	DataSegments(const Segments& segments); // extract DataSegments and subclasses
 };
 
 class CodeSegments : public RCArray<CodeSegment>
 {
 public:
-	CodeSegments (Segments const& segments);	// extract CodeSegments (CODE, TZX, no TEST) from source array
-	void	checkNoFlagsSet () const;
-	uint32	totalCodeSize() const;
+	CodeSegments(const Segments& segments); // extract CodeSegments (CODE, TZX, no TEST) from source array
+	void   checkNoFlagsSet() const;
+	uint32 totalCodeSize() const;
 };
 
 class TzxSegments : public RCArray<TzxSegment>
 {
 public:
-	TzxSegments (Segments const& segments);	// extract TzxSegments from source array
+	TzxSegments(const Segments& segments); // extract TzxSegments from source array
 };
 
 class TestSegments : public RCArray<TestSegment>
 {
 public:
-	TestSegments (Segments const& segments);	// extract TestSegments from source array
+	TestSegments(const Segments& segments); // extract TestSegments from source array
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

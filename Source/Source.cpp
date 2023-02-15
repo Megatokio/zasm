@@ -27,12 +27,11 @@
 #include "Source.h"
 
 
-
 // ----------------------------------------------
 //			Source = Array<SourceLine>
 // ----------------------------------------------
 
-void Source::includeFile (cstr filename_fqn, uint sourceAE_index)
+void Source::includeFile(cstr filename_fqn, uint sourceAE_index)
 {
 	// include another assembler source file at sourceAE_index into this.source[]
 	// die Text-Pointer der SourceLines zeigen alle in tempmem!
@@ -40,21 +39,21 @@ void Source::includeFile (cstr filename_fqn, uint sourceAE_index)
 
 	try
 	{
-		FD fd(filename_fqn,'r');
-		if (fd.file_size() > 10000000) throw AnyError("source file exceeds 10,000,000 bytes");	// sanity
+		FD fd(filename_fqn, 'r');
+		if (fd.file_size() > 10000000) throw AnyError("source file exceeds 10,000,000 bytes"); // sanity
 		fd.skip_utf8_bom();
 
 		RCArray<SourceLine> zsource;
 		for (;;)
 		{
 			cstr s = fd.read_str();
-			if (s==nullptr) break;		// file end
-			if (*s==0x1A) break;		// CP/M file padding
+			if (s == nullptr) break; // file end
+			if (*s == 0x1A) break;	 // CP/M file padding
 			zsource.append(new SourceLine(filename_fqn, zsource.count(), s));
 		}
 
-		insertat(sourceAE_index,zsource);
-		if (count()>1000000) throw AnyError("total source exceeds 1,000,000 lines");	// sanity
+		insertat(sourceAE_index, zsource);
+		if (count() > 1000000) throw AnyError("total source exceeds 1,000,000 lines"); // sanity
 	}
 	catch (AnyError& e)
 	{
@@ -63,25 +62,18 @@ void Source::includeFile (cstr filename_fqn, uint sourceAE_index)
 }
 
 
-
 // ----------------------------------------------
 //				  SourceLine
 // ----------------------------------------------
 
-SourceLine::SourceLine (cstr sourcefile, uint linenumber, cstr text)
-:
-	text(text),						// 2nd ptr
-	sourcefile(sourcefile),			// 2nd ptr
-	sourcelinenumber(linenumber),	// 0-based
-	segment(nullptr),
-	byteptr(0),
-	bytecount(0),
-	label(nullptr),
-	is_data(no),
-	p(text)
+SourceLine::SourceLine(cstr sourcefile, uint linenumber, cstr text) :
+	text(text),					  // 2nd ptr
+	sourcefile(sourcefile),		  // 2nd ptr
+	sourcelinenumber(linenumber), // 0-based
+	segment(nullptr), byteptr(0), bytecount(0), label(nullptr), is_data(no), p(text)
 {}
 
-char SourceLine::peekChar ()
+char SourceLine::peekChar()
 {
 	// skip spaces and peek next char
 	// returns 0 at end of line
@@ -90,7 +82,7 @@ char SourceLine::peekChar ()
 	return *p;
 }
 
-bool SourceLine::testChar (char c)
+bool SourceLine::testChar(char c)
 {
 	// skip spaces and test for and skip next char
 	// returns true if the expected char was found
@@ -99,20 +91,25 @@ bool SourceLine::testChar (char c)
 	return test_char(c);
 }
 
-bool SourceLine::testWord (cstr z)
+bool SourceLine::testWord(cstr z)
 {
 	// test for and skip next word
 	// test is case insensitive
 
 	skip_spaces();
 	cptr q = p;
-	while (*z && to_lower(*z)==to_lower(*q)) { z++; q++; }
-	if (*z) return no;				// character mismatch
-	if (is_idf(*q)) return no;		// word in this.text longer than tested word
-	p = q; return yes;				// hit! => skip word and return true
+	while (*z && to_lower(*z) == to_lower(*q))
+	{
+		z++;
+		q++;
+	}
+	if (*z) return no;		   // character mismatch
+	if (is_idf(*q)) return no; // word in this.text longer than tested word
+	p = q;
+	return yes; // hit! => skip word and return true
 }
 
-bool SourceLine::testDotWord (cstr z)
+bool SourceLine::testDotWord(cstr z)
 {
 	// test for and skip next word
 	// test is case insensitive
@@ -120,11 +117,16 @@ bool SourceLine::testDotWord (cstr z)
 
 	skip_spaces();
 	cptr q = p;
-	q += *q=='.';
-	while (*z && to_lower(*z)==to_lower(*q)) { z++; q++; }
-	if (*z) return no;				// character mismatch
-	if (is_idf(*q)) return no;		// word in this.text longer than tested word
-	p = q; return yes;				// hit! => skip word and return true
+	q += *q == '.';
+	while (*z && to_lower(*z) == to_lower(*q))
+	{
+		z++;
+		q++;
+	}
+	if (*z) return no;		   // character mismatch
+	if (is_idf(*q)) return no; // word in this.text longer than tested word
+	p = q;
+	return yes; // hit! => skip word and return true
 }
 
 bool SourceLine::testEol()
@@ -134,10 +136,10 @@ bool SourceLine::testEol()
 
 	skip_spaces();
 	char c = *p;
-	return c==';' || c==0 || c=='\\';
+	return c == ';' || c == 0 || c == '\\';
 }
 
-void SourceLine::expect (char c)
+void SourceLine::expect(char c)
 {
 	// skip spaces and test for and skip char
 	// throw error if char does not match
@@ -145,7 +147,7 @@ void SourceLine::expect (char c)
 	if (!testChar(c)) throw SyntaxError("'%c' expected", c);
 }
 
-void SourceLine::expectEol ()
+void SourceLine::expectEol()
 {
 	// test for logical end of line
 	// which may be physical end of line or start of a comment
@@ -153,11 +155,13 @@ void SourceLine::expectEol ()
 
 	skip_spaces();
 	char c = *p;
-	if (c==';' || c==0) return;
-	else throw SyntaxError("end of line expected");
+	if (c == ';' || c == 0)
+		return;
+	else
+		throw SyntaxError("end of line expected");
 }
 
-cstr SourceLine::nextWord () noexcept
+cstr SourceLine::nextWord() noexcept
 {
 	// get next word from source line
 	// returns word is const or temp
@@ -165,56 +169,72 @@ cstr SourceLine::nextWord () noexcept
 	// this function is not used for operators!
 
 	skip_spaces();
-	if (*p==';') return "";
-	if (*p==0)   return "";					// endofline
+	if (*p == ';') return "";
+	if (*p == 0) return ""; // endofline
 
 	cstr word = p;
-	char c    = *p++;
+	char c	  = *p++;
 
 	switch (c)
 	{
-	case '!':	return "!";
-	case '~':	return "~";
-	case '+':	if (*p!=c) return "+"; else { p++; return "++"; }
-	case '-':	return "-";
-	case '*':	return "*";
-	case '/':	return "/";
-	case '\\':	return "\\";
-	case '(':	return "(";
-	case ')':	return ")";
-	case ',':	return ",";
-	case '=':	return "=";
-	case '{':	return "{";
-	case '}':	return "}";
-	case '<':	return "<";
-	case '>':	return ">";
+	case '!': return "!";
+	case '~': return "~";
+	case '+':
+		if (*p != c)
+			return "+";
+		else
+		{
+			p++;
+			return "++";
+		}
+	case '-': return "-";
+	case '*': return "*";
+	case '/': return "/";
+	case '\\': return "\\";
+	case '(': return "(";
+	case ')': return ")";
+	case ',': return ",";
+	case '=': return "=";
+	case '{': return "{";
+	case '}': return "}";
+	case '<': return "<";
+	case '>': return ">";
 
-	case '\'':							// 'abcd' ''' or ''
-		if (*p==c) { p++; if (*p!=c) return "''"; p++; return "'''"; }	// special test for '''
+	case '\'': // 'abcd' ''' or ''
+		if (*p == c)
+		{
+			p++;
+			if (*p != c) return "''";
+			p++;
+			return "'''";
+		} // special test for '''
 		goto a;
 
-	case '"':							// "abcd" or ""
-	a:	while (*p!=c && *p) p++;
-		if (*p==c) p++;
+	case '"': // "abcd" or ""
+	a:
+		while (*p != c && *p) p++;
+		if (*p == c) p++;
 		break;
 
-	case '$':							// $, $$ or hex number
-		if (*p=='$') p++;
-		else while (is_hex_digit(*p)) p++;
+	case '$': // $, $$ or hex number
+		if (*p == '$')
+			p++;
+		else
+			while (is_hex_digit(*p)) p++;
 		break;
 
-	case '&':							// hex number
+	case '&': // hex number
 		while (is_hex_digit(*p)) p++;
 		break;
 
-	case '%':							// binary number
+	case '%': // binary number
 		while (is_bin_digit(*p)) p++;
 		break;
 
-	default:						// name, decimal number, garbage
-		if (is_idf(c) || c=='.')
+	default: // name, decimal number, garbage
+		if (is_idf(c) || c == '.')
 		{
-			while (is_idf(*p) || *p=='.') p++;
+			while (is_idf(*p) || *p == '.') p++;
 		}
 		break;
 	}
@@ -222,22 +242,25 @@ cstr SourceLine::nextWord () noexcept
 	return substr(word, p);
 }
 
-cstr SourceLine::nextName (bool dot)
+cstr SourceLine::nextName(bool dot)
 {
 	skip_spaces();
 	cstr word = p;
-	char c = *p;
-	if (is_letter(c) || c=='_' || (dot && c=='.'))
+	char c	  = *p;
+	if (is_letter(c) || c == '_' || (dot && c == '.'))
 	{
-		do { c = *++p; } while(is_idf(c) || (dot && c=='.'));
-		return substr(word,p);
+		do {
+			c = *++p;
+		}
+		while (is_idf(c) || (dot && c == '.'));
+		return substr(word, p);
 	}
 
 	p = word;
 	return "";
 }
 
-cstr SourceLine::whitestr ()
+cstr SourceLine::whitestr()
 {
 	// whitestr() up to error column
 	// error column is expected to be the current parsing position p
@@ -248,31 +271,6 @@ cstr SourceLine::whitestr ()
 	// angezeigt wird, da dann auch die Fehlermeldung entsprechend weiter nach rechts raussteht.
 	// Deshalb wird p zuerst wieder über den Leerraum links von p zurückgestellt.
 
-	while (p>text && *(p-1)<=' ') p--;
-	return ::whitestr(substr(text,p));
+	while (p > text && *(p - 1) <= ' ') p--;
+	return ::whitestr(substr(text, p));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

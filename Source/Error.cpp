@@ -26,22 +26,6 @@
 
 #include "Error.h"
 
-Error::Error (cstr text, SourceLine* sourceline)
-:
-	text(dupstr(text)),
-	sourceline(sourceline)
-{}
+Error::Error(cstr text, SourceLine* sourceline) : text(dupstr(text)), sourceline(sourceline) {}
 
-Error::Error (cstr text, SourceLine* sourceline, va_list va)
-:
-	text(usingstr(text,va)),
-	sourceline(sourceline)
-{}
-
-
-
-
-
-
-
-
+Error::Error(cstr text, SourceLine* sourceline, va_list va) : text(usingstr(text, va)), sourceline(sourceline) {}

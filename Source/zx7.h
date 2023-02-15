@@ -34,6 +34,6 @@
 #include "SyntaxError.h"
 #include "Templates/Array.h"
 
-Array<uint8> compress (const Array<uint8>& input_data, uint32 skip, int32* delta);
+Array<uint8> compress(const Array<uint8>& input_data, uint32 skip, int32* delta);
 
 #endif
