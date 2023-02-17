@@ -20,11 +20,11 @@
 #include "SyntaxError.h"
 #include "Templates/HashMap.h"
 
-typedef uint16		UCS2Char;
-typedef uint32		UCS4Char;
-typedef char*		UTF8Str;  // c-style string
-typedef const char* cUTF8Str; // c-style string literals in utf-8 encoded source files
-typedef uchar*		pstr;	  // length prefixed string
+using UCS2Char = uint16;
+using UCS4Char = uint32;
+using UTF8Str  = char*;		  // c-style string
+using cUTF8Str = const char*; // c-style string literals in utf-8 encoded source files
+using pstr	   = uchar*;	  // length prefixed string
 
 
 class CharMap : private HashMap<UCS2Char, uchar>

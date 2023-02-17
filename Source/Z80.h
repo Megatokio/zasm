@@ -27,13 +27,13 @@ namespace zasm
 class Z80
 {
 public:
-	typedef uint8										 CoreByte;
-	typedef int32										 CpuCycle; // cpu clock cycle
-	typedef uint16										 Address;
-	typedef uint8										 Byte;
-	typedef uint16										 Word;
-	typedef std::function<uint8(CpuCycle, uint16)>		 InputHandler;
-	typedef std::function<void(CpuCycle, uint16, uint8)> OutputHandler;
+	using CoreByte		= uint8;
+	using CpuCycle		= int32; // cpu clock cycle
+	using Address		= uint16;
+	using Byte			= uint8;
+	using Word			= uint16;
+	using InputHandler	= std::function<uint8(CpuCycle, uint16)>;
+	using OutputHandler = std::function<void(CpuCycle, uint16, uint8)>;
 
 	static const uint8 zlog_flags[256];
 

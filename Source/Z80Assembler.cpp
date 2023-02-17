@@ -3478,7 +3478,7 @@ cstr Z80Assembler::compileFile(cstr fqn)
 			c_flags.insertat(2, "-S");	  // compile only, don't link
 		}
 
-		typedef char** cpp;
+		using cpp = char**;
 		execve(c_compiler, cpp(c_flags.getData()), environ); // exec cmd
 		exit(errno);										 // exec failed: return errno: will be printed in error msg,
 															 //				but is ambiguous with cc exit code

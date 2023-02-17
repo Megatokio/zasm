@@ -105,6 +105,6 @@ struct Z80Header
 	bool varyingRamsize() const { return model >= 76 && model <= 83; }
 };
 
-typedef Z80Header* Z80HeaderPtr;
+using Z80HeaderPtr = Z80Header*;
 
 static_assert(z80maxlen == z80v3len + 3, "Mist: Z80Head ist mit Alignment-Bytes aufgebläht…");

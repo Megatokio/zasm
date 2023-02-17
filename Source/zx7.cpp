@@ -35,12 +35,12 @@
 #define MAX_OFFSET 2176	 /* range 1..2176 */
 #define MAX_LEN	   65536 /* range 2..65536 */
 
-typedef struct optimal_t
+struct Optimal
 {
 	uint32 bits;
 	int	   offset;
 	int	   len;
-} Optimal;
+};
 
 static int elias_gamma_bits(int value)
 {

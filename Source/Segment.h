@@ -20,7 +20,7 @@
 #include "SyntaxError.h"
 #include "Templates/RCObject.h"
 #include "Templates/RCPtr.h"
-typedef Array<uint8> Core;
+using Core = Array<uint8>;
 #include "Label.h"
 #include "Source.h"
 #include "Z80Registers.h"

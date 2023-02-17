@@ -27,7 +27,7 @@
 #include "Z80Assembler.h"
 #include "Z80Header.h"
 #include "audio/WavFile.h"
-#include "audio/audio.h"
+#include "audio/convert_audio.h"
 #include "helpers.h"
 #include "kio/peekpoke.h"
 #include "unix/files.h"
@@ -638,7 +638,7 @@ void Z80Assembler::writeTzxFile(FD& fd)
 			// WORD	Length of PILOT tone (number of pulses) {8063 header (flag<128), 3223 data (flag>=128)}
 			// BYTE	Used bits in the last byte (other bits should be 0) {8}
 			//		(e.g. if this is 6, then the bits used (x) in the last byte are: xxxxxx00, where MSb is the leftmost
-			//bit, LSb is the rightmost bit)
+			// bit, LSb is the rightmost bit)
 			// WORD		Pause after this block (ms.) {1000}
 			// BYTE[3]	Length of data that follow
 			// BYTE[N]	Data as in .TAP files
@@ -660,7 +660,7 @@ void Z80Assembler::writeTzxFile(FD& fd)
 			// WORD	Length of ONE bit pulse
 			// BYTE	Used bits in last byte (other bits should be 0)
 			//		(e.g. if this is 6, then the bits used (x) in the last byte are: xxxxxx00, where MSb is the leftmost
-			//bit, LSb is the rightmost bit)
+			// bit, LSb is the rightmost bit)
 			// WORD		Pause after this block (ms.)
 			// BYTE[3]	Length of data that follow
 			// BYTE[N]	Data as in .TAP files
@@ -1329,7 +1329,7 @@ void Z80Assembler::checkSnaFile()
 		uint8 border;	// 7	border color: 0=black ... 7=white
 	};
 	static_assert(sizeof(SnaHead) == 27, "sizeof(SnaHead) wrong!");
-	typedef SnaHead* SnaHeadPtr;
+	using SnaHeadPtr = SnaHead*;
 
 	const uint i0 = 0;
 
@@ -1387,7 +1387,7 @@ void Z80Assembler::checkAceFile()
 		uint32 af, bc, de, hl, ix, iy, sp, pc, af2, bc2, de2, hl2, im, iff1, iff2, i, r, flag_80, z3[0xC0 - 18];
 	};
 	static_assert(sizeof(AceHead) == 0x400, "sizeof(AceHead) wrong!");
-	typedef AceHead* AceHeadPtr;
+	using AceHeadPtr = AceHead*;
 
 	CodeSegments segments(this->segments);
 	segments.checkNoFlagsSet();
@@ -1531,7 +1531,7 @@ void Z80Assembler::checkZX80File()
 		uint16 CH_ADD;			   //	dw	$FFFF	; X2  16422 $4026 IY+$26 Address of next character to be interpreted.
 	};
 	static_assert(sizeof(ZX80Head) == 0x28, "sizeof(ZX80Head) wrong!");
-	typedef ZX80Head* ZX80HeadPtr;
+	using ZX80HeadPtr = ZX80Head*;
 
 	const uint i0 = 0;
 
@@ -1621,12 +1621,12 @@ void Z80Assembler::checkZX81File()
 		uint8 S_POSN_X;			//	Column number for PRINT position.
 		uint8 S_POSN_Y;			//	Line number for PRINT position.
 		uint8 CDFLAG;			//	Various flags. Bit 7 is on (1) during compute and display (SLOW) mode.
-		// PRBUFF ds	33	; Printer buffer (33rd character is ENTER/NEWLINE).
+								// PRBUFF ds	33	; Printer buffer (33rd character is ENTER/NEWLINE).
 		// MEMBOT ds	30	; Calculator’s memory area; used to store numbers that cannot be put on the calculator
 		// stack. 		 dw	0	; not used
 	};
 	static_assert(sizeof(ZX81Head) == 125 - 9 - 65, "sizeof(ZX81Head) wrong!"); // 125 == 0x7D
-	typedef ZX81Head* ZX81HeadPtr;
+	using ZX81HeadPtr = ZX81Head*;
 
 	const uint i0 = 0;
 	uint	   hi = i0;

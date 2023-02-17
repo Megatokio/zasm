@@ -17,9 +17,9 @@
 	TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 */
 
-#include "kio/kio.h"
 #include "Source.h"
 #include "Templates/Array.h"
+#include "kio/kio.h"
 
 
 class Error
@@ -34,4 +34,4 @@ public:
 };
 
 
-typedef Array<Error> Errors;
+using Errors = Array<Error>;
