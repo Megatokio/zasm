@@ -58,7 +58,7 @@ SOURCES += \
 	Libraries/Z80/goodies/z80_disass.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
 	Libraries/Z80/goodies/z80_opcode_length.cpp \
-	Libraries/audio/audio.cpp \
+	Libraries/audio/convert_audio.cpp \
 	Libraries/audio/WavFile.cpp \
 
 HEADERS += \
@@ -105,7 +105,7 @@ HEADERS += \
 	Libraries/Z80/goodies/z80_opcodes.h \
 	Libraries/Z80/goodies/z80_goodies.h \
 	Libraries/hash/sdbm_hash.h \
-	Libraries/audio/audio.h \
+	Libraries/audio/convert_audio.h \
 	Libraries/audio/WavFile.h \
 
 OTHER_FILES += \
