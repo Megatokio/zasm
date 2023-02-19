@@ -16,8 +16,8 @@
 	TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 */
 
-#include "kio/kio.h"
 #include "Z80Assembler.h"
+#include "kio/kio.h"
 
 
 static inline void skip_space(cptr& p) noexcept

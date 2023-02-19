@@ -1,14 +1,16 @@
 ---
 Language:        Cpp
-BasedOnStyle:    gnu
+#BasedOnStyle:   gnu
 TabWidth:        4
+DisableFormat:   false
+ColumnLimit:     120
 
 # https://releases.llvm.org/15.0.0/tools/clang/docs/ClangFormatStyleOptions.html
 # https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 
 AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
-#AlignArrayOfStructures: None
+AlignArrayOfStructures: None
 AlignConsecutiveAssignments:
   Enabled:         true
   AcrossEmptyLines: false
@@ -33,7 +35,7 @@ AlignConsecutiveMacros:
   AcrossComments:  false
   AlignCompound:   false
   PadOperators:    false
-AlignEscapedNewlines: Right
+AlignEscapedNewlines: Left
 AlignOperands:   Align
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
@@ -43,7 +45,7 @@ AllowShortBlocksOnASingleLine: Always
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
 AllowShortLambdasOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
@@ -51,8 +53,8 @@ AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros:
   - __capability
-BinPackArguments: false
-BinPackParameters: false
+BinPackArguments: true
+BinPackParameters: true
 BraceWrapping:
   AfterCaseLabel:  true
   AfterClass:      true
@@ -82,7 +84,6 @@ BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: AfterColon
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: false
-ColumnLimit:     120
 CommentPragmas:  '^ IWYU pragma:'
 QualifierAlignment: Left
 CompactNamespaces: false
@@ -92,13 +93,10 @@ Cpp11BracedListStyle: true
 #DeriveLineEnding: true
 #LineEnding: DeriveLF
 DerivePointerAlignment: false
-DisableFormat:   false
 EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: LogicalBlock
 ExperimentalAutoDetectBinPacking: false
-PackConstructorInitializers: BinPack
-#ConstructorInitializerAllOnOneLineOrOnePerLine: false
-#AllowAllConstructorInitializersOnNextLine: true
+PackConstructorInitializers: CurrentLine
 FixNamespaceComments: true
 ForEachMacros:
   - foreach
@@ -163,7 +161,7 @@ PenaltyIndentedWhitespace: 0
 PointerAlignment: Left
 PPIndentWidth:   2
 ReferenceAlignment: Pointer
-ReflowComments:  true
+ReflowComments:  false
 RemoveBracesLLVM: false
 RequiresClausePosition: OwnLine
 SeparateDefinitionBlocks: Leave

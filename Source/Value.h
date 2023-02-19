@@ -26,9 +26,9 @@
 
 #ifndef Value_h
 #define Value_h
-#include "kio/kio.h"
 #include "SyntaxError.h"
 #include "Templates/Array.h"
+#include "kio/kio.h"
 
 
 enum Validity {

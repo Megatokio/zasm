@@ -34,10 +34,10 @@
 	4.4.0 2020: testcode runner
 */
 
-#include "kio/kio.h"
 #include "Z80/goodies/z80_goodies.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
+#include "kio/kio.h"
 #include "unix/FD.h"
 #include "unix/files.h"
 #include <dirent.h>

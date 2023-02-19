@@ -16,11 +16,11 @@
 	TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 */
 
-#include "kio/kio.h"
 #include "Z80.h"
 #include "Z80/goodies/z80_goodies.h"
 #include "Z80/goodies/z80_opcodes.h"
 #include "Z80Assembler.h"
+#include "kio/kio.h"
 
 using namespace zasm;
 

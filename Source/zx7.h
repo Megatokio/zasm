@@ -30,9 +30,9 @@
 #ifndef ZX7_H
 #define ZX7_H
 
-#include "kio/kio.h"
 #include "SyntaxError.h"
 #include "Templates/Array.h"
+#include "kio/kio.h"
 
 Array<uint8> compress(const Array<uint8>& input_data, uint32 skip, int32* delta);
 

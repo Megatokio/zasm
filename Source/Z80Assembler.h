@@ -17,7 +17,6 @@
 	TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 */
 
-#include "kio/kio.h"
 #include "Error.h"
 #include "Label.h"
 #include "Macro.h"
@@ -26,6 +25,7 @@
 #include "SyntaxError.h"
 #include "Templates/Array.h"
 #include "Z80/goodies/z80_goodies.h"
+#include "kio/kio.h"
 
 
 // hints may be set by caller:
