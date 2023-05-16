@@ -41,7 +41,7 @@ OBJECTS = \
 		tmp/z80_disass.o \
 		tmp/kio.o \
 		tmp/WavFile.o \
-		tmp/audio.o \
+		tmp/convert_audio.o \
 		$(OBJS)
 
 
@@ -98,7 +98,7 @@ tmp/kio.o:
 tmp/WavFile.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/WavFile.o Libraries/audio/WavFile.cpp
 
-tmp/audio.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/audio.o Libraries/audio/audio.cpp
+tmp/convert_audio.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/convert_audio.o Libraries/audio/convert_audio.cpp
 
 
