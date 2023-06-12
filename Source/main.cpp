@@ -48,14 +48,14 @@
 
 
 // static const char appl_name[] = "zasm";
-#define VERSION "4.4.10"
+#define VERSION "4.4.11"
 
 // Help text:
 // optimized for 80 characters / column
 //
 static const char version[] =
 	"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2022 Günter Woigk.\n"
+	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2023 Günter Woigk.\n"
 	"  version " VERSION ", %s, for " _PLATFORM
 	".\n" // version, date, platform
 	"  homepage: https://k1.spdns.de/zasm/\n"
@@ -126,6 +126,15 @@ static cstr compiledatestr()
 }
 
 static cstr help() { return catstr(usingstr(version, compiledatestr()), syntax, examples, options); }
+
+static cstr posix_path(cstr s) // 4.4.11
+{
+#ifdef __CYGWIN__
+	// fix directory separator under Cygwin (Windows):
+	s = replacedstr(s, '\\', '/');
+#endif
+	return s;
+}
 
 static void read_testdir(cstr path, Array<cstr>& filepaths)
 {
@@ -306,18 +315,18 @@ static int doit(Array<cstr> argv)
 		{
 			if (!inputfile)
 			{
-				inputfile = s;
+				inputfile = posix_path(s);
 				continue;
 			}
 			// if outfile is not prefixed with -o then it must be the last argument:
 			if (!outputfile && i == argv.count())
 			{
-				outputfile = s;
+				outputfile = posix_path(s);
 				continue;
 			}
 			if (!listfile)
 			{
-				listfile = s;
+				listfile = posix_path(s);
 				continue;
 			}
 			goto h;
@@ -446,14 +455,10 @@ static int doit(Array<cstr> argv)
 			if (startswith(s, "--target=")) // 4.4.6
 			{
 				cstr t = lowerstr(s + 9);
-				if (eq(t, "ram"))
-					target = BIN;
-				else if (eq(t, "bin"))
-					target = BIN;
-				else if (eq(t, "rom"))
-					target = ROM;
-				else
-					goto h;
+				if (eq(t, "ram")) target = BIN;
+				else if (eq(t, "bin")) target = BIN;
+				else if (eq(t, "rom")) target = ROM;
+				else goto h;
 				continue;
 			}
 			goto h;
@@ -475,17 +480,13 @@ static int doit(Array<cstr> argv)
 			case 'g': cgi_mode = yes; continue;
 
 			case 'v':
-				if (*(s + 1) >= '0' && *(s + 1) <= '3')
-					verbose = *++s - '0';
-				else
-					++verbose;
+				if (*(s + 1) >= '0' && *(s + 1) <= '3') verbose = *++s - '0';
+				else ++verbose;
 				continue;
 
 			case 'i':
-				if (inputfile || i == argv.count())
-					goto h;
-				else
-					inputfile = argv[i++];
+				if (inputfile || i == argv.count()) goto h;
+				else inputfile = posix_path(argv[i++]);
 				continue;
 			case 'o':
 				if (*(s + 1) == '0')
@@ -494,10 +495,8 @@ static int doit(Array<cstr> argv)
 					++s;
 					continue;
 				}
-				if (outputfile || i == argv.count())
-					goto h;
-				else
-					outputfile = argv[i++];
+				if (outputfile || i == argv.count()) goto h;
+				else outputfile = posix_path(argv[i++]);
 				continue;
 			case 'l':
 				if (*(s + 1) == '0')
@@ -506,35 +505,25 @@ static int doit(Array<cstr> argv)
 					++s;
 					continue;
 				}
-				if (listfile || i == argv.count())
-					goto h;
-				else
-					listfile = argv[i++];
+				if (listfile || i == argv.count()) goto h;
+				else listfile = posix_path(argv[i++]);
 				continue;
 
 			case 'c':
-				if (c_compiler || i == argv.count())
-					goto h;
-				else
-					c_compiler = argv[i++];
+				if (c_compiler || i == argv.count()) goto h;
+				else c_compiler = argv[i++];
 				continue;
 			case 'I':
-				if (c_includes || i == argv.count())
-					goto h;
-				else
-					c_includes = argv[i++];
+				if (c_includes || i == argv.count()) goto h;
+				else c_includes = posix_path(argv[i++]);
 				continue;
 			case 'L':
-				if (stdlib_dir || i == argv.count())
-					goto h;
-				else
-					stdlib_dir = argv[i++];
+				if (stdlib_dir || i == argv.count()) goto h;
+				else stdlib_dir = posix_path(argv[i++]);
 				continue;
 			case 't':
-				if (tempdir || i == argv.count())
-					goto h;
-				else
-					tempdir = argv[i++];
+				if (tempdir || i == argv.count()) goto h;
+				else tempdir = posix_path(argv[i++]);
 				continue;
 			default: goto h;
 			}
@@ -617,10 +606,8 @@ static int doit(Array<cstr> argv)
 		if (verbose)
 		{
 			log("\ntotal time: %3.4f sec.\n", now() - start);
-			if (errors > 1)
-				log("\nzasm: %u errors\n\n", errors);
-			else
-				log(errors ? "\nzasm: 1 error\n\n" : "zasm: no errors\n");
+			if (errors > 1) log("\nzasm: %u errors\n\n", errors);
+			else log(errors ? "\nzasm: 1 error\n\n" : "zasm: no errors\n");
 		}
 		return errors > 0;
 	}
@@ -791,16 +778,10 @@ static int doit(Array<cstr> argv)
 			log("%s%s^ %s\n", spacestr(int(strlen(linenumber)) + 2), sourceline->whitestr(), e.text);
 		}
 
-		log("assembled file: %s\n    %u lines, %u pass%s, %3.4f sec.\n",
-			filename_from_path(inputfile),
-			ass.numSourcelines(),
-			ass.numPasses(),
-			ass.numPasses() == 1 ? "" : "es",
-			now() - start);
-		if (errors > 1)
-			log("    %u errors\n\n", errors);
-		else
-			log(errors ? "    1 error\n\n" : "    no errors\n\n");
+		log("assembled file: %s\n    %u lines, %u pass%s, %3.4f sec.\n", filename_from_path(inputfile),
+			ass.numSourcelines(), ass.numPasses(), ass.numPasses() == 1 ? "" : "es", now() - start);
+		if (errors > 1) log("    %u errors\n\n", errors);
+		else log(errors ? "    1 error\n\n" : "    no errors\n\n");
 	}
 
 	return errors > 0; // 0=ok, 1=errors
