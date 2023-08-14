@@ -46,9 +46,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef __CYGWIN__
+  #include <sys/cygwin.h>
+#endif
+
 
 // static const char appl_name[] = "zasm";
-#define VERSION "4.4.11"
+#define VERSION "4.4.12"
 
 // Help text:
 // optimized for 80 characters / column
@@ -127,13 +131,19 @@ static cstr compiledatestr()
 
 static cstr help() { return catstr(usingstr(version, compiledatestr()), syntax, examples, options); }
 
-static cstr posix_path(cstr s) // 4.4.11
+static cstr posix_path(cstr s) // 4.4.12
 {
 #ifdef __CYGWIN__
-	// fix directory separator under Cygwin (Windows):
-	s = replacedstr(s, '\\', '/');
-#endif
+	char temp[PATH_MAX];
+	if (cygwin_conv_path(CCP_WIN_A_TO_POSIX | CCP_RELATIVE, s, temp, PATH_MAX))
+	{
+		log("--> convert path %s failed: %s\nzasm: 1 error\n", s, strerror(errno));
+		exit(1);
+	}
+	return dupstr(temp);
+#else
 	return s;
+#endif
 }
 
 static void read_testdir(cstr path, Array<cstr>& filepaths)
