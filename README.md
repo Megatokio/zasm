@@ -30,7 +30,7 @@ Run automated tests on the generated code.
 #### Web links
 
 Project web page: [k1.spdns.de](https://k1.spdns.de/Develop/Projects/zasm/Distributions/).  
-There you can download Binaries for OSX and Linux and some older versions for other OSes  
-and there you find the [Documentation](https://k1.spdns.de/Develop/Projects/zasm/Documentation/) 
+Here you can download executables for Linux, MacOS and Windows and some older versions for other OSes,
+find the [Documentation](https://k1.spdns.de/Develop/Projects/zasm/Documentation/)
 and an [online assembler](https://k1.spdns.de/cgi-bin/zasm.cgi).
 
