@@ -1,4 +1,4 @@
-/*	Copyright  (c)	Günter Woigk 2014 - 2021
+/*	Copyright  (c)	Günter Woigk 2014 - 2023
 					mailto:kio@little-bat.de
 
 	This program is distributed in the hope that it will be useful,
@@ -77,7 +77,8 @@ Segment::Segment(SegmentType type, cstr name) :
 	is_code(no),
 	is_test(no),
 	is_tzx(no),
-	dpos()
+	dpos(),
+	max_dpos()
 {}
 
 // protected:
@@ -143,15 +144,18 @@ void DataSegment::rewind()
 	// => preserves size
 	// => preserves segment address
 
-	assert(!resizable || size.value == dpos.value || dpos.value == 0 || !dpos.is_valid() || !size.is_valid());
+	assert(
+		!resizable || size.value == max_dpos.value || max_dpos.value == 0 || !max_dpos.is_valid() || !size.is_valid());
 
-	dpos = 0;
-	lpos = address;
+	max_dpos = 0;
+	dpos	 = 0;
+	lpos	 = address;
 }
 
 void CodeSegment::rewind()
 {
 	pilotsym_idx = datasym_idx = 0;
+	memset(core.getData(), fillbyte.value, core.count());
 	DataSegment::rewind();
 }
 
@@ -184,6 +188,7 @@ void DataSegment::setAddress(cValue& new_address)
 
 	lpos = address = new_address;
 	dpos		   = 0;
+	max_dpos	   = 0;
 }
 
 void DataSegment::setSize(cValue& newsize)
@@ -199,7 +204,7 @@ void DataSegment::setSize(cValue& newsize)
 
 		if (uint32(newsize) > 0x10000) throw SyntaxError("segment %s size out of range: %i", name, int(size));
 
-		if (dpos.is_valid() && dpos > newsize) throw SyntaxError("segment %s overflow", name);
+		if (max_dpos.is_valid() && max_dpos > newsize) throw SyntaxError("segment %s overflow", name);
 
 		if (address.is_valid() && address.value + newsize.value > 0x10000)
 			throw SyntaxError(
@@ -296,8 +301,9 @@ void DataSegment::skipExistingData(uint n)
 
 	lpos.value += n;
 	dpos.value += n;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
+	if (max_dpos.value > size.value && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
 }
 
 void DataSegment::store(int byte)
@@ -309,8 +315,9 @@ void DataSegment::store(int byte)
 
 	dpos.value++;
 	lpos.value++;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid()) throw FatalError("segment overflow");
+	if (max_dpos.value > size.value && max_dpos.is_valid() && size.is_valid()) throw FatalError("segment overflow");
 }
 
 void DataSegment::storeBlock(cptr data, uint n)
@@ -345,6 +352,7 @@ void DataSegment::storeSpace(cValue& sz)
 
 	if (sz.is_invalid())
 	{
+		if (max_dpos.is_valid()) max_dpos.validity = preliminary;
 		if (dpos.is_valid()) dpos.validity = preliminary;
 		if (lpos.is_valid()) lpos.validity = preliminary;
 		return;
@@ -352,8 +360,9 @@ void DataSegment::storeSpace(cValue& sz)
 
 	lpos += sz;
 	dpos += sz;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
+	if (max_dpos.value > size.value && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
 }
 
 void DataSegment::storeSpace(cValue& sz, int c)
@@ -372,8 +381,9 @@ void CodeSegment::store(int byte)
 
 	dpos.value++;
 	lpos.value++;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid()) throw FatalError("segment overflow");
+	if (max_dpos.value > size.value && max_dpos.is_valid() && size.is_valid()) throw FatalError("segment overflow");
 }
 
 void CodeSegment::storeBlock(cptr data, uint n)
@@ -386,8 +396,9 @@ void CodeSegment::storeBlock(cptr data, uint n)
 
 	lpos.value += n;
 	dpos.value += n;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos.value > size.value && dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
+	if (max_dpos.value > size.value && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
 }
 
 void CodeSegment::storeSpace(cValue& sz, int c)
@@ -410,6 +421,7 @@ void CodeSegment::storeSpace(cValue& sz, int c)
 
 	if (sz.is_invalid())
 	{
+		if (max_dpos.is_valid()) max_dpos.validity = preliminary;
 		if (dpos.is_valid()) dpos.validity = preliminary;
 		if (lpos.is_valid()) lpos.validity = preliminary;
 		return;
@@ -419,8 +431,9 @@ void CodeSegment::storeSpace(cValue& sz, int c)
 
 	lpos += sz;
 	dpos += sz;
+	if (dpos > max_dpos) max_dpos = dpos;
 
-	if (dpos > size && dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
+	if (max_dpos > size && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
 }
 
 void CodeSegment::storeSpace(cValue& sz)
@@ -442,19 +455,33 @@ void DataSegment::storeSpaceUpToAddress(cValue& addr, int c)
 	lpos = addr; // set value and validity
 }
 
+void DataSegment::moveToAddress(cValue& addr)
+{
+	check_value(addr, "addr", 0, 0x10000);
+
+	Value sz = addr - lpos;
+	lpos	 = addr;
+	dpos += sz;
+	if (dpos > max_dpos) max_dpos = dpos;
+
+	if (max_dpos > size && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
+}
+
 void CodeSegment::clearTrailingBytes() noexcept
 {
-	// clear remaining bytes after current write index 'dpos' without moving dpos.
-	// used to clear unused trailing bytes at the end of a fixed-size CodeSegment.
-	// writeHexFile() and writeS19File actually write data up to dpos only
-	// whereas all binary output formats write the whole segment, so it must be cleared.
+	// no longer needed because whole core is cleared in rewind()
 
-	Value sz = size - dpos;
-	if (sz.is_invalid()) return;
-
-	assert(dpos.value <= size.value);
-
-	if (sz.value) memset(&core[dpos.value], fillbyte.value, uint32(sz.value));
+	//	// clear remaining bytes after current write index 'dpos' without moving dpos.
+	//	// used to clear unused trailing bytes at the end of a fixed-size CodeSegment.
+	//	// writeHexFile() and writeS19File actually write data up to dpos only
+	//	// whereas all binary output formats write the whole segment, so it must be cleared.
+	//
+	//	Value sz = size - dpos;
+	//	if (sz.is_invalid()) return;
+	//
+	//	assert(dpos.value <= size.value);
+	//
+	//	if (sz.value) memset(&core[dpos.value], fillbyte.value, uint32(sz.value));
 }
 
 Validity DataSegment::validity() const

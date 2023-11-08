@@ -146,7 +146,7 @@ void Z80Assembler::writeHexFile(FD& fd)
 		if (target == BIN) address = uint(s.address);
 
 		const uint8* data = s.outputData();
-		uint32		 size = s.outputSizeUpToDpos();
+		uint32		 size = s.outputSizeUpToMaxDpos();
 		write_intel_hex(fd, address, data, size);
 		address += s.outputSize(); // ROM only
 	}
@@ -184,7 +184,7 @@ void Z80Assembler::writeS19File(FD& fd)
 		if (target == BIN) address = uint(s.address);
 
 		const uint8* data = s.outputData();
-		uint32		 size = s.outputSizeUpToDpos();
+		uint32		 size = s.outputSizeUpToMaxDpos();
 		srcount += write_motorola_s19(fd, address, data, size);
 		address += s.outputSize(); // ROM only
 	}

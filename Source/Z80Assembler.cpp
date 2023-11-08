@@ -953,7 +953,7 @@ void Z80Assembler::assembleOnePass(uint pass) noexcept
 			if (!s) continue;
 			Value& seg_address = s->isData() ? data_address : s->isCode() ? code_address : test_address;
 
-			if (s->resizable) s->setSize(s->dpos);
+			if (s->resizable) s->setSize(s->max_dpos);
 			else if (auto d = dynamic_cast<CodeSegment*>(s)) { d->clearTrailingBytes(); }
 
 			if (s->relocatable) s->setAddress(seg_address);
@@ -4865,14 +4865,21 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 	case '.loc':
 	case '.org':
 	case ' org':
-		// org <value>			 ; add space up to address
+		// org <value>			 ; add space up to address, note: MASM allowed setting ORG backwards
 		// org <value>, fillbyte ; add space up to address
-		q.is_data = yes;
 		{
 			Value n = value(q);
 			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n, value(q).value);
-			else static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n);
+			if (q.testComma())
+			{
+				q.is_data = yes;
+				static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n, value(q).value);
+			}
+			else
+			{
+				static_cast<DataSegment*>(current_segment_ptr)->moveToAddress(n);
+				q.byteptr = uint(current_segment_ptr->dpos); // don't log tons of spaces or crash if ORG moves backward
+			}
 		}
 		return;
 

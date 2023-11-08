@@ -1,5 +1,5 @@
 #pragma once
-/*	Copyright  (c)	Günter Woigk 2014 - 2021
+/*	Copyright  (c)	Günter Woigk 2014 - 2023
 					mailto:kio@little-bat.de
 
 	This file is free software.
@@ -82,6 +82,7 @@ public:
 	bool is_tzx;  // TzxSegment subclasses
 
 	Value dpos; // code deposition index
+	Value max_dpos;
 
 public:
 	bool			 isData() const { return is_data; }
@@ -163,6 +164,7 @@ public:
 	void storeSpace(cValue& sz, int) override;
 	void storeSpace(cValue& sz) override;
 
+	void moveToAddress(cValue&);
 	void storeSpaceUpToAddress(cValue&);
 	void storeSpaceUpToAddress(cValue&, int);
 	void skipExistingData(uint sz);
@@ -207,7 +209,7 @@ public:
 
 	uint8*		 getData() { return core.getData(); }
 	uint		 outputSize() const { return compressed ? ccore.count() : uint(size); }
-	uint		 outputSizeUpToDpos() const { return compressed ? ccore.count() : uint(dpos); }
+	uint		 outputSizeUpToMaxDpos() const { return compressed ? ccore.count() : uint(max_dpos); }
 	const uint8* outputData() const { return compressed ? ccore.getData() : core.getData(); }
 	Validity	 validity() const override;
 	void		 rewind() override;
