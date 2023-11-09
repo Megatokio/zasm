@@ -282,8 +282,7 @@ void Z80Assembler::writeZ80File(FD& fd)
 		CodeSegment& s = segments[i0 + 1];
 		if (hs.core[12] != 255 && hs.core[12] & 0x20) // head.data.bit5
 			write_compressed_page_z80(fd, -1, s.getData(), uint32(s.size));
-		else
-			fd.write_bytes(s.getData(), uint32(s.size));
+		else fd.write_bytes(s.getData(), uint32(s.size));
 	}
 	else // write v2.0++ pages:
 	{
@@ -400,10 +399,8 @@ void Z80Assembler::writeTzxFile(FD& fd)
 					assert(s->sample_size == 2);
 
 					Array<int16> words(num_samples);
-					if (s->little_endian)
-						fd.read_data_z(words.getData(), num_samples);
-					else
-						fd.read_data_x(words.getData(), num_samples);
+					if (s->little_endian) fd.read_data_z(words.getData(), num_samples);
+					else fd.read_data_x(words.getData(), num_samples);
 					if (!s->signed_samples) convert_audio(reinterpret_cast<Array<uint16>&>(words), words);
 					convert_audio(words, samples);
 				}
@@ -1158,8 +1155,7 @@ void Z80Assembler::checkTzxFile()
 	{
 		if (auto cs = dynamic_cast<CodeSegment*>(segments[i].ptr()))
 		{
-			if (cs->has_flag)
-				cs0_name = cs->name;
+			if (cs->has_flag) cs0_name = cs->name;
 			else if (segments[i - 1]->is_tzx)
 				if (cs0_name) throw SyntaxError("non-code TZX block in tape block %s", cs0_name);
 		}
@@ -1192,8 +1188,7 @@ void Z80Assembler::checkTzxFile()
 		{
 			if (is_simple_data_symbols(s->datasym) && is_simple_pilot_scheme(s->pilot, s->pilotsym))
 			{
-				if (s->no_pilot)
-					s->type = TZX_PURE_DATA;
+				if (s->no_pilot) s->type = TZX_PURE_DATA;
 				else if (s->checksum_ace) // note: if Jupiter Ace is indicated,
 					s->type = TZX_TURBO;  // then TZX_TURBO uses an approximation of the Jupiter ACE timing
 				else
@@ -1277,10 +1272,8 @@ void Z80Assembler::checkTzxFile()
 					for (uint i = 0; i < s->pilot.count(); i += 2) // note: up to 2*0xffff entries allowed
 					{
 						uint idx = uint(s->pilot[i]); // symbol idx
-						if (idx < s->pilotsym.count())
-							used[idx] = true;
-						else
-							throw SyntaxError("pilot symbol #%u used but not defined", idx);
+						if (idx < s->pilotsym.count()) used[idx] = true;
+						else throw SyntaxError("pilot symbol #%u used but not defined", idx);
 
 						int rep = s->pilot[i + 1].value; // repetitions
 						if (uint(rep) > 0xffff) throw SyntaxError("pilot #%u: too many repetitions %i", i / 2, rep);
@@ -1440,10 +1433,8 @@ void Z80Assembler::checkAceFile()
 				uint ramtop = peek2Z(&head->ramtop);
 				if (ramsize_valid && ramtop != 0x2000 + ramsize)
 					setError(
-						"segment %s: settings[0].ramtop != ram end address 0x%04X (ramtop=0x%04X)",
-						s.name,
-						0x2000 + uint(ramsize),
-						ramtop);
+						"segment %s: settings[0].ramtop != ram end address 0x%04X (ramtop=0x%04X)", s.name,
+						0x2000 + uint(ramsize), ramtop);
 
 				uint sp = peek2Z(&head->sp);
 				if (sp < 0x2002)
@@ -1452,9 +1443,7 @@ void Z80Assembler::checkAceFile()
 				if (sp > ramtop)
 					setError(
 						"segment %s: z80_regs[6].sp points behind settings[0].ramtop (sp=0x%04X, ramtop=0x%04X)",
-						s.name,
-						sp,
-						ramtop);
+						s.name, sp, ramtop);
 				if (peek2Z(&head->im) > 2)
 					setError("segment %s: z80_regs[12].int_mode must be in range 0 .. 2 (im=%u)", s.name, head->im);
 				if (peek2Z(&head->iff1) > 1)
@@ -1556,10 +1545,8 @@ void Z80Assembler::checkZX80File()
 	uint16	  E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000 + ramsize)
 		setError(
-			"segment %s: E_LINE ($400A) must match ram end address $%04X (E_LINE=$%04X)",
-			hs.name,
-			0x4000 + uint(hs.size),
-			E_LINE);
+			"segment %s: E_LINE ($400A) must match ram end address $%04X (E_LINE=$%04X)", hs.name,
+			0x4000 + uint(hs.size), E_LINE);
 
 	if (verbose) // last byte of a (clean) file must be 0x80 (last byte of VARS):
 	{
@@ -1567,8 +1554,7 @@ void Z80Assembler::checkZX80File()
 		while (i < segments.count()) { i++; }
 		while (segments[--i]->size.value == 0) {}
 		CodeSegment& ls = segments[i];
-		if (ls.compressed)
-			logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
+		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 		else if (ls[uint(ls.size) - 1] != 0x80)
 			logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 	}
@@ -1669,9 +1655,7 @@ void Z80Assembler::checkZX81File()
 	uint16	  E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000 + ramsize)
 		setError(
-			"segment %s: E_LINE must match ram end address $%04X (E_LINE=$%04X)",
-			hs.name,
-			0x4000 + uint(hs.size),
+			"segment %s: E_LINE must match ram end address $%04X (E_LINE=$%04X)", hs.name, 0x4000 + uint(hs.size),
 			E_LINE);
 
 	if (verbose) // last byte of a (clean) file must be 0x80 (last byte of VARS):
@@ -1680,8 +1664,7 @@ void Z80Assembler::checkZX81File()
 		while (i < segments.count()) { i++; }
 		while (segments[--i]->size.value == 0) {}
 		CodeSegment& ls = segments[i];
-		if (ls.compressed)
-			logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
+		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 		else if (ls[uint(ls.size) - 1] != 0x80)
 			logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 	}
@@ -1792,17 +1775,13 @@ void Z80Assembler::checkZ80File()
 		case 1:			  // IF1, Disciple or Plus D Rom
 			goto anypage; // TODO: b&w machines may have different rom size (not yet supported in zxsp)
 		case 11:		  // Multiface Rom or ram page if ram size > 128k
-			if (ramsize > 128 kB)
-				goto rampage;
-			else
-				goto anypage;
+			if (ramsize > 128 kB) goto rampage;
+			else goto anypage;
 		case 12: // SPECTRA Rom
 		case 13: // SPECTRA Ram
 		case 14: // SPECTRA Ram
-			if (spectra_used)
-				goto anypage;
-			else
-				goto rampage;
+			if (spectra_used) goto anypage;
+			else goto rampage;
 		case 8: // convert page number 48k -> 128k
 			if (!paged_mem && !varying_pagesize) page_id = 3;
 			goto rampage;

@@ -152,20 +152,14 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 
 	if (verbose >= 2)
 	{
-		if (cpu_clock == 0)
-			logline("  speed: unlimited");
-		else
-			logline("  speed: %i cc/s", cpu_clock);
-		if (with_timeout)
-			logline("  timeout: %.3f sec", timeout);
-		else
-			logline("  timeout: none");
+		if (cpu_clock == 0) logline("  speed: unlimited");
+		else logline("  speed: %i cc/s", cpu_clock);
+		if (with_timeout) logline("  timeout: %.3f sec", timeout);
+		else logline("  timeout: none");
 		if (with_interrupts)
 		{
-			if (cc_per_int > 1000)
-				logline("  interrupts: after %i cc", cc_per_int);
-			else
-				logline("  interrupts: %i Hz", int_per_sec);
+			if (cc_per_int > 1000) logline("  interrupts: after %i cc", cc_per_int);
+			else logline("  interrupts: %i Hz", int_per_sec);
 			if (cpu.int_end > 0) logline("  interrupt active for %i cc", cpu.int_end);
 		}
 	}
@@ -266,8 +260,7 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 				if (ixcbxh_enabled) cpuid = CpuZ80_ixcbxh;
 				throw AnyError("%s", disassemble(cpuid, cpu.core, pc));
 			}
-			else
-				assert(rval == Z80::BreakPoint);
+			else assert(rval == Z80::BreakPoint);
 		}
 		catch (AnyError& e) // input, output or int_ack_byte:
 		{
@@ -290,11 +283,8 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 			{
 				if (int16(regvalue) != int16(e.value))
 					setError(
-						e.sourceline,
-						"register %s = %i ≠ expected %i",
-						e.name,
-						e.value < 0 ? int(int16(regvalue)) : regvalue,
-						e.value);
+						e.sourceline, "register %s = %i ≠ expected %i", e.name,
+						e.value < 0 ? int(int16(regvalue)) : regvalue, e.value);
 			}
 			else if (eq(e.name, "cc_min"))
 			{
@@ -317,8 +307,7 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 				if (regvalue != e.value)
 					setError(e.sourceline, "register %s = %i ≠ expected %i", e.name, regvalue, e.value);
 			}
-			else
-				IERR();
+			else IERR();
 		}
 	}
 

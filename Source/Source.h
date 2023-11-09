@@ -102,8 +102,7 @@ public:
 			p++;
 			return true;
 		}
-		else
-			return false;
+		else return false;
 	}
 
 	// these automatically skip white space:

@@ -41,7 +41,11 @@ public:
 
 public:
 	Macro(Array<cstr> args, uint32 a, uint32 e, char tag, bool required) :
-		args(std::move(args)), mdef(a), endm(e), tag(tag), tag_required(required)
+		args(std::move(args)),
+		mdef(a),
+		endm(e),
+		tag(tag),
+		tag_required(required)
 	{}
 };
 

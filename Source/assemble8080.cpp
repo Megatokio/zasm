@@ -54,12 +54,9 @@ int Z80Assembler::get8080Register(SourceLine& q)
 		if (n.is_valid() && n.value != int8(n.value)) throw SyntaxError("offset out of range");
 		q.expect('(');
 		w = q.nextWord();
-		if ((*w | 0x20) == 'x')
-			n.value = (PFX_IX << 8) + (n.value & 0xff);
-		else if ((*w | 0x20) == 'y')
-			n.value = (PFX_IY << 8) + (n.value & 0xff);
-		else
-			throw SyntaxError("register X or Y exepcted");
+		if ((*w | 0x20) == 'x') n.value = (PFX_IX << 8) + (n.value & 0xff);
+		else if ((*w | 0x20) == 'y') n.value = (PFX_IY << 8) + (n.value & 0xff);
+		else throw SyntaxError("register X or Y exepcted");
 		q.expectClose();
 		return n.value;
 	}
@@ -95,16 +92,13 @@ int Z80Assembler::get8080WordRegister(SourceLine& q, uint what)
 			}
 		}
 	}
-	else if (what == BDHSP && c1 == 's' && c2 == 'p' && *w == 0)
-		return 48;
-	else if (what == BDHAF && c1 == 'p' && c2 == 's' && (*w++ | 0x20) == 'w' && *w == 0)
-		return 48;
+	else if (what == BDHSP && c1 == 's' && c2 == 'p' && *w == 0) return 48;
+	else if (what == BDHAF && c1 == 'p' && c2 == 's' && (*w++ | 0x20) == 'w' && *w == 0) return 48;
 
 	throw SyntaxError(
-		"word register %s expected",
-		what == 0 ? "B or D" :
-		what == 1 ? "B, D, H or SP" :
-					"B, D, H or PSW");
+		"word register %s expected", what == 0 ? "B or D" :
+									 what == 1 ? "B, D, H or SP" :
+												 "B, D, H or PSW");
 }
 
 void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
@@ -221,10 +215,8 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 
 	cmp:
 		r = get8080Register(q);
-		if (r < 8)
-			return store(instr + r); // cmp r
-		else
-			return store(r >> 8, instr + 6, r); // cmp d(x)		Z80
+		if (r < 8) return store(instr + r);		 // cmp r
+		else return store(r >> 8, instr + 6, r); // cmp d(x)		Z80
 
 	case ' inr': instr = INC_B; goto dcr; // 8080: inr r => inc r			b c d e h l m a
 	case ' dcr':
@@ -241,10 +233,8 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 		r = get8080Register(q);
 		q.expectComma();
 		n = value(q);
-		if (r < 8)
-			store(LD_B_N + r * 8); // mvi r,N
-		else
-			store(r >> 8, LD_xHL_N, r); // mvi d(x),N		Z80
+		if (r < 8) store(LD_B_N + r * 8); // mvi r,N
+		else store(r >> 8, LD_xHL_N, r);  // mvi d(x),N		Z80
 		return storeByte(n);
 
 	case ' mov': // 8080: mov r,r => ld r,r		b c d e h l m a
@@ -300,10 +290,8 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 
 	inx:
 		r = get8080WordRegister(q, BDHSP);
-		if (r < 64)
-			return store(instr + r); // inc rr
-		else
-			return store(r, instr + 32); // inc ix		Z80
+		if (r < 64) return store(instr + r); // inc rr
+		else return store(r, instr + 32);	 // inc ix		Z80
 
 	case 'push': instr = PUSH_BC; goto pop; // push r => push rr			b d h psw
 	case ' pop':
@@ -312,10 +300,8 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 
 	pop:
 		r = get8080WordRegister(q, BDHAF);
-		if (r < 64)
-			return store(instr + r); // pop r
-		else
-			return store(r, instr + 32); // pop x		Z80
+		if (r < 64) return store(instr + r); // pop r
+		else return store(r, instr + 32);	 // pop x		Z80
 
 	case ' lxi': // 8080: lxi r,NN => ld rr,NN		b, d, h, sp
 
@@ -339,18 +325,14 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 	case ' dad': // 8080: dad r => add hl,rr			b, d, h, sp
 
 		r = get8080WordRegister(q, BDHSP);
-		if (r < 64)
-			return store(ADD_HL_BC + r); // add hl,rr
-		else
-			goto ill_source; // add hl,ix
+		if (r < 64) return store(ADD_HL_BC + r); // add hl,rr
+		else goto ill_source;					 // add hl,ix
 
 	case ' rst': // rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
 		if (n.value % 8 == 0) n.value >>= 3;
-		if (n.is_valid() && n.value >> 3)
-			throw SyntaxError("illegal vector number");
-		else
-			return store(RST00 + n.value * 8);
+		if (n.is_valid() && n.value >> 3) throw SyntaxError("illegal vector number");
+		else return store(RST00 + n.value * 8);
 
 		// ---- Z80 opcodes ----
 
@@ -540,10 +522,8 @@ void Z80Assembler::asm8080Instr(SourceLine& q, cstr w)
 	rlcr:
 		if (target_8080) goto ill_8080;
 		r = get8080Register(q);
-		if (r < 8)
-			return store(PFX_CB, instr + r);
-		else
-			return store(r >> 8, PFX_CB, r, instr + 6); // PFX_IX, PFX_CB, OFFS, RLC_xHL
+		if (r < 8) return store(PFX_CB, instr + r);
+		else return store(r >> 8, PFX_CB, r, instr + 6); // PFX_IX, PFX_CB, OFFS, RLC_xHL
 
 	default: goto misc;
 	}

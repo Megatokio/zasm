@@ -75,24 +75,24 @@
 //		no user serviceable parts inside.
 // --------------------------------------------------------------------
 
-#define GET_NN(RR)                                                                                                     \
-  do {                                                                                                                 \
-	GET_N(RR);                                                                                                         \
-	GET_N(wm);                                                                                                         \
-	RR += 256 * wm;                                                                                                    \
-  }                                                                                                                    \
+#define GET_NN(RR)  \
+  do {              \
+	GET_N(RR);      \
+	GET_N(wm);      \
+	RR += 256 * wm; \
+  }                 \
   while (0)
-#define POP(R)                                                                                                         \
-  do {                                                                                                                 \
-	PEEK(R, SP);                                                                                                       \
-	SP++;                                                                                                              \
-  }                                                                                                                    \
+#define POP(R)   \
+  do {           \
+	PEEK(R, SP); \
+	SP++;        \
+  }              \
   while (0)
-#define PUSH(R)                                                                                                        \
-  do {                                                                                                                 \
-	--SP;                                                                                                              \
-	POKE(SP, Byte(R));                                                                                                 \
-  }                                                                                                                    \
+#define PUSH(R)        \
+  do {                 \
+	--SP;              \
+	POKE(SP, Byte(R)); \
+  }                    \
   while (0)
 
 
@@ -100,64 +100,64 @@
 			clear	N=0, H=0
 			pres.	none
 */
-#define M_RLC(R)                                                                                                       \
-  rf = R >> 7;                                                                                                         \
-  R	 = uint8((R << 1) + rf);                                                                                           \
+#define M_RLC(R)             \
+  rf = R >> 7;               \
+  R	 = uint8((R << 1) + rf); \
   rf |= zlog_flags[R]
 
-#define M_RRC(R)                                                                                                       \
-  rf = R & 0x01;                                                                                                       \
-  R	 = uint8((R >> 1) + (rf << 7));                                                                                    \
+#define M_RRC(R)                    \
+  rf = R & 0x01;                    \
+  R	 = uint8((R >> 1) + (rf << 7)); \
   rf |= zlog_flags[R]
 
-#define M_RL(R)                                                                                                        \
-  do {                                                                                                                 \
-	if (R & 0x80)                                                                                                      \
-	{                                                                                                                  \
-	  R	 = uint8((R << 1) + (rf & 0x01));                                                                              \
-	  rf = zlog_flags[R] + C_FLAG;                                                                                     \
-	}                                                                                                                  \
-	else                                                                                                               \
-	{                                                                                                                  \
-	  R	 = uint8((R << 1) + (rf & 0x01));                                                                              \
-	  rf = zlog_flags[R];                                                                                              \
-	}                                                                                                                  \
-  }                                                                                                                    \
+#define M_RL(R)                           \
+  do {                                    \
+	if (R & 0x80)                         \
+	{                                     \
+	  R	 = uint8((R << 1) + (rf & 0x01)); \
+	  rf = zlog_flags[R] + C_FLAG;        \
+	}                                     \
+	else                                  \
+	{                                     \
+	  R	 = uint8((R << 1) + (rf & 0x01)); \
+	  rf = zlog_flags[R];                 \
+	}                                     \
+  }                                       \
   while (0)
 
-#define M_RR(R)                                                                                                        \
-  do {                                                                                                                 \
-	if (R & 0x01)                                                                                                      \
-	{                                                                                                                  \
-	  R	 = uint8((R >> 1) + (rf << 7));                                                                                \
-	  rf = zlog_flags[R] + C_FLAG;                                                                                     \
-	}                                                                                                                  \
-	else                                                                                                               \
-	{                                                                                                                  \
-	  R	 = uint8((R >> 1) + (rf << 7));                                                                                \
-	  rf = zlog_flags[R];                                                                                              \
-	}                                                                                                                  \
-  }                                                                                                                    \
+#define M_RR(R)                         \
+  do {                                  \
+	if (R & 0x01)                       \
+	{                                   \
+	  R	 = uint8((R >> 1) + (rf << 7)); \
+	  rf = zlog_flags[R] + C_FLAG;      \
+	}                                   \
+	else                                \
+	{                                   \
+	  R	 = uint8((R >> 1) + (rf << 7)); \
+	  rf = zlog_flags[R];               \
+	}                                   \
+  }                                     \
   while (0)
 
-#define M_SLA(R)                                                                                                       \
-  rf = R >> 7;                                                                                                         \
-  R <<= 1;                                                                                                             \
+#define M_SLA(R) \
+  rf = R >> 7;   \
+  R <<= 1;       \
   rf |= zlog_flags[R]
 
-#define M_SRA(R)                                                                                                       \
-  rf = R & 0x01;                                                                                                       \
-  R	 = (R & 0x80) + (R >> 1);                                                                                          \
+#define M_SRA(R)              \
+  rf = R & 0x01;              \
+  R	 = (R & 0x80) + (R >> 1); \
   rf |= zlog_flags[R]
 
-#define M_SLL(R)                                                                                                       \
-  rf = R >> 7;                                                                                                         \
-  R	 = uint8((R << 1) + 1);                                                                                            \
+#define M_SLL(R)            \
+  rf = R >> 7;              \
+  R	 = uint8((R << 1) + 1); \
   rf |= zlog_flags[R]
 
-#define M_SRL(R)                                                                                                       \
-  rf = R & 0x01;                                                                                                       \
-  R >>= 1;                                                                                                             \
+#define M_SRL(R) \
+  rf = R & 0x01; \
+  R >>= 1;       \
   rf |= zlog_flags[R]
 
 
@@ -172,57 +172,57 @@
 /*	ADD ... CP:	set/clr	Z, S, V, C, N, H
 				pres	none
 */
-#define M_ADD_old(R)                                                                                                   \
-  wm = ra + R;                                                                                                         \
-  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (~(ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) +                      \
-	   ((ra ^ R ^ wml) & H_FLAG);                                                                                      \
+#define M_ADD_old(R)                                                                              \
+  wm = ra + R;                                                                                    \
+  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (~(ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) + \
+	   ((ra ^ R ^ wml) & H_FLAG);                                                                 \
   ra = wml
-#define M_ADD(R)                                                                                                       \
-  wm = ra + R;                                                                                                         \
-  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((~(ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) +                          \
-	   ((ra ^ R ^ wml) & H_FLAG);                                                                                      \
-  ra = wml
-
-#define M_SUB_old(R)                                                                                                   \
-  wm = ra - R;                                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) +                      \
-	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                                             \
-  ra = wml
-#define M_SUB(R)                                                                                                       \
-  wm = ra - R;                                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) +                          \
-	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                                             \
+#define M_ADD(R)                                                                              \
+  wm = ra + R;                                                                                \
+  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((~(ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) + \
+	   ((ra ^ R ^ wml) & H_FLAG);                                                             \
   ra = wml
 
-#define M_ADC_old(R)                                                                                                   \
-  wm = ra + R + (rf & C_FLAG);                                                                                         \
-  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (~(ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) +                      \
-	   ((ra ^ R ^ wml) & H_FLAG);                                                                                      \
+#define M_SUB_old(R)                                                                              \
+  wm = ra - R;                                                                                    \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) + \
+	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                        \
   ra = wml
-#define M_ADC(R)                                                                                                       \
-  wm = ra + R + (rf & C_FLAG);                                                                                         \
-  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((~(ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) +                          \
-	   ((ra ^ R ^ wml) & H_FLAG);                                                                                      \
-  ra = wml
-
-#define M_SBC_old(R)                                                                                                   \
-  wm = ra - R - (rf & C_FLAG);                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) +                      \
-	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                                             \
-  ra = wml
-#define M_SBC(R)                                                                                                       \
-  wm = ra - R - (rf & C_FLAG);                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) +                          \
-	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                                             \
+#define M_SUB(R)                                                                              \
+  wm = ra - R;                                                                                \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) + \
+	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                    \
   ra = wml
 
-#define M_CP_old(R)                                                                                                    \
-  wm = ra - R;                                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) +                      \
+#define M_ADC_old(R)                                                                              \
+  wm = ra + R + (rf & C_FLAG);                                                                    \
+  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (~(ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) + \
+	   ((ra ^ R ^ wml) & H_FLAG);                                                                 \
+  ra = wml
+#define M_ADC(R)                                                                              \
+  wm = ra + R + (rf & C_FLAG);                                                                \
+  rf = wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((~(ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) + \
+	   ((ra ^ R ^ wml) & H_FLAG);                                                             \
+  ra = wml
+
+#define M_SBC_old(R)                                                                              \
+  wm = ra - R - (rf & C_FLAG);                                                                    \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) + \
+	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                        \
+  ra = wml
+#define M_SBC(R)                                                                              \
+  wm = ra - R - (rf & C_FLAG);                                                                \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) + \
+	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG;                                                    \
+  ra = wml
+
+#define M_CP_old(R)                                                                               \
+  wm = ra - R;                                                                                    \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + ((ra ^ R) & (wml ^ ra) & 0x80 ? V_FLAG : 0) + \
 	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG
-#define M_CP(R)                                                                                                        \
-  wm = ra - R;                                                                                                         \
-  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) +                          \
+#define M_CP(R)                                                                               \
+  wm = ra - R;                                                                                \
+  rf = -wmh + (wml ? 0 : Z_FLAG) + (wml & S_FLAG) + (((ra ^ R) & (wml ^ ra)) >> 5 & V_FLAG) + \
 	   ((ra ^ R ^ wml) & H_FLAG) + N_FLAG
 
 
@@ -230,16 +230,16 @@
 					clear	C=0, N=0, H=0/1 (OR,XOR/AND)
 					pres	none
 */
-#define M_AND(R)                                                                                                       \
-  ra &= R;                                                                                                             \
+#define M_AND(R) \
+  ra &= R;       \
   rf = H_FLAG | zlog_flags[ra]
 
-#define M_OR(R)                                                                                                        \
-  ra |= R;                                                                                                             \
+#define M_OR(R) \
+  ra |= R;      \
   rf = zlog_flags[ra]
 
-#define M_XOR(R)                                                                                                       \
-  ra ^= R;                                                                                                             \
+#define M_XOR(R) \
+  ra ^= R;       \
   rf = zlog_flags[ra]
 
 // Z180:
@@ -250,13 +250,13 @@
 					clear	N=0/1 (INC/DEC)
 					pres	C
 */
-#define M_INC(R)                                                                                                       \
-  R++;                                                                                                                 \
+#define M_INC(R) \
+  R++;           \
   rf = (rf & C_FLAG) + (R ? 0 : Z_FLAG) + (R & S_FLAG) + (R == 0x80 ? V_FLAG : 0) + (R & 0x0F ? 0 : H_FLAG)
 
-#define M_DEC(R)                                                                                                       \
-  R--;                                                                                                                 \
-  rf = (rf & C_FLAG) + (R ? 0 : Z_FLAG) + (R & S_FLAG) + (R == 0x7F ? V_FLAG : 0) + (((R + 1) & 0x0F) ? 0 : H_FLAG) +  \
+#define M_DEC(R)                                                                                                      \
+  R--;                                                                                                                \
+  rf = (rf & C_FLAG) + (R ? 0 : Z_FLAG) + (R & S_FLAG) + (R == 0x7F ? V_FLAG : 0) + (((R + 1) & 0x0F) ? 0 : H_FLAG) + \
 	   N_FLAG
 
 
@@ -265,9 +265,9 @@
 			pres	Z, P, S
 			unkn	H
 */
-#define M_ADDW(R1, R2)                                                                                                 \
-  rf &= ~(N_FLAG + C_FLAG);                                                                                            \
-  rf |= (uint32(R1) + uint32(R2)) >> 16;                                                                               \
+#define M_ADDW(R1, R2)                   \
+  rf &= ~(N_FLAG + C_FLAG);              \
+  rf |= (uint32(R1) + uint32(R2)) >> 16; \
   R1 += R2
 
 
@@ -276,16 +276,16 @@
 			unkn	H
 			pres	none
 */
-#define M_ADCW(R)                                                                                                      \
-  wm = HL + R + (rf & C_FLAG);                                                                                         \
-  rf = uint8((uint32(HL) + uint32(R) + (rf & C_FLAG)) >> 16) + (wm ? 0 : Z_FLAG) + (wmh & S_FLAG) +                    \
-	   (~(HL ^ R) & (wm ^ HL) & 0x8000 ? V_FLAG : 0);                                                                  \
+#define M_ADCW(R)                                                                                   \
+  wm = HL + R + (rf & C_FLAG);                                                                      \
+  rf = uint8((uint32(HL) + uint32(R) + (rf & C_FLAG)) >> 16) + (wm ? 0 : Z_FLAG) + (wmh & S_FLAG) + \
+	   (~(HL ^ R) & (wm ^ HL) & 0x8000 ? V_FLAG : 0);                                               \
   HL = wm
 
-#define M_SBCW(R)                                                                                                      \
-  wm = HL - R - (rf & C_FLAG);                                                                                         \
-  rf = ((uint32(HL) - uint32(R) - (rf & C_FLAG)) >> 31) + (wm ? 0 : Z_FLAG) + (wmh & S_FLAG) +                         \
-	   ((HL ^ R) & (wm ^ HL) & 0x8000 ? V_FLAG : 0) + N_FLAG;                                                          \
+#define M_SBCW(R)                                                                              \
+  wm = HL - R - (rf & C_FLAG);                                                                 \
+  rf = ((uint32(HL) - uint32(R) - (rf & C_FLAG)) >> 31) + (wm ? 0 : Z_FLAG) + (wmh & S_FLAG) + \
+	   ((HL ^ R) & (wm ^ HL) & 0x8000 ? V_FLAG : 0) + N_FLAG;                                  \
   HL = wm
 
 
@@ -293,8 +293,8 @@
 		clear	N=0
 		pres	C
 */
-#define M_IN(R)                                                                                                        \
-  INPUT(BC, R);                                                                                                        \
+#define M_IN(R) \
+  INPUT(BC, R); \
   rf = (rf & C_FLAG) + zlog_flags[R]
 
 
@@ -303,6 +303,6 @@
 		clear	N=0
 		pres	C
 */
-#define M_IN0(PORT, R)                                                                                                 \
-  INPUT(PORT, R);                                                                                                      \
+#define M_IN0(PORT, R) \
+  INPUT(PORT, R);      \
   rf = (rf & C_FLAG) + zlog_flags[R]

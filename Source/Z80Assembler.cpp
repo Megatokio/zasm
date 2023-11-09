@@ -300,12 +300,9 @@ uint8 Z80Assembler::charcode_from_utf8(cptr& s)
 
 	// ok => return code
 
-	if (charset)
-		return charset->get(UCS2Char(n));
-	else if (n > 0xFF)
-		throw SyntaxError("character code exceeds byte limit");
-	else
-		return uint8(n);
+	if (charset) return charset->get(UCS2Char(n));
+	else if (n > 0xFF) throw SyntaxError("character code exceeds byte limit");
+	else return uint8(n);
 }
 
 void Z80Assembler::checkCpuOptions()
@@ -354,13 +351,38 @@ void Z80Assembler::checkCpuOptions()
 
 
 Z80Assembler::Z80Assembler() :
-	target_z180(no), target_8080(no), target_z80(yes), target_z80_or_z180(yes), starttime(0.0),
-	source_directory(nullptr), source_filename(nullptr), temp_directory(nullptr), target_ext(nullptr),
-	target_filepath(nullptr), target(TARGET_UNSET), current_sourceline_index(0), current_segment_ptr(nullptr),
-	local_labels_index(0), local_blocks_count(0), reusable_label_basename(nullptr), cond_off(0), if_pending(false),
-	if_values_idx(0), charset(nullptr), cmd_dpos(), // := invalid
-	pass(0), end(0), validity(invalid), labels_changed(0), labels_resolved(0), is_sdcc(no), is_vcc(no),
-	c_tempdir(nullptr), c_qi(-1), c_zi(-1), asmInstr(&Z80Assembler::asmPseudoInstr)
+	target_z180(no),
+	target_8080(no),
+	target_z80(yes),
+	target_z80_or_z180(yes),
+	starttime(0.0),
+	source_directory(nullptr),
+	source_filename(nullptr),
+	temp_directory(nullptr),
+	target_ext(nullptr),
+	target_filepath(nullptr),
+	target(TARGET_UNSET),
+	current_sourceline_index(0),
+	current_segment_ptr(nullptr),
+	local_labels_index(0),
+	local_blocks_count(0),
+	reusable_label_basename(nullptr),
+	cond_off(0),
+	if_pending(false),
+	if_values_idx(0),
+	charset(nullptr),
+	cmd_dpos(), // := invalid
+	pass(0),
+	end(0),
+	validity(invalid),
+	labels_changed(0),
+	labels_resolved(0),
+	is_sdcc(no),
+	is_vcc(no),
+	c_tempdir(nullptr),
+	c_qi(-1),
+	c_zi(-1),
+	asmInstr(&Z80Assembler::asmPseudoInstr)
 {}
 
 Z80Assembler::~Z80Assembler() { delete charset; }
@@ -613,10 +635,8 @@ void Z80Assembler::setLabelValue(Label* label, int32 value, Validity validity)
 	{
 		if (label->is_valid())
 		{
-			if (value == label->value.value)
-				return;
-			else
-				throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
+			if (value == label->value.value) return;
+			else throw SyntaxError("label redefined (use 'defl' or '=' for redefinable labels)");
 		}
 	}
 
@@ -933,8 +953,7 @@ void Z80Assembler::assembleOnePass(uint pass) noexcept
 			if (!s) continue;
 			Value& seg_address = s->isData() ? data_address : s->isCode() ? code_address : test_address;
 
-			if (s->resizable)
-				s->setSize(s->dpos);
+			if (s->resizable) s->setSize(s->dpos);
 			else if (auto d = dynamic_cast<CodeSegment*>(s)) { d->clearTrailingBytes(); }
 
 			if (s->relocatable) s->setAddress(seg_address);
@@ -1086,8 +1105,7 @@ void Z80Assembler::assembleLine(SourceLine& q)
 
 			if (current_segment_ptr)
 			{
-				if (q.segment == current_segment_ptr)
-					q.bytecount = uint(currentPosition()) - q.byteptr;
+				if (q.segment == current_segment_ptr) q.bytecount = uint(currentPosition()) - q.byteptr;
 				else
 				{
 					q.segment = current_segment_ptr;	 // .area instruction
@@ -1119,8 +1137,7 @@ void Z80Assembler::assembleLine(SourceLine& q)
 
 			if (current_segment_ptr)
 			{
-				if (q.segment == current_segment_ptr)
-					q.bytecount = uint(currentPosition()) - q.byteptr;
+				if (q.segment == current_segment_ptr) q.bytecount = uint(currentPosition()) - q.byteptr;
 				else
 				{
 					q.segment = current_segment_ptr;	 // .area instruction
@@ -1222,8 +1239,7 @@ void Z80Assembler::skip_expression(SourceLine& q, int prio)
 				}
 			}
 		}
-		else
-			--q; /* put back '(' */
+		else --q; /* put back '(' */
 	}
 
 op:
@@ -1319,10 +1335,8 @@ w:
 		switch (w[0])
 		{
 		case '#':
-			if (prio == pAny)
-				goto w;
-			else
-				goto syntax_error;					   // SDASZ80: immediate value prefix
+			if (prio == pAny) goto w;
+			else goto syntax_error;					   // SDASZ80: immediate value prefix
 		case ';': throw SyntaxError("value expected"); // comment  =>  unexpected end of line
 		case '+': n = +value(q, pUna); goto op;		   // plus sign
 		case '-': n = -value(q, pUna); goto op;		   // minus sign
@@ -1361,10 +1375,8 @@ w:
 					if (*w > '9') n.value += 9;
 					w++;
 				}
-				if (w[c != 0] == 0)
-					goto op;
-				else
-					goto syntax_error;
+				if (w[c != 0] == 0) goto op;
+				else goto syntax_error;
 			}
 		}
 		else if (w[0] == '&') // hex number
@@ -1381,10 +1393,8 @@ w:
 				n.value += n.value + (*w & 1);
 				w++;
 			}
-			if (w[c != 0] == 0)
-				goto op;
-			else
-				goto syntax_error;
+			if (w[c != 0] == 0) goto op;
+			else goto syntax_error;
 		}
 		else if (*w == '\'' || *w == '"') // ascii number: due to ambiguity of num vs. str only ONE CHARACTER ALLOWED!
 		{								  // uses utf-8 or charset translation
@@ -1606,8 +1616,7 @@ w:
 			if (!n && !is_name(q.nextWord())) throw SyntaxError("segment name expected");
 			goto kzop;
 		}
-		else
-			--q; // put back '('
+		else --q; // put back '('
 	}
 
 	if (is_letter(*w) || *w == '_' || *w == '.') // name: Label mit '.' auch erkennen wenn !allow_dotnames
@@ -1790,10 +1799,8 @@ op:
 				q += 2;
 				if (n.is_valid())
 				{
-					if (n)
-						n = value(q, pBoolean);
-					else
-						skip_expression(q, pBoolean);
+					if (n) n = value(q, pBoolean);
+					else skip_expression(q, pBoolean);
 					n.value = n.value != 0;
 				}
 				else if (n.is_preliminary())
@@ -1815,10 +1822,8 @@ op:
 				q += 2;
 				if (n.is_valid())
 				{
-					if (n)
-						skip_expression(q, pBoolean);
-					else
-						n = value(q, pBoolean);
+					if (n) skip_expression(q, pBoolean);
+					else n = value(q, pBoolean);
 					n.value = n.value != 0;
 				}
 				else if (n.is_preliminary())
@@ -1947,8 +1952,7 @@ op:
 			if (m.value == 0)
 			{
 				if (!m.is_valid()) { m = N1; }
-				else
-					throw SyntaxError("division by zero");
+				else throw SyntaxError("division by zero");
 			}
 			n /= m;
 			goto op;
@@ -1959,8 +1963,7 @@ op:
 			if (m.value == 0)
 			{
 				if (!m.is_valid()) { m = N1; }
-				else
-					throw SyntaxError("division by zero");
+				else throw SyntaxError("division by zero");
 			}
 			n %= m;
 			goto op;
@@ -2108,10 +2111,8 @@ void Z80Assembler::asmLabel(SourceLine& q)
 
 		if (!current_segment_ptr)
 		{
-			if (lceq(name, "org"))
-				throw FatalError("'org' in column 1: option '--reqcolon' may help");
-			else
-				throw SyntaxError("org not yet set (use instruction 'org' or directive '#code')");
+			if (lceq(name, "org")) throw FatalError("'org' in column 1: option '--reqcolon' may help");
+			else throw SyntaxError("org not yet set (use instruction 'org' or directive '#code')");
 		}
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
 		n = static_cast<DataSegment*>(current_segment_ptr)->lpos;
@@ -2126,8 +2127,7 @@ a:
 	{
 		if (pass == 1 && is_redefinable != l->is_redefinable)
 		{
-			if (!l->is_defined)
-				l->is_redefinable = is_redefinable;
+			if (!l->is_defined) l->is_redefinable = is_redefinable;
 			else
 				throw SyntaxError(
 					is_redefinable ? "normal label redefined as redefinable label" :
@@ -2180,14 +2180,10 @@ void Z80Assembler::asmDirect(SourceLine& q)
 	{
 		cstr w = q.nextWord();
 
-		if (lceq(w, "if"))
-			asmIf(q);
-		else if (lceq(w, "elif"))
-			asmElif(q);
-		else if (lceq(w, "else"))
-			asmElse(q);
-		else if (lceq(w, "endif"))
-			asmEndif(q);
+		if (lceq(w, "if")) asmIf(q);
+		else if (lceq(w, "elif")) asmElif(q);
+		else if (lceq(w, "else")) asmElse(q);
+		else if (lceq(w, "endif")) asmEndif(q);
 		else
 
 			if (cond_off)
@@ -2196,40 +2192,23 @@ void Z80Assembler::asmDirect(SourceLine& q)
 
 			if (lceq(w, "target"))
 			asmTarget(q);
-		else if (lceq(w, "code"))
-			asmSegment(q, CODE);
-		else if (lceq(w, "test"))
-			asmSegment(q, TEST);
-		else if (lceq(w, "data"))
-			asmSegment(q, DATA);
-		else if (lceq(w, "include"))
-			asmInclude(q);
-		else if (lceq(w, "insert"))
-			asmInsert(q);
-		else if (lceq(w, "cflags"))
-			asmCFlags(q);
-		else if (lceq(w, "cpath"))
-			asmCPath(q);
-		else if (lceq(w, "local"))
-			asmLocal(q);
-		else if (lceq(w, "endlocal"))
-			asmEndLocal(q);
-		else if (lceq(w, "assert"))
-			asmAssert(q);
-		else if (lceq(w, "charset"))
-			asmCharset(q);
-		else if (lceq(w, "define"))
-			asmDefine(q);
-		else if (lceq(w, "tzx"))
-			asmTzx(q);
-		else if (lceq(w, "compress"))
-			asmCompress(q);
-		else if (lceq(w, "end"))
-			asmEnd(q);
-		else if (lceq(w, "!"))
-			asmShebang(q);
-		else
-			throw FatalError("unknown assembler directive");
+		else if (lceq(w, "code")) asmSegment(q, CODE);
+		else if (lceq(w, "test")) asmSegment(q, TEST);
+		else if (lceq(w, "data")) asmSegment(q, DATA);
+		else if (lceq(w, "include")) asmInclude(q);
+		else if (lceq(w, "insert")) asmInsert(q);
+		else if (lceq(w, "cflags")) asmCFlags(q);
+		else if (lceq(w, "cpath")) asmCPath(q);
+		else if (lceq(w, "local")) asmLocal(q);
+		else if (lceq(w, "endlocal")) asmEndLocal(q);
+		else if (lceq(w, "assert")) asmAssert(q);
+		else if (lceq(w, "charset")) asmCharset(q);
+		else if (lceq(w, "define")) asmDefine(q);
+		else if (lceq(w, "tzx")) asmTzx(q);
+		else if (lceq(w, "compress")) asmCompress(q);
+		else if (lceq(w, "end")) asmEnd(q);
+		else if (lceq(w, "!")) asmShebang(q);
+		else throw FatalError("unknown assembler directive");
 	}
 	catch (FatalError& e)
 	{
@@ -2311,10 +2290,8 @@ void Z80Assembler::asmCompress(SourceLine& q)
 					if (segments[a]->compressed != middle_cseg) break;
 				}
 			}
-			if (a < e)
-				throw SyntaxError("segments overlap with other compressed segments");
-			else
-				return; // duplicate
+			if (a < e) throw SyntaxError("segments overlap with other compressed segments");
+			else return; // duplicate
 		}
 		else // mark segments for compression
 		{
@@ -2463,52 +2440,40 @@ void Z80Assembler::asmDefine(SourceLine& q)
 
 	if (q.testDotWord("equ"))
 	{
-		if (q.testDotWord("equ"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testDotWord("equ")) return;
+		else goto unknown_instr;
 	unknown_instr:
 		throw FatalError("unknown instruction");
 	}
 
 	if (q.testDotWord("org"))
 	{
-		if (q.testDotWord("org"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testDotWord("org")) return;
+		else goto unknown_instr;
 	}
 
 	if (q.testWord("defw") || q.testWord(".word") || q.testDotWord("dw"))
 	{
-		if (q.testWord("defw") || q.testWord(".word") || q.testDotWord("dw"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testWord("defw") || q.testWord(".word") || q.testDotWord("dw")) return;
+		else goto unknown_instr;
 	}
 
 	if (q.testWord("defb") || q.testWord(".byte") || q.testDotWord("db"))
 	{
-		if (q.testWord("defb") || q.testWord(".byte") || q.testDotWord("db"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testWord("defb") || q.testWord(".byte") || q.testDotWord("db")) return;
+		else goto unknown_instr;
 	}
 
 	if (q.testWord(".text") || q.testWord(".ascii") || q.testDotWord("dm") || q.testWord("defm"))
 	{
-		if (q.testWord(".text") || q.testWord(".ascii") || q.testDotWord("dm") || q.testWord("defm"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testWord(".text") || q.testWord(".ascii") || q.testDotWord("dm") || q.testWord("defm")) return;
+		else goto unknown_instr;
 	}
 
 	if (q.testWord(".block") || q.testDotWord("ds") || q.testWord("defs"))
 	{
-		if (q.testWord(".block") || q.testDotWord("ds") || q.testWord("defs"))
-			return;
-		else
-			goto unknown_instr;
+		if (q.testWord(".block") || q.testDotWord("ds") || q.testWord("defs")) return;
+		else goto unknown_instr;
 	}
 
 	// Test for: const aka label definition:
@@ -2575,10 +2540,8 @@ uint Z80Assembler::skipMacroBlock(uint idx, cstr macro, cstr endm)
 	// copy leading dot from 'macro' to 'endm':
 	if ((*macro == '.') != (*endm == '.'))
 	{
-		if (*endm == '.')
-			endm++;
-		else
-			endm = catstr(".", endm);
+		if (*endm == '.') endm++;
+		else endm = catstr(".", endm);
 	}
 
 	for (idx += 1; idx < source.count(); idx += 1)
@@ -2848,8 +2811,7 @@ void Z80Assembler::asmMacroCall(SourceLine& q, Macro& m)
 				char c = *a;
 				if (!is_letter(c) && c != '_')
 				{
-					if (c == ';' || c == 0)
-						break; // EOL
+					if (c == ';' || c == 0) break; // EOL
 					else
 					{
 						s.p++;
@@ -2862,10 +2824,8 @@ void Z80Assembler::asmMacroCall(SourceLine& q, Macro& m)
 				cptr e = s.p;
 				assert(e == a + strlen(w));
 
-				if (a != s.text && *(a - 1) == m.tag)
-					a--; // tag present
-				else if (m.tag_required)
-					continue; // no tag char but required
+				if (a != s.text && *(a - 1) == m.tag) a--; // tag present
+				else if (m.tag_required) continue;		   // no tag char but required
 
 				if (casefold) w = lowerstr(w);
 
@@ -2951,10 +2911,8 @@ void Z80Assembler::init_c_compiler(cstr cc)
 		cc = sdcc_compiler_path ? sdcc_compiler_path : find_executable("sdcc");
 		if (!cc) throw FatalError("can't find c-compiler sdcc (use cmd line option -c or directive '#cpath')");
 	}
-	else if (eq(cc, "sdcc"))
-		cc = sdcc_compiler_path ? sdcc_compiler_path : find_executable(cc);
-	else if (eq(cc, "vcc"))
-		cc = vcc_compiler_path ? vcc_compiler_path : find_executable(cc);
+	else if (eq(cc, "sdcc")) cc = sdcc_compiler_path ? sdcc_compiler_path : find_executable(cc);
+	else if (eq(cc, "vcc")) cc = vcc_compiler_path ? vcc_compiler_path : find_executable(cc);
 
 	cc = fullpath(cc);
 	if (errno) throw FatalError("%s: %s", cc, strerror(errno));
@@ -3140,12 +3098,9 @@ void Z80Assembler::asmIf(SourceLine& q)
 		if_pending = yes;
 		f		   = value(q);
 		if_pending = no;
-		if (!f.is_valid())
-			throw FatalError("condition not evaluatable in pass1");
-		else if (pass == 1)
-			if_values.append(f.value);
-		else if (if_values[if_values_idx++] != !!f.value)
-			throw FatalError("condition changed in pass%i", pass);
+		if (!f.is_valid()) throw FatalError("condition not evaluatable in pass1");
+		else if (pass == 1) if_values.append(f.value);
+		else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%i", pass);
 	}
 
 	memmove(cond + 1, cond, sizeof(cond) - sizeof(*cond));
@@ -3173,19 +3128,15 @@ void Z80Assembler::asmElif(SourceLine& q)
 		assert(cond_off & 1);
 
 		Value f(cond_off >> 1); // outer nesting level
-		if (f)
-			q.skip_to_eol(); // outer nesting level off => just skip expression; value is irrelevant
+		if (f) q.skip_to_eol(); // outer nesting level off => just skip expression; value is irrelevant
 		else
 		{
 			if_pending = yes;
 			f		   = value(q); // else evaluate value
 			if_pending = no;
-			if (!f.is_valid())
-				throw FatalError("condition must be evaluatable in pass1");
-			else if (pass == 1)
-				if_values.append(f.value);
-			else if (if_values[if_values_idx++] != !!f.value)
-				throw FatalError("condition changed in pass%i", pass);
+			if (!f.is_valid()) throw FatalError("condition must be evaluatable in pass1");
+			else if (pass == 1) if_values.append(f.value);
+			else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%i", pass);
 		}
 
 		cond_off -= !!f.value; // if f==1 then clear bit 0 => enable #elif clause
@@ -3325,12 +3276,9 @@ void Z80Assembler::asmInclude(SourceLine& q)
 				if (l && !l->is_defined && l->is_used) { names.append(w); }
 				else if (verbose > 2)
 				{
-					if (!l)
-						log("resolve: %s never used defined or declared\n", w);
-					else if (l->is_defined)
-						log("resolve: %s already defined\n", w);
-					else if (!l->is_used)
-						log("resolve: %s not used: must be used before resolving it!\n", w);
+					if (!l) log("resolve: %s never used defined or declared\n", w);
+					else if (l->is_defined) log("resolve: %s already defined\n", w);
+					else if (!l->is_used) log("resolve: %s not used: must be used before resolving it!\n", w);
 				}
 
 				if (q.testComma()) continue; // optional
@@ -3370,8 +3318,7 @@ void Z80Assembler::asmInclude(SourceLine& q)
 				source.insertat(current_sourceline_index + 3, new SourceLine(q.sourcefile, q.sourcelinenumber, s3));
 				return;
 			}
-			else
-				continue; // skip any unknown files: e.g. list files etc.
+			else continue; // skip any unknown files: e.g. list files etc.
 		}
 
 		// if we come here, not a single label was resolved
@@ -3524,26 +3471,19 @@ cstr Z80Assembler::compileFile(cstr fqn)
 			{
 				log("%s", bu);
 				throw FatalError(
-					"\"%s %s\" returned exit code %i\n- - - - - -\n%s- - - - - -\n",
-					filename_from_path(c_compiler),
-					filename_from_path(fqn_q),
-					int(WEXITSTATUS(status)),
-					bu);
+					"\"%s %s\" returned exit code %i\n- - - - - -\n%s- - - - - -\n", filename_from_path(c_compiler),
+					filename_from_path(fqn_q), int(WEXITSTATUS(status)), bu);
 			}
-			else if (verbose)
-				log("%s", bu);
+			else if (verbose) log("%s", bu);
 		}
 		else if (WIFSIGNALED(status)) // child process terminated by signal
 		{
 			log("%s", bu);
 			throw FatalError(
-				"\"%s %s\" terminated by signal %i",
-				filename_from_path(c_compiler),
-				filename_from_path(fqn_q),
+				"\"%s %s\" terminated by signal %i", filename_from_path(c_compiler), filename_from_path(fqn_q),
 				int(WTERMSIG(status)));
 		}
-		else
-			IERR();
+		else IERR();
 	}
 
 	return fqn_z;
@@ -3603,31 +3543,16 @@ void Z80Assembler::asmTzx(SourceLine& q)
 	if (q.testChar('-')) blocktype = catstr(blocktype, "-", q.nextWord());
 	// blocktype = upperstr(blocktype);
 
-	static const SegmentType tzx_id[] = {
-		TZX_STANDARD,
-		TZX_TURBO,
-		TZX_PURE_DATA,
-		TZX_GENERALIZED,
-		TZX_PULSES,
-		TZX_CSW_RECORDING,
-		TZX_CSW_RECORDING,
-		TZX_ARCHIVE_INFO,
-		TZX_HARDWARE_INFO,
-		TZX_PURE_TONE,
-		TZX_PAUSE,
-		TZX_GROUP_START,
-		TZX_GROUP_END,
-		TZX_LOOP_START,
-		TZX_LOOP_END,
-		TZX_STOP_48K,
-		TZX_POLARITY,
-		TZX_INFO,
-		TZX_MESSAGE};
-	static const cstr tzx_idf[] = {
-		"standard",		"turbo",		 "pure-data", "generalized", "pulses",		"csw",		 "csw-recording",
-		"archive-info", "hardware-info", "pure-tone", "pause",		 "group-start", "group-end", "loop-start",
-		"loop-end",		"stop-48k",		 "polarity",  "info",		 "message",
-	};
+	static const SegmentType tzx_id[]  = {TZX_STANDARD,		 TZX_TURBO,			TZX_PURE_DATA,	   TZX_GENERALIZED,
+										  TZX_PULSES,		 TZX_CSW_RECORDING, TZX_CSW_RECORDING, TZX_ARCHIVE_INFO,
+										  TZX_HARDWARE_INFO, TZX_PURE_TONE,		TZX_PAUSE,		   TZX_GROUP_START,
+										  TZX_GROUP_END,	 TZX_LOOP_START,	TZX_LOOP_END,	   TZX_STOP_48K,
+										  TZX_POLARITY,		 TZX_INFO,			TZX_MESSAGE};
+	static const cstr		 tzx_idf[] = {
+		   "standard",	   "turbo",			"pure-data", "generalized", "pulses",	   "csw",		"csw-recording",
+		   "archive-info", "hardware-info", "pure-tone", "pause",		"group-start", "group-end", "loop-start",
+		   "loop-end",	   "stop-48k",		"polarity",	 "info",		"message",
+	   };
 	static_assert(NELEM(tzx_id) == NELEM(tzx_idf), "TZX static arrays mismatch");
 
 	for (uint i = 0; i < NELEM(tzx_idf); i++)
@@ -3744,8 +3669,7 @@ void Z80Assembler::asmTzx(SourceLine& q)
 					segment->setSampleFormat(uint(c2 - '0'), c1 == 's', c3 == 'x');
 					seen |= SAMPLE_FMT;
 				}
-				else
-					throw SyntaxError("illegal format. known formats = [s1|u1|s2|u2|s2x|u2x]");
+				else throw SyntaxError("illegal format. known formats = [s1|u1|s2|u2|s2x|u2x]");
 			}
 			else if (q.testWord("header"))
 			{
@@ -3775,8 +3699,7 @@ void Z80Assembler::asmTzx(SourceLine& q)
 				segment->setLastFrame(segment->first_frame + value(q));
 				seen |= END;
 			}
-			else
-				throw SyntaxError("unknown setting name");
+			else throw SyntaxError("unknown setting name");
 		}
 
 		if (segment->raw && (~seen & ALL_THREE))
@@ -4069,8 +3992,7 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 			if (segment->type != segment_type)
 			{
 				if (segment_type == CODE && isCode(segment->type)) {} // OK: #tzx code block re-opened with #code
-				else
-					throw FatalError("segment type mismatch");
+				else throw FatalError("segment type mismatch");
 			}
 		}
 	}
@@ -4079,16 +4001,13 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 	{
 		assert(pass == 1);
 
-		if (isData(segment_type))
-			segment = new DataSegment(name);
+		if (isData(segment_type)) segment = new DataSegment(name);
 		else
 		{
 			assert(isCode(segment_type) || isTest(segment_type));
 			uint8 fillbyte = effective_target() == ROM ? 0xFF : 0x00;
-			if (isTest(segment_type))
-				segment = new TestSegment(name, fillbyte);
-			else
-				segment = new CodeSegment(name, segment_type, fillbyte);
+			if (isTest(segment_type)) segment = new TestSegment(name, fillbyte);
+			else segment = new CodeSegment(name, segment_type, fillbyte);
 		}
 		segments.append(segment);
 
@@ -4102,26 +4021,14 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 		l		   = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined", lname);
 		global_labels().add(new Label(
-			lname,
-			segment,
-			q.sourcelinenumber,
-			0 /*address+size*/,
-			invalid,
-			yes /*global*/,
-			yes /*defined*/,
+			lname, segment, q.sourcelinenumber, 0 /*address+size*/, invalid, yes /*global*/, yes /*defined*/,
 			l != nullptr /*used*/));
 
 		lname = catstr(name, "_size");
 		l	  = global_labels().find(lname);
 		if (l && l->is_defined) setError("label %s redefined", lname);
 		global_labels().add(new Label(
-			lname,
-			segment,
-			q.sourcelinenumber,
-			0 /*size*/,
-			invalid,
-			yes /*global*/,
-			yes /*defined*/,
+			lname, segment, q.sourcelinenumber, 0 /*size*/, invalid, yes /*global*/, yes /*defined*/,
 			l != nullptr /*used*/));
 	}
 
@@ -4170,10 +4077,8 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 		q.p = p;
 		if (target != Z80 && target != TAP && target != TZX) throw SyntaxError("target Z80, TAP or TZX required");
 
-		if (target != Z80 && q.testWord("none"))
-			cseg->setNoFlag();
-		else
-			cseg->setFlag(value(q));
+		if (target != Z80 && q.testWord("none")) cseg->setNoFlag();
+		else cseg->setFlag(value(q));
 		return;
 	}
 	q.p = p;
@@ -4203,10 +4108,8 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 			// => this is suitable for Jupiter Ace tape files.
 
 			q.expect(('='));
-			if (target != Z80 && q.testWord("none"))
-				cseg->setNoFlag();
-			else
-				cseg->setFlag(value(q));
+			if (target != Z80 && q.testWord("none")) cseg->setNoFlag();
+			else cseg->setFlag(value(q));
 			seen |= FLAG;
 		}
 		else if (q.testWord("space"))
@@ -4222,15 +4125,13 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 			if (target != TZX) throw SyntaxError("target TZX required");
 
 			q.expect(('='));
-			if (q.testWord("none"))
-				cseg->setNoChecksum();
+			if (q.testWord("none")) cseg->setNoChecksum();
 			else if (q.testWord("ace"))
 			{
 				cseg->checksum_ace = true;
 				cseg->has_flag	   = true;
 			}
-			else
-				throw SyntaxError("keyword 'none' or 'ace' expected");
+			else throw SyntaxError("keyword 'none' or 'ace' expected");
 			seen |= CHECKSUM;
 		}
 		else if (q.testWord("pause"))
@@ -4275,8 +4176,7 @@ void Z80Assembler::asmSegment(SourceLine& q, SegmentType segment_type)
 			cseg->setLastBits(value(q));
 			seen |= LASTBITS;
 		}
-		else
-			throw SyntaxError("key expected");
+		else throw SyntaxError("key expected");
 	}
 	while (q.testComma());
 
@@ -4407,8 +4307,7 @@ void Z80Assembler::asmEndLocal(SourceLine&)
 				outer_labels.add(zl);
 				zl->is_global = is_global;
 			}
-			else
-				zl->is_used = yes;
+			else zl->is_used = yes;
 			local_labels.remove(ql->name);
 		}
 	}
@@ -4582,8 +4481,7 @@ void Z80Assembler::asmNoSegmentInstr(SourceLine& q, cstr w)
 			s->setOrigin(value(q));
 			return;
 		}
-		else
-			throw SyntaxError("#data or #code segment required");
+		else throw SyntaxError("#data or #code segment required");
 	}
 	if (lceq(w, ".dephase")) // M80: restore logical code position to real address
 	{
@@ -4593,8 +4491,7 @@ void Z80Assembler::asmNoSegmentInstr(SourceLine& q, cstr w)
 			s->setOrigin(s->physicalAddress());
 			return;
 		}
-		else
-			throw SyntaxError("#data or #code segment required");
+		else throw SyntaxError("#data or #code segment required");
 	}
 	if (doteq(w, "include")) return asmInclude(q);
 	if (doteq(w, "incbin")) return asmInsert(q);
@@ -4702,8 +4599,7 @@ void Z80Assembler::asmNoSegmentInstr(SourceLine& q, cstr w)
 			cpu = Cpu8080;
 			global_labels().add(new Label("_8080_", nullptr, current_sourceline_index, 1, valid, yes, yes, no));
 		}
-		else if (cpu != Cpu8080)
-			throw FatalError("can't redefine target cpu: already set");
+		else if (cpu != Cpu8080) throw FatalError("can't redefine target cpu: already set");
 
 		syntax_8080 = yes;
 		checkCpuOptions();
@@ -4975,18 +4871,14 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 		{
 			Value n = value(q);
 			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-			if (q.testComma())
-				static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n, value(q).value);
-			else
-				static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n);
+			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n, value(q).value);
+			else static_cast<DataSegment*>(current_segment_ptr)->storeSpaceUpToAddress(n);
 		}
 		return;
 
 	case 'data':
-		if (current_segment_ptr->isData())
-			goto ds;
-		else
-			throw SyntaxError("only allowed in data segments (use defs)");
+		if (current_segment_ptr->isData()) goto ds;
+		else throw SyntaxError("only allowed in data segments (use defs)");
 
 	case '  ds':
 	case ' .ds':
@@ -5000,10 +4892,8 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 		{
 			Value n = value(q);
 			assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-			if (q.testComma())
-				static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n, value(q).value);
-			else
-				static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
+			if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n, value(q).value);
+			else static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
 		}
 		return;
 
@@ -5084,10 +4974,8 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 					else if (q.test_char('&')) { storeByte(Value(s->popLastByte()) & value(q)); }
 					else if (q.test_char('^')) { storeByte(Value(s->popLastByte()) ^ value(q)); }
 				}
-				if (q.testComma())
-					goto dm;
-				else
-					return;
+				if (q.testComma()) goto dm;
+				else return;
 			}
 
 			// Stuffed Hex:
@@ -5101,20 +4989,16 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 			sh:
 				if (n & 1) throw SyntaxError("even number of hex characters expected");
 				storeHexbytes(w, n / 2);
-				if (q.testComma())
-					goto dm;
-				else
-					return;
+				if (q.testComma()) goto dm;
+				else return;
 			}
 
 			if (n > 4 && is_dec_digit(w[0]) && tolower(w[n - 1]) == 'h')
 			{
 				w = leftstr(w, int(n) - 1);
 				n -= 1;
-				if (n & 1 && w[0] == '0')
-					goto sx;
-				else
-					goto sh;
+				if (n & 1 && w[0] == '0') goto sx;
+				else goto sh;
 			}
 		} // scope for 'n'
 
@@ -5148,10 +5032,8 @@ void Z80Assembler::asmPseudoInstr(SourceLine& q, cstr w)
 		// anything else:
 		q -= off_t(strlen(w)); // put back opcode
 		storeByte(value(q));
-		if (q.testComma())
-			goto dm;
-		else
-			return;
+		if (q.testComma()) goto dm;
+		else return;
 
 	case '.tzx':
 		if (target != TZX) throw SyntaxError("#target TZX required");
@@ -5229,12 +5111,9 @@ longer:
 			Value freq = value(q);
 			int32 z	   = freq.value;
 			if (z < 0) throw SyntaxError("negative clock not supported. try again yesterday.");
-			if (q.testWord("k") || q.testWord("kHz"))
-				z = z > 0x7fffffff / 1000 ? 0x7fffffff : z * 1000;
-			else if (q.testWord("M") || q.testWord("MHz"))
-				z = z > 0x7fffffff / 1000000 ? 0x7fffffff : z * 1000000;
-			else
-				q.testWord("Hz");
+			if (q.testWord("k") || q.testWord("kHz")) z = z > 0x7fffffff / 1000 ? 0x7fffffff : z * 1000;
+			else if (q.testWord("M") || q.testWord("MHz")) z = z > 0x7fffffff / 1000000 ? 0x7fffffff : z * 1000000;
+			else q.testWord("Hz");
 			freq.value = z;
 			segment->setCpuClock(freq);
 			return;
@@ -5243,10 +5122,8 @@ longer:
 		{
 			Value v	 = value(q);												   // frequency or cc
 			bool  hz = q.testWord("Hz") || (!q.testWord("cc") && v.value <= 1000); // Hz or cc ?
-			if (hz)
-				segment->setIntPerSec(v);
-			else
-				segment->setCcPerInt(v);
+			if (hz) segment->setIntPerSec(v);
+			else segment->setCcPerInt(v);
 			if (q.testComma())
 			{
 				segment->setIntDuration(value(q));
@@ -5265,12 +5142,9 @@ longer:
 			Value timeout = value(q);
 			int32 z		  = timeout.value;
 			if (z < 0) z = 0;
-			if (q.testWord("s"))
-				z = z > 0x7fffffff / 1000 ? 0x7fffffff : z * 1000;
-			else if (q.testWord("m"))
-				z = z > 0x7fffffff / 60000 ? 0x7fffffff : z * 60000;
-			else
-				q.testWord("ms");
+			if (q.testWord("s")) z = z > 0x7fffffff / 1000 ? 0x7fffffff : z * 1000;
+			else if (q.testWord("m")) z = z > 0x7fffffff / 60000 ? 0x7fffffff : z * 60000;
+			else q.testWord("ms");
 			timeout.value = z;
 			segment->setTimeoutMsec(timeout);
 			return;
@@ -5303,12 +5177,9 @@ longer:
 			auto mode = IoOutFile;
 			if (q.testComma())
 			{
-				if (q.testWord("append"))
-					mode = IoAppendFile;
-				else if (q.testWord("compare"))
-					mode = IoCompareFile;
-				else
-					throw SyntaxError("'append' or 'compare' expected");
+				if (q.testWord("append")) mode = IoAppendFile;
+				else if (q.testWord("compare")) mode = IoCompareFile;
+				else throw SyntaxError("'append' or 'compare' expected");
 			}
 			segment->setOutputFile(addr, fqn, mode);
 			return;
@@ -5391,10 +5262,8 @@ longer:
 		n = n - N1 - (a + n - N1) % n;
 
 		assert(dynamic_cast<DataSegment*>(current_segment_ptr));
-		if (q.testComma())
-			static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n, value(q).value);
-		else
-			static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
+		if (q.testComma()) static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n, value(q).value);
+		else static_cast<DataSegment*>(current_segment_ptr)->storeSpace(n);
 		return;
 	}
 
@@ -5551,10 +5420,8 @@ void Z80Assembler::parseBytes(SourceLine& q, Array<uint8>& dest)
 	if (n > 4 && is_dec_digit(w[0]) && tolower(w[n - 1]) == 'h')
 	{
 		n -= 1;
-		if (n & 1 && w[0] == '0')
-			goto sx;
-		else
-			goto sh;
+		if (n & 1 && w[0] == '0') goto sx;
+		else goto sh;
 	}
 	if (n > 3 && w[0] == '$')
 	{

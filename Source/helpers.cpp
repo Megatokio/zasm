@@ -60,10 +60,8 @@ uint32 compressed_page_size_z80(const uint8* q, uint qsize)
 				n++;
 				q++;
 			}
-			if (n >= 4 || c == 0xed)
-				sz += 4; // compress ?
-			else
-				sz += n; // don't compress
+			if (n >= 4 || c == 0xed) sz += 4; // compress ?
+			else sz += n;					  // don't compress
 		}
 	}
 

@@ -63,10 +63,8 @@ static uint write_line_with_objcode(
 
 		fd.write_fmt("%04X: %s\t%s\n", address, oo_str(count), text);
 		if (count > 4)
-			if (count > 8)
-				fd.write_fmt("%04X: 00...   \t%s\n", address + 4, "");
-			else
-				fd.write_fmt("%04X: %s\t%s\n", address + 4, oo_str(count - 4), "");
+			if (count > 8) fd.write_fmt("%04X: 00...   \t%s\n", address + 4, "");
+			else fd.write_fmt("%04X: %s\t%s\n", address + 4, oo_str(count - 4), "");
 		else {}
 		return count;
 	}
@@ -194,10 +192,8 @@ static uint write_line_with_objcode_and_cycles(
 
 		fd.write_fmt("%04X: %s          %s\n", address, oo_str(count), text);
 		if (count > 4)
-			if (count > 8)
-				fd.write_fmt("%04X: 00...             %s\n", address + 4, "");
-			else
-				fd.write_fmt("%04X: %s          %s\n", address + 4, oo_str(count - 4), "");
+			if (count > 8) fd.write_fmt("%04X: 00...             %s\n", address + 4, "");
+			else fd.write_fmt("%04X: %s          %s\n", address + 4, oo_str(count - 4), "");
 		else {}
 		return count;
 	}
@@ -349,10 +345,8 @@ static cstr u5str(cValue& n)
 static cstr h4u5str(cValue& n)
 {
 	if (n.is_valid()) return usingstr("= $%04X =%6u", n.value & 0xffff, int(n));
-	if (n.is_preliminary())
-		return usingstr("~ $%04X =%6u", n.value & 0xffff, int(n));
-	else
-		return "=  ***VOID***  ";
+	if (n.is_preliminary()) return usingstr("~ $%04X =%6u", n.value & 0xffff, int(n));
+	else return "=  ***VOID***  ";
 }
 
 
@@ -389,17 +383,11 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 			require_colon || ixcbr2_enabled || ixcbxh_enabled)
 		{
 			fd.write_fmt(
-				"%s; opts:%s%s%s%s%s%s%s%s%s%s\n",
-				indentstr,
-				syntax_8080 ? " --asm8080" : "",
-				cpu == CpuZ180 ? " --z180" : "",
-				cpu == CpuZ80 && syntax_8080 ? " --z80" : "",
-				cpu == Cpu8080 && !syntax_8080 ? " --8080" : "",
-				flat_operators ? " --flatops" : "",
-				casefold && !syntax_8080 ? " --casefold" : "",
-				allow_dotnames ? " --dotnames" : "",
-				require_colon ? " --reqcolon" : "",
-				ixcbr2_enabled ? " --ixcbr2" : "",
+				"%s; opts:%s%s%s%s%s%s%s%s%s%s\n", indentstr, syntax_8080 ? " --asm8080" : "",
+				cpu == CpuZ180 ? " --z180" : "", cpu == CpuZ80 && syntax_8080 ? " --z80" : "",
+				cpu == Cpu8080 && !syntax_8080 ? " --8080" : "", flat_operators ? " --flatops" : "",
+				casefold && !syntax_8080 ? " --casefold" : "", allow_dotnames ? " --dotnames" : "",
+				require_colon ? " --reqcolon" : "", ixcbr2_enabled ? " --ixcbr2" : "",
 				ixcbxh_enabled ? " --ixcbxh" : "");
 		}
 
@@ -467,8 +455,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 			{
 				if (style & 8)
 					fd.write_fmt("***ERROR***             %s^ %s\n", sourceline.whitestr(), errors[ei++].text);
-				else
-					fd.write_fmt("***ERROR***   \t%s^ %s\n", sourceline.whitestr(), errors[ei++].text);
+				else fd.write_fmt("***ERROR***   \t%s^ %s\n", sourceline.whitestr(), errors[ei++].text);
 				offset = count;
 			}
 
@@ -534,22 +521,15 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 			if (i == 0 && s.size.value == 0 && segments.count() > 1) continue;
 			if (s.isCode() && static_cast<CodeSegment&>(s).has_flag)
 				fd.write_fmt(
-					"#CODE %s %s %s,  size %s,  flag = %s\n",
-					s.name,
-					spadding + strlen(s.name),
-					h4u5str(s.address),
-					h4u5str(s.size),
-					u5str(static_cast<CodeSegment&>(s).flag));
+					"#CODE %s %s %s,  size %s,  flag = %s\n", s.name, spadding + strlen(s.name), h4u5str(s.address),
+					h4u5str(s.size), u5str(static_cast<CodeSegment&>(s).flag));
 			else
 				fd.write_fmt(
 					"#%s %s %s %s,  size %s\n",
 					s.isCode() ? "CODE" :
 					s.isTest() ? "TEST" :
 								 "DATA",
-					s.name,
-					spadding + strlen(s.name),
-					h4u5str(s.address),
-					h4u5str(s.size));
+					s.name, spadding + strlen(s.name), h4u5str(s.address), h4u5str(s.size));
 		}
 
 		// list labels:
@@ -580,18 +560,11 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 				uint		 linenumber = sourceline.sourcelinenumber;
 				cstr		 segmentname = segment ? segment->name : "";
 
-				if (!l->is_defined)
-					fd.write_fmt("%s%s = ***UNDEFINED***", name, lpadding + strlen(name));
+				if (!l->is_defined) fd.write_fmt("%s%s = ***UNDEFINED***", name, lpadding + strlen(name));
 				else
 					fd.write_fmt(
-						"%s%s %s  %s%s %s:%u",
-						name,
-						lpadding + strlen(name),
-						h4u5str(l->value),
-						segmentname,
-						spadding + strlen(segmentname),
-						sourcefile,
-						linenumber + 1);
+						"%s%s %s  %s%s %s:%u", name, lpadding + strlen(name), h4u5str(l->value), segmentname,
+						spadding + strlen(segmentname), sourcefile, linenumber + 1);
 
 				fd.write_str(l->is_used ? "\n" : " (unused)\n");
 			}
@@ -612,12 +585,9 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 				for (uint j = 0; j < labels.count(); j++)
 				{
 					Label* l = labels[j];
-					if (l->is_valid() || !l->is_used)
-						continue;
-					else if (verbose < 2 && l->is_preliminary() && l->is_reusable)
-						continue;
-					else
-						unresolved_labels.append(l);
+					if (l->is_valid() || !l->is_used) continue;
+					else if (verbose < 2 && l->is_preliminary() && l->is_reusable) continue;
+					else unresolved_labels.append(l);
 				}
 			}
 
@@ -631,9 +601,7 @@ void Z80Assembler::writeListfile(cstr listpath, int style)
 				{
 					Label* l = unresolved_labels[i];
 					fd.write_fmt(
-						"%s%s = %s\n",
-						l->name,
-						lpadding + strlen(l->name),
+						"%s%s = %s\n", l->name, lpadding + strlen(l->name),
 						l->is_preliminary() ? "***preliminary***" :
 						l->is_defined		? "***unresolved***" :
 											  "***undefined***");

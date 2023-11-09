@@ -31,8 +31,8 @@ namespace zasm
 const uint8 Z80::zlog_flags[256] = {
 // conversion table: A -> Z80-flags with S, Z, V=parity and C=0
 // 2013-06-12:		 A -> Z80-flags with S, Z, V=parity and C=0, bits 3 and 5 verbatim from A
-#define FLAGS0(A)                                                                                                      \
-  (A & 0xA8) + ((A == 0) << 6) +                                                                                       \
+#define FLAGS0(A)                \
+  (A & 0xA8) + ((A == 0) << 6) + \
 	  (((~A + (A >> 1) + (A >> 2) + (A >> 3) + (A >> 4) + (A >> 5) + (A >> 6) + (A >> 7)) & 1) << 2)
 #define FLAGS2(A) FLAGS0(A), FLAGS0((A + 1)), FLAGS0((A + 2)), FLAGS0((A + 3))
 #define FLAGS4(A) FLAGS2(A), FLAGS2((A + 4)), FLAGS2((A + 8)), FLAGS2((A + 12))
@@ -41,7 +41,10 @@ const uint8 Z80::zlog_flags[256] = {
 
 
 Z80::Z80(CpuID cpu_type, CoreByte* core, InputHandler input, OutputHandler output) :
-	core(core), input(input), output(output), cpu_type(cpu_type ? cpu_type : CpuZ80)
+	core(core),
+	input(input),
+	output(output),
+	cpu_type(cpu_type ? cpu_type : CpuZ80)
 {
 	reset();
 }
@@ -58,95 +61,95 @@ void Z80::reset() noexcept
 
 
 // read byte from memory
-#define PEEK(DEST, ADDR)                                                                                               \
-  do {                                                                                                                 \
-	cc += 3;                                                                                                           \
-	DEST = peek(ADDR);                                                                                                 \
-  }                                                                                                                    \
+#define PEEK(DEST, ADDR) \
+  do {                   \
+	cc += 3;             \
+	DEST = peek(ADDR);   \
+  }                      \
   while (0)
 
 // write byte into memory
-#define POKE(ADDR, BYTE)                                                                                               \
-  do {                                                                                                                 \
-	cc += 3;                                                                                                           \
-	poke(ADDR, BYTE);                                                                                                  \
-  }                                                                                                                    \
+#define POKE(ADDR, BYTE) \
+  do {                   \
+	cc += 3;             \
+	poke(ADDR, BYTE);    \
+  }                      \
   while (0)
 
 // read instruction byte at PC (M1 cycle)
-#define GET_INSTR(R)                                                                                                   \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	r += 1;                                                                                                            \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_INSTR(R) \
+  do {               \
+	cc += 4;         \
+	r += 1;          \
+	R = peek(pc++);  \
+  }                  \
   while (0)
 
 // read 2nd instruction byte after 0xCB opcode
-#define GET_CB_OP(R)                                                                                                   \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	r += 1;                                                                                                            \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_CB_OP(R) \
+  do {               \
+	cc += 4;         \
+	r += 1;          \
+	R = peek(pc++);  \
+  }                  \
   while (0)
 
 // read 2nd instruction byte after 0xED opcode
-#define GET_ED_OP(R)                                                                                                   \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	r += 1;                                                                                                            \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_ED_OP(R) \
+  do {               \
+	cc += 4;         \
+	r += 1;          \
+	R = peek(pc++);  \
+  }                  \
   while (0)
 
 // read 2nd instruction byte after IX or IY opcode prefix
-#define GET_XY_OP(R)                                                                                                   \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	r += 1;                                                                                                            \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_XY_OP(R) \
+  do {               \
+	cc += 4;         \
+	r += 1;          \
+	R = peek(pc++);  \
+  }                  \
   while (0)
 
 // read 3rd instruction byte after IX or IY prefix and 0xCB opcode
-#define GET_XYCB_OP(R)                                                                                                 \
-  do {                                                                                                                 \
-	cc += 5;                                                                                                           \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_XYCB_OP(R) \
+  do {                 \
+	cc += 5;           \
+	R = peek(pc++);    \
+  }                    \
   while (0)
 
 // read byte at PC
-#define GET_N(R)                                                                                                       \
-  do {                                                                                                                 \
-	cc += 3;                                                                                                           \
-	R = peek(pc++);                                                                                                    \
-  }                                                                                                                    \
+#define GET_N(R)    \
+  do {              \
+	cc += 3;        \
+	R = peek(pc++); \
+  }                 \
   while (0)
 
 // dummy read byte at PC
-#define SKIP_N()                                                                                                       \
-  do {                                                                                                                 \
-	cc += 3;                                                                                                           \
-	peek(pc++);                                                                                                        \
-  }                                                                                                                    \
+#define SKIP_N() \
+  do {           \
+	cc += 3;     \
+	peek(pc++);  \
+  }              \
   while (0)
 
 // output byte to address
-#define OUTPUT(A, B)                                                                                                   \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	output(cc - 2, A, B);                                                                                              \
-  }                                                                                                                    \
+#define OUTPUT(A, B)      \
+  do {                    \
+	cc += 4;              \
+	output(cc - 2, A, B); \
+  }                       \
   while (0)
 
 // input byte from address
-#define INPUT(A, B)                                                                                                    \
-  do {                                                                                                                 \
-	cc += 4;                                                                                                           \
-	B = input(cc - 2, A);                                                                                              \
-  }                                                                                                                    \
+#define INPUT(A, B)       \
+  do {                    \
+	cc += 4;              \
+	B = input(cc - 2, A); \
+  }                       \
   while (0)
 
 
@@ -164,24 +167,24 @@ Z80::RVal Z80::run(CpuCycle ccx)
 	uint8  rf; // z80 flags
 	uint8  r;  // z80 r register bit 0...6
 
-#define LOAD_REGISTERS                                                                                                 \
-  do {                                                                                                                 \
-	r  = registers.r;  /* refresh counter R	*/                                                                         \
-	cc = this->cc;	   /* cpu cycle counter	*/                                                                         \
-	pc = registers.pc; /* program counter PC	*/                                                                        \
-	ra = registers.a;  /* register A			*/                                                                              \
-	rf = registers.f;  /* register F			*/                                                                              \
-  }                                                                                                                    \
+#define LOAD_REGISTERS                          \
+  do {                                          \
+	r  = registers.r;  /* refresh counter R	*/  \
+	cc = this->cc;	   /* cpu cycle counter	*/  \
+	pc = registers.pc; /* program counter PC */ \
+	ra = registers.a;  /* register A */         \
+	rf = registers.f;  /* register F */         \
+  }                                             \
   while (0)
 
-#define SAVE_REGISTERS                                                                                                 \
-  do {                                                                                                                 \
-	registers.r	 = (registers.r & 0x80) | (r & 0x7f);                                                                  \
-	this->cc	 = cc; /* cpu cycle counter	*/                                                                         \
-	registers.pc = pc; /* program counter PC	*/                                                                        \
-	registers.a	 = ra; /* register A			*/                                                                              \
-	registers.f	 = rf; /* register F			*/                                                                              \
-  }                                                                                                                    \
+#define SAVE_REGISTERS                                \
+  do {                                                \
+	registers.r	 = (registers.r & 0x80) | (r & 0x7f); \
+	this->cc	 = cc; /* cpu cycle counter	*/        \
+	registers.pc = pc; /* program counter PC */       \
+	registers.a	 = ra; /* register A */               \
+	registers.f	 = rf; /* register F */               \
+  }                                                   \
   while (0)
 
 	uint8  c;		// general purpose byte register
@@ -205,18 +208,18 @@ Z80::RVal Z80::run(CpuCycle ccx)
 
 	// looping & jumping:
 #define LOOP goto nxtcmnd // LOOP to next instruction
-#define POKE_AND_LOOP(W, C)                                                                                            \
-  do {                                                                                                                 \
-	w = W;                                                                                                             \
-	c = C;                                                                                                             \
-	goto poke_and_nxtcmd;                                                                                              \
-  }                                                                                                                    \
+#define POKE_AND_LOOP(W, C) \
+  do {                      \
+	w = W;                  \
+	c = C;                  \
+	goto poke_and_nxtcmd;   \
+  }                         \
   while (0) // POKE(w,c) and goto next instr.
-#define EXIT(RESULT)                                                                                                   \
-  do {                                                                                                                 \
-	w = RESULT;                                                                                                        \
-	goto x;                                                                                                            \
-  }                                                                                                                    \
+#define EXIT(RESULT) \
+  do {               \
+	w = RESULT;      \
+	goto x;          \
+  }                  \
   while (0)
 
 	// load local variables from data members:
@@ -254,10 +257,8 @@ slow_loop:
 
 	if (int_start == int_end) // automatic switch-off mode?
 	{
-		if (int_off)
-			LOOP; // interrupts off or already processed
-		else
-			int_off = yes; // switch off interrupt in int ack cycle
+		if (int_off) LOOP;	// interrupts off or already processed
+		else int_off = yes; // switch off interrupt in int ack cycle
 	}
 	else // interrupt with duration
 	{
@@ -742,45 +743,29 @@ nxtcmnd:
 			LOOP;
 
 		case JP_NZ:
-			if (rf & Z_FLAG)
-				goto njp;
-			else
-				goto jp; // cc = 433
+			if (rf & Z_FLAG) goto njp;
+			else goto jp; // cc = 433
 		case JP_NC:
-			if (rf & C_FLAG)
-				goto njp;
-			else
-				goto jp;
+			if (rf & C_FLAG) goto njp;
+			else goto jp;
 		case JP_PO:
-			if (rf & P_FLAG)
-				goto njp;
-			else
-				goto jp;
+			if (rf & P_FLAG) goto njp;
+			else goto jp;
 		case JP_P:
-			if (rf & S_FLAG)
-				goto njp;
-			else
-				goto jp;
+			if (rf & S_FLAG) goto njp;
+			else goto jp;
 		case JP_C:
-			if (rf & C_FLAG)
-				goto jp;
-			else
-				goto njp;
+			if (rf & C_FLAG) goto jp;
+			else goto njp;
 		case JP_PE:
-			if (rf & P_FLAG)
-				goto jp;
-			else
-				goto njp;
+			if (rf & P_FLAG) goto jp;
+			else goto njp;
 		case JP_M:
-			if (rf & S_FLAG)
-				goto jp;
-			else
-				goto njp;
+			if (rf & S_FLAG) goto jp;
+			else goto njp;
 		case JP_Z:
-			if (rf & Z_FLAG)
-				goto jp;
-			else
-				goto njp;
+			if (rf & Z_FLAG) goto jp;
+			else goto njp;
 		njp:
 			SKIP_N();
 			SKIP_N();
@@ -802,42 +787,32 @@ nxtcmnd:
 
 		case JR_Z: // cc = 43[5]
 			if (isa_8080) goto ill_op1;
-			if (rf & Z_FLAG)
-				goto jr;
-			else
-				goto njr;
+			if (rf & Z_FLAG) goto jr;
+			else goto njr;
 		njr:
 			SKIP_N();
 			LOOP;
 
 		case JR_C: // cc = 43[5]
 			if (isa_8080) goto ill_op1;
-			if (rf & C_FLAG)
-				goto jr;
-			else
-				goto njr;
+			if (rf & C_FLAG) goto jr;
+			else goto njr;
 
 		case JR_NZ: // cc = 43[5]
 			if (isa_8080) goto ill_op1;
-			if (rf & Z_FLAG)
-				goto njr;
-			else
-				goto jr;
+			if (rf & Z_FLAG) goto njr;
+			else goto jr;
 
 		case JR_NC: // cc = 43[5]
 			if (isa_8080) goto ill_op1;
-			if (rf & C_FLAG)
-				goto njr;
-			else
-				goto jr;
+			if (rf & C_FLAG) goto njr;
+			else goto jr;
 
 		case DJNZ: // pc:5, pc+1:3,[5*1]
 			if (isa_8080) goto ill_op1;
 			cc += 1;
-			if (--RB)
-				goto jr;
-			else
-				goto njr;
+			if (--RB) goto jr;
+			else goto njr;
 
 		case RET: // timing: pc:4, sp:3, sp+1:3
 		ret:
@@ -848,52 +823,36 @@ nxtcmnd:
 
 		case RET_NZ:
 			cc += 1;
-			if (rf & Z_FLAG)
-				LOOP;
-			else
-				goto ret; // cc = 5[33]
+			if (rf & Z_FLAG) LOOP;
+			else goto ret; // cc = 5[33]
 		case RET_NC:
 			cc += 1;
-			if (rf & C_FLAG)
-				LOOP;
-			else
-				goto ret;
+			if (rf & C_FLAG) LOOP;
+			else goto ret;
 		case RET_PO:
 			cc += 1;
-			if (rf & P_FLAG)
-				LOOP;
-			else
-				goto ret;
+			if (rf & P_FLAG) LOOP;
+			else goto ret;
 		case RET_P:
 			cc += 1;
-			if (rf & S_FLAG)
-				LOOP;
-			else
-				goto ret;
+			if (rf & S_FLAG) LOOP;
+			else goto ret;
 		case RET_Z:
 			cc += 1;
-			if (rf & Z_FLAG)
-				goto ret;
-			else
-				LOOP;
+			if (rf & Z_FLAG) goto ret;
+			else LOOP;
 		case RET_C:
 			cc += 1;
-			if (rf & C_FLAG)
-				goto ret;
-			else
-				LOOP;
+			if (rf & C_FLAG) goto ret;
+			else LOOP;
 		case RET_PE:
 			cc += 1;
-			if (rf & P_FLAG)
-				goto ret;
-			else
-				LOOP;
+			if (rf & P_FLAG) goto ret;
+			else LOOP;
 		case RET_M:
 			cc += 1;
-			if (rf & S_FLAG)
-				goto ret;
-			else
-				LOOP;
+			if (rf & S_FLAG) goto ret;
+			else LOOP;
 
 		case LD_A_xNN: GET_NN(w); goto ld_a_xw; // cc = 4333
 		case LD_A_xBC: w = BC; goto ld_a_xw;	// cc = 43
@@ -939,45 +898,29 @@ nxtcmnd:
 
 		// ########	Write-to-memory Instructions #####################
 		case CALL_NC:
-			if (rf & C_FLAG)
-				goto nocall;
-			else
-				goto call; // cc = 433[133]
+			if (rf & C_FLAG) goto nocall;
+			else goto call; // cc = 433[133]
 		case CALL_PO:
-			if (rf & P_FLAG)
-				goto nocall;
-			else
-				goto call;
+			if (rf & P_FLAG) goto nocall;
+			else goto call;
 		case CALL_P:
-			if (rf & S_FLAG)
-				goto nocall;
-			else
-				goto call;
+			if (rf & S_FLAG) goto nocall;
+			else goto call;
 		case CALL_NZ:
-			if (rf & Z_FLAG)
-				goto nocall;
-			else
-				goto call;
+			if (rf & Z_FLAG) goto nocall;
+			else goto call;
 		case CALL_C:
-			if (rf & C_FLAG)
-				goto call;
-			else
-				goto nocall;
+			if (rf & C_FLAG) goto call;
+			else goto nocall;
 		case CALL_PE:
-			if (rf & P_FLAG)
-				goto call;
-			else
-				goto nocall;
+			if (rf & P_FLAG) goto call;
+			else goto nocall;
 		case CALL_M:
-			if (rf & S_FLAG)
-				goto call;
-			else
-				goto nocall;
+			if (rf & S_FLAG) goto call;
+			else goto nocall;
 		case CALL_Z:
-			if (rf & Z_FLAG)
-				goto call;
-			else
-				goto nocall;
+			if (rf & Z_FLAG) goto call;
+			else goto nocall;
 		nocall:
 			SKIP_N();
 			SKIP_N();
@@ -1419,10 +1362,8 @@ nxtcmnd:
 					case 7: ra = c; break;
 					}
 
-					if ((o & 0xc0) == 0x40)
-						LOOP; // BIT
-					else
-						POKE_AND_LOOP(w, c); // SET, RES or SHIFT
+					if ((o & 0xc0) == 0x40) LOOP; // BIT
+					else POKE_AND_LOOP(w, c);	  // SET, RES or SHIFT
 				}
 
 				default:		  // ix/iy prefix has no effect on operation:

@@ -219,10 +219,8 @@ uchar CharMap::get(UCS2Char key) const
 	if (c) return c;
 	static_assert(NC != 0, "const NC must be non-zero here");
 
-	if (key >= ' ' && key <= 0x7F)
-		throw SyntaxError("Character '%c' is not in the target character set", key);
-	else
-		throw SyntaxError("Character 0x%04X is not in the target character set", key);
+	if (key >= ' ' && key <= 0x7F) throw SyntaxError("Character '%c' is not in the target character set", key);
+	else throw SyntaxError("Character 0x%04X is not in the target character set", key);
 }
 
 uchar CharMap::operator[](UCS2Char key) const noexcept

@@ -70,7 +70,12 @@ SourceLine::SourceLine(cstr sourcefile, uint linenumber, cstr text) :
 	text(text),					  // 2nd ptr
 	sourcefile(sourcefile),		  // 2nd ptr
 	sourcelinenumber(linenumber), // 0-based
-	segment(nullptr), byteptr(0), bytecount(0), label(nullptr), is_data(no), p(text)
+	segment(nullptr),
+	byteptr(0),
+	bytecount(0),
+	label(nullptr),
+	is_data(no),
+	p(text)
 {}
 
 char SourceLine::peekChar()
@@ -155,10 +160,8 @@ void SourceLine::expectEol()
 
 	skip_spaces();
 	char c = *p;
-	if (c == ';' || c == 0)
-		return;
-	else
-		throw SyntaxError("end of line expected");
+	if (c == ';' || c == 0) return;
+	else throw SyntaxError("end of line expected");
 }
 
 cstr SourceLine::nextWord() noexcept
@@ -180,8 +183,7 @@ cstr SourceLine::nextWord() noexcept
 	case '!': return "!";
 	case '~': return "~";
 	case '+':
-		if (*p != c)
-			return "+";
+		if (*p != c) return "+";
 		else
 		{
 			p++;
@@ -217,8 +219,7 @@ cstr SourceLine::nextWord() noexcept
 		break;
 
 	case '$': // $, $$ or hex number
-		if (*p == '$')
-			p++;
+		if (*p == '$') p++;
 		else
 			while (is_hex_digit(*p)) p++;
 		break;

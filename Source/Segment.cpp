@@ -71,12 +71,23 @@ static void check_uint16_value(cValue& old, cValue& nju, cstr name) // helper
 
 // protected:
 Segment::Segment(SegmentType type, cstr name) :
-	type(type), name(name), is_data(no), is_code(no), is_test(no), is_tzx(no), dpos()
+	type(type),
+	name(name),
+	is_data(no),
+	is_code(no),
+	is_test(no),
+	is_tzx(no),
+	dpos()
 {}
 
 // protected:
 DataSegment::DataSegment(cstr _name, SegmentType _type, bool relocatable, bool resizable) :
-	Segment(_type, _name), relocatable(relocatable), resizable(resizable), address(), size(), lpos()
+	Segment(_type, _name),
+	relocatable(relocatable),
+	resizable(resizable),
+	address(),
+	size(),
+	lpos()
 {}
 
 /*	#data constructor
@@ -94,9 +105,27 @@ DataSegment::DataSegment(cstr _name) : Segment(DATA, _name), relocatable(yes), r
 	or at the end of an assembler pass.
 */
 CodeSegment::CodeSegment(cstr _name, SegmentType _type, uint8 _fillbyte) :
-	DataSegment(_name, _type, 1, 1), flag(), pause(), lastbits(), fillbyte(_fillbyte), custom_fillbyte(no),
-	has_flag(no), has_pause(no), has_lastbits(no), no_flagbyte(no), no_checksum(no), no_pilot(_type == TZX_PURE_DATA),
-	checksum_ace(no), compressed(0), core(0x10000), ccore(0), ucore(0), pilotsym(), pilot(), datasym(), pilotsym_idx(0),
+	DataSegment(_name, _type, 1, 1),
+	flag(),
+	pause(),
+	lastbits(),
+	fillbyte(_fillbyte),
+	custom_fillbyte(no),
+	has_flag(no),
+	has_pause(no),
+	has_lastbits(no),
+	no_flagbyte(no),
+	no_checksum(no),
+	no_pilot(_type == TZX_PURE_DATA),
+	checksum_ace(no),
+	compressed(0),
+	core(0x10000),
+	ccore(0),
+	ucore(0),
+	pilotsym(),
+	pilot(),
+	datasym(),
+	pilotsym_idx(0),
 	datasym_idx(0)
 {
 	is_code = yes;
@@ -146,10 +175,7 @@ void DataSegment::setAddress(cValue& new_address)
 		if (size.is_valid() && size.value + new_address.value > 0x10000)
 		{
 			throw SyntaxError(
-				"segment %s: address+size out of range: %i + %i = %i",
-				name,
-				int(new_address),
-				int(size),
+				"segment %s: address+size out of range: %i + %i = %i", name, int(new_address), int(size),
 				int(size + new_address));
 		}
 	}
@@ -177,10 +203,7 @@ void DataSegment::setSize(cValue& newsize)
 
 		if (address.is_valid() && address.value + newsize.value > 0x10000)
 			throw SyntaxError(
-				"segment %s: address+size out of range: %i + %i = %i",
-				name,
-				int(address),
-				int(newsize),
+				"segment %s: address+size out of range: %i + %i = %i", name, int(address), int(newsize),
 				int(address + newsize));
 	}
 
@@ -635,10 +658,8 @@ void CodeSegment::addPilotSymbol(Values symbol)
 
 	assert(type == CODE || type == TZX_TURBO || type == TZX_GENERALIZED);
 
-	if (pilotsym_idx == pilotsym.count())
-		pilotsym.append(std::move(symbol));
-	else
-		pilotsym[pilotsym_idx] = std::move(symbol);
+	if (pilotsym_idx == pilotsym.count()) pilotsym.append(std::move(symbol));
+	else pilotsym[pilotsym_idx] = std::move(symbol);
 
 	check_pilot_symbol(pilotsym_idx++);
 }
@@ -653,10 +674,8 @@ void CodeSegment::addDataSymbol(Values symbol)
 
 	assert(type == CODE || type == TZX_TURBO || type == TZX_GENERALIZED || type == TZX_PURE_DATA);
 
-	if (datasym_idx == datasym.count())
-		datasym.append(std::move(symbol));
-	else
-		datasym[datasym_idx] = std::move(symbol);
+	if (datasym_idx == datasym.count()) datasym.append(std::move(symbol));
+	else datasym[datasym_idx] = std::move(symbol);
 
 	check_data_symbol(datasym_idx++);
 }
@@ -788,8 +807,19 @@ Validity TzxPulses::validity() const
 void TzxPulses::rewind() { count = 0; }
 
 TzxCswRecording::TzxCswRecording(cstr filename) :
-	TzxSegment(TZX_CSW_RECORDING), filename(filename), compressed(no), raw(no), pause(), header_size(), first_frame(),
-	last_frame(), sample_rate(0), num_channels(0), sample_size(0), signed_samples(no), little_endian(no)
+	TzxSegment(TZX_CSW_RECORDING),
+	filename(filename),
+	compressed(no),
+	raw(no),
+	pause(),
+	header_size(),
+	first_frame(),
+	last_frame(),
+	sample_rate(0),
+	num_channels(0),
+	sample_size(0),
+	signed_samples(no),
+	little_endian(no)
 {
 	cstr ext = lowerstr(extension_from_path(filename));
 	raw		 = ne(ext, ".wav");
@@ -889,7 +919,9 @@ void TzxArchiveInfo::addArchiveInfo(uint8 id, cstr text)
 // -------------------------------------------------------
 
 IoSequence::IoSequence(const uint8* data, uint count, uint repetitions) :
-	data(nullptr), count(count), repetitions(repetitions)
+	data(nullptr),
+	count(count),
+	repetitions(repetitions)
 {
 	this->data = new uint8[count];
 	memcpy(this->data, data, count);
@@ -907,9 +939,11 @@ IoSequence& IoSequence::operator=(IoSequence&& q) noexcept
 }
 
 IoList::IoList(IoSequence&& q) :
-	iomode(IoValues), data(nullptr), sequence_idx(0), // not strictly required: reset in TestSegment.openFile()
-	in_sequence_idx(0),								  // ""
-	repetition(0)									  // ""
+	iomode(IoValues),
+	data(nullptr),
+	sequence_idx(0),	// not strictly required: reset in TestSegment.openFile()
+	in_sequence_idx(0), // ""
+	repetition(0)		// ""
 {
 	data = new IoSequences;
 	data->append(std::move(q));
@@ -922,10 +956,8 @@ IoList::IoList(IoMode iomode, cstr filename, uint blocksize) : iomode(iomode), f
 
 IoList::~IoList()
 {
-	if (iomode == IoValues)
-		delete data;
-	else
-		fd.~FD();
+	if (iomode == IoValues) delete data;
+	else fd.~FD();
 }
 
 IoList::IoList(IoList&& q) : iomode(q.iomode)
@@ -1167,26 +1199,16 @@ Validity TestSegment::validity() const
 	if (v == invalid) return v;
 
 	// replace unset values with (valid) default values:
-	if (cpu_clock.value == -1)
-		cpu_clock = cpu_unlimited;
-	else
-		v = min(v, cpu_clock.validity);
-	if (int_per_sec.value == -1)
-		int_per_sec = no_interrupts;
-	else
-		v = min(v, int_per_sec.validity);
-	if (int_duration.value == -1)
-		int_duration = dflt_int_duration;
-	else
-		v = min(v, int_duration.validity);
-	if (int_ack_byte.value == -1)
-		int_ack_byte = floating_bus_byte;
-	else
-		v = min(v, int_ack_byte.validity);
-	if (timeout_ms.value == -1)
-		timeout_ms = no_timeout;
-	else
-		v = min(v, timeout_ms.validity);
+	if (cpu_clock.value == -1) cpu_clock = cpu_unlimited;
+	else v = min(v, cpu_clock.validity);
+	if (int_per_sec.value == -1) int_per_sec = no_interrupts;
+	else v = min(v, int_per_sec.validity);
+	if (int_duration.value == -1) int_duration = dflt_int_duration;
+	else v = min(v, int_duration.validity);
+	if (int_ack_byte.value == -1) int_ack_byte = floating_bus_byte;
+	else v = min(v, int_ack_byte.validity);
+	if (timeout_ms.value == -1) timeout_ms = no_timeout;
+	else v = min(v, timeout_ms.validity);
 
 	return v;
 }
@@ -1316,14 +1338,8 @@ void TestSegment::setExpectedRegisterValue(SourceLine* q, cstr regname, Value v)
 }
 
 static const cstr ioModeNames[] = {
-	"list of values",
-	"stdin",
-	"stdout",
-	"input file",
-	"output file",
-	"output file (append)",
-	"output file (compare)",
-	"block device"};
+	"list of values",		 "stdin",		"stdout", "input file", "output file", "output file (append)",
+	"output file (compare)", "block device"};
 
 static uint16 validated_io_address(cValue& addr) // helper
 {
@@ -1554,10 +1570,8 @@ uint8 TestSegment::inputByte(uint16 addr) // during test
 	IoList* iolist = inputdata.find(uint8(addr));
 	if (iolist) return iolist->inputByte();
 	iolist = inputdata.find(addr);
-	if (iolist)
-		return iolist->inputByte();
-	else
-		throw AnyError("unexpected io address (no .test-in data)");
+	if (iolist) return iolist->inputByte();
+	else throw AnyError("unexpected io address (no .test-in data)");
 }
 
 void TestSegment::outputByte(uint16 addr, uint8 byte, uint8* memory) // during test
@@ -1569,10 +1583,8 @@ void TestSegment::outputByte(uint16 addr, uint8 byte, uint8* memory) // during t
 		return;
 	}
 	iolist = outputdata.find(addr);
-	if (iolist)
-		iolist->outputByte(byte, memory);
-	else
-		throw AnyError("unexpected io address (no .test-out data)");
+	if (iolist) iolist->outputByte(byte, memory);
+	else throw AnyError("unexpected io address (no .test-out data)");
 }
 
 

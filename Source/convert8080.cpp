@@ -181,15 +181,13 @@ void Z80Assembler::convert8080toZ80(cstr source, cstr dest)
 		{
 			skip_idf(qp, allow_dotnames);
 			if (skip_char(qp, ':')) {} // label definition
-			else
-				qp = q; // no label => undo progress
+			else qp = q;			   // no label => undo progress
 		}
 		else if (*qp > ' ')
 		{
 			skip_idf(qp, allow_dotnames);
 			if (qp != q) { skip_char(qp, ':'); } // label definition
-			else
-				qp = q; // no label => undo progress
+			else qp = q;						 // no label => undo progress
 		}
 
 		skip_space(qp);
@@ -328,10 +326,8 @@ void Z80Assembler::convert8080toZ80(cstr source, cstr dest)
 			goto x; // R arg
 
 		x:
-			if (r == nullptr)
-				break; // expect register
-			else
-				q = qp;
+			if (r == nullptr) break; // expect register
+			else q = qp;
 			np = strchr(op, 'R');
 			assert(np);
 			memcpy(zp, op, size_t(np - op));

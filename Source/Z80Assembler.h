@@ -218,8 +218,7 @@ private:
 	cValue& currentPosition() { return current_segment_ptr->dpos; }
 	Value	dollar()
 	{
-		if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
-			return seg->lpos - seg->dpos + cmd_dpos;
+		if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr)) return seg->lpos - seg->dpos + cmd_dpos;
 		else
 			throw SyntaxError(
 				current_segment_ptr ? "current segment does not provide a '$' address" :
@@ -227,10 +226,8 @@ private:
 	}
 	Value dollarDollar()
 	{
-		if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr))
-			return seg->getAddress() + cmd_dpos;
-		else
-			throw SyntaxError("current segment does not provide a '$$' address");
+		if (DataSegment* seg = dynamic_cast<DataSegment*>(current_segment_ptr)) return seg->getAddress() + cmd_dpos;
+		else throw SyntaxError("current segment does not provide a '$$' address");
 	}
 
 	int getCondition(SourceLine&, bool expect_comma);

@@ -159,15 +159,11 @@ int Z80Assembler::getRegister(SourceLine& q, Value& n, bool with_qreg)
 		case 'h': return RH;
 		case 'l': return RL;
 		case 'i':
-			if (target_z80_or_z180)
-				return RI;
-			else
-				goto no_8080;
+			if (target_z80_or_z180) return RI;
+			else goto no_8080;
 		case 'r':
-			if (target_z80_or_z180)
-				return RR;
-			else
-				goto no_8080;
+			if (target_z80_or_z180) return RR;
+			else goto no_8080;
 
 		case '(':
 		{
@@ -267,81 +263,56 @@ int Z80Assembler::getRegister(SourceLine& q, Value& n, bool with_qreg)
 		switch (c1)
 		{
 		case 'a':
-			if (c2 == 'f')
-				return AF;
-			else
-				break;
+			if (c2 == 'f') return AF;
+			else break;
 		case 'b':
-			if (c2 == 'c')
-				return BC;
-			else
-				break;
+			if (c2 == 'c') return BC;
+			else break;
 		case 'd':
-			if (c2 == 'e')
-				return DE;
-			else
-				break;
+			if (c2 == 'e') return DE;
+			else break;
 		case 'h':
-			if (c2 == 'l')
-				return HL;
-			else
-				break;
+			if (c2 == 'l') return HL;
+			else break;
 		case 's':
-			if (c2 == 'p')
-				return SP;
-			else
-				break;
+			if (c2 == 'p') return SP;
+			else break;
 		case 'i':
 			if (c2 == 'x')
 			{
-				if (target_z80_or_z180)
-					return IX;
-				else
-					goto no_8080;
+				if (target_z80_or_z180) return IX;
+				else goto no_8080;
 			}
 			if (c2 == 'y')
 			{
-				if (target_z80_or_z180)
-					return IY;
-				else
-					goto no_8080;
+				if (target_z80_or_z180) return IY;
+				else goto no_8080;
 			}
-			else
-				break;
+			else break;
 		case 'x':
 			if (c2 == 'h')
 			{
-				if (target_z80)
-					return XH;
-				else
-					goto z80_only;
+				if (target_z80) return XH;
+				else goto z80_only;
 			}
 			if (c2 == 'l')
 			{
-				if (target_z80)
-					return XL;
-				else
-					goto z80_only;
+				if (target_z80) return XL;
+				else goto z80_only;
 			}
-			else
-				break;
+			else break;
 		case 'y':
 			if (c2 == 'h')
 			{
-				if (target_z80)
-					return YH;
-				else
-					goto z80_only;
+				if (target_z80) return YH;
+				else goto z80_only;
 			}
 			if (c2 == 'l')
 			{
-				if (target_z80)
-					return YL;
-				else
-					goto z80_only;
+				if (target_z80) return YL;
+				else goto z80_only;
 			}
-			else
-				break;
+			else break;
 		}
 	}
 	else // ≥3 letters
@@ -530,10 +501,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		// rst n		0 .. 7  or  0*8 .. 7*8
 		n = value(q);
 		if (n.value % 8 == 0) n.value >>= 3;
-		if (n.is_valid() && n.value >> 3)
-			throw SyntaxError("illegal vector number");
-		else
-			return store(RST00 + n.value * 8);
+		if (n.is_valid() && n.value >> 3) throw SyntaxError("illegal vector number");
+		else return store(RST00 + n.value * 8);
 
 	case 'push': instr = PUSH_HL; goto pop;
 	case ' pop':
@@ -558,28 +527,20 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 				r  = r >> 8;
 			}
 
-			if (r2 >= BC && r2 <= HL)
-				store(instr + (r2 - HL) * 16);
-			else if (r2 == AF)
-				store(instr + 16);
-			else if (r2 == IX)
-				store(PFX_IX, instr);
-			else if (r2 == IY)
-				store(PFX_IY, instr);
-			else if (instr == POP_HL)
-				goto ill_target;
-			else
-				goto ill_source;
+			if (r2 >= BC && r2 <= HL) store(instr + (r2 - HL) * 16);
+			else if (r2 == AF) store(instr + 16);
+			else if (r2 == IX) store(PFX_IX, instr);
+			else if (r2 == IY) store(PFX_IY, instr);
+			else if (instr == POP_HL) goto ill_target;
+			else goto ill_source;
 		}
 
 		if (r >= BC && r <= HL) return store(instr + (r - HL) * 16);
 		if (r == AF) return store(instr + 16);
 		if (r == IX) return store(PFX_IX, instr);
 		if (r == IY) return store(PFX_IY, instr);
-		if (instr == POP_HL)
-			goto ill_target;
-		else
-			goto ill_source;
+		if (instr == POP_HL) goto ill_target;
+		else goto ill_source;
 
 	case ' dec': r2 = 1; goto inc;
 	case ' inc':
@@ -643,10 +604,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		{
 			if (target_8080) goto ill_8080;
 			q.test_char('\'');
-			if (r2 == AF)
-				return store(EX_AF_AF);
-			else
-				goto ill_source;
+			if (r2 == AF) return store(EX_AF_AF);
+			else goto ill_source;
 		}
 		if (r == HL)
 		{
@@ -673,10 +632,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		{
 			if (r2 == HL) return store(EX_HL_xSP);
 			if (r2 == IX) return store(PFX_IX, EX_HL_xSP);
-			if (r2 == IY)
-				return store(PFX_IY, EX_HL_xSP);
-			else
-				goto ill_source;
+			if (r2 == IY) return store(PFX_IY, EX_HL_xSP);
+			else goto ill_source;
 		}
 		goto ill_target;
 
@@ -769,10 +726,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		depp = q.p;
 		if (q.testComma())
 		{
-			if (r != RA)
-				goto ill_target;
-			else
-				r = getRegister(q, n);
+			if (r != RA) goto ill_target;
+			else r = getRegister(q, n);
 		}
 
 		if (r <= RA)
@@ -1175,8 +1130,7 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 				else if (int8(r2) == BC) { storeEDopcode(LD_xNN_BC); }
 				else if (int8(r2) == DE) { storeEDopcode(LD_xNN_DE); }
 				else if (int8(r2) == SP) { storeEDopcode(LD_xNN_SP); }
-				else
-					goto ill_source;
+				else goto ill_source;
 				storeWord(n);
 				if (r2 <= 255) return;
 				// quad register:		// 1st loop stored low register
@@ -1433,8 +1387,7 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 						else if (int8(r) == IX) { storeIXopcode(LD_HL_xNN); }
 						else if (int8(r) == IY) { storeIYopcode(LD_HL_xNN); }
 						else if (int8(r) == SP) { storeEDopcode(LD_SP_xNN); }
-						else
-							goto ill_dest;
+						else goto ill_dest;
 						storeWord(n2); // store address
 						n2.value += 2; // incr address for high registers
 						r = r >> 8;	   // move spec for high registers into low byte
@@ -1453,8 +1406,7 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 						else if (int8(r) == IX) { storeIXopcode(LD_HL_NN); }
 						else if (int8(r) == IY) { storeIYopcode(LD_HL_NN); }
 						else if (int8(r) == SP) { store(LD_SP_NN); }
-						else
-							goto ill_dest;
+						else goto ill_dest;
 						storeWord(n2 & 0xffff); // store value
 						n2 = n2 >> 16;			// move high part of value into low word
 						r  = r >> 8;			// move spec for high registers into low byte
@@ -1504,8 +1456,7 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		// in r,(bc)	a f b c d e h l
 		// in (c)		same as "in f,(c)"
 
-		if (q.testWord("f"))
-			r = XHL;
+		if (q.testWord("f")) r = XHL;
 		else
 		{
 			r = getRegister(q, n);
@@ -1621,10 +1572,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		if (r2 <= YL)
 		{
 			if (!ixcbxh_enabled) throw SyntaxError("illegal instruction (use --ixcbxh)");
-			if (r2 >= YH)
-				return store(PFX_IY, PFX_CB, 0, instr + r2 + RH - YH - RB);
-			else
-				return store(PFX_IX, PFX_CB, 0, instr + r2 + RH - XH - RB);
+			if (r2 >= YH) return store(PFX_IY, PFX_CB, 0, instr + r2 + RH - YH - RB);
+			else return store(PFX_IX, PFX_CB, 0, instr + r2 + RH - XH - RB);
 		}
 
 		if (r2 <= HL && r2 >= BC) // goodie: sla, sll, rl, sra, srl, rr with bc, de, hl
@@ -1660,10 +1609,8 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		if (r2 == XHLPP) return store(PFX_CB, instr + XHL - RB, INC_HL);
 		if (r2 == XMMHL) return store(DEC_HL, PFX_CB, instr + XHL - RB);
 
-		if ((instr & 0xc0) == BIT0_B)
-			goto ill_source;
-		else
-			goto ill_target;
+		if ((instr & 0xc0) == BIT0_B) goto ill_source;
+		else goto ill_target;
 
 
 		// ---- Z180 opcodes: ----
@@ -1681,8 +1628,7 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 	case ' in0':
 		// in0 r,(n)		a b c d e h l f
 		if (!target_z180) goto ill_z180;
-		if (q.testWord("f"))
-			r = XHL;
+		if (q.testWord("f")) r = XHL;
 		else
 		{
 			r = getRegister(q, n);
