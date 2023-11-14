@@ -1674,6 +1674,42 @@ uint32 CodeSegments::totalCodeSize() const
 	return sz;
 }
 
+void CodeSegments::sortByAddress(uint a, uint e)
+{
+	sort(a, e, [](const RCPtr<CodeSegment>& a, const RCPtr<CodeSegment>& b) { return a->address > b->address; });
+}
+
+cstr CodeSegments::fillGaps(uint ia, uint ie, uint8 fillbyte)
+{
+	// fill gaps between segments
+	// returns nullptr or errorstr
+	// the segments must be sorted
+
+	for (uint i = ia; i < ie - 1; i++)
+	{
+		CodeSegment& a = *data[i];
+		CodeSegment& b = *data[i + 1];
+
+		int a_end = int(a.address) + int(a.outputSize());
+		int a_gap = int(b.address) - a_end;
+		if (a_gap == 0) continue;
+		if (a_gap < 0) return usingstr("segments %s and %s overlap", a.name, b.name);
+
+		if (a.compressed)
+		{
+			uint sz = a.ccore.count();
+			a.ccore.grow(uint(b.address - a.address));
+			memset(&a.ccore[sz], fillbyte, uint(a_gap));
+		}
+		else
+		{
+			memset(&a.core[uint(a.size)], fillbyte, uint(a_gap));
+			a.size = b.address - a.address;
+		}
+	}
+	return nullptr; // well done
+}
+
 TzxSegments::TzxSegments(const Segments& segments)
 {
 	for (uint i = 0; i < segments.count(); i++)
@@ -1689,3 +1725,42 @@ TestSegments::TestSegments(const Segments& segments)
 		if (auto s = dynamic_cast<TestSegment*>(segments[i].ptr())) { append(s); }
 	}
 }
+
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/

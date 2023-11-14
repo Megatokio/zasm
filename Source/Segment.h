@@ -606,6 +606,8 @@ public:
 	CodeSegments(const Segments& segments); // extract CodeSegments (CODE, TZX, no TEST) from source array
 	void   checkNoFlagsSet() const;
 	uint32 totalCodeSize() const;
+	void   sortByAddress(uint idx_first, uint idx_last_excl);
+	cstr   fillGaps(uint idx_first, uint idx_last_excl, uint8 fillbyte = 0x00);
 };
 
 class TzxSegments : public RCArray<TzxSegment>

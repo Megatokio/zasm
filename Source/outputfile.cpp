@@ -1522,18 +1522,21 @@ void Z80Assembler::checkZX80File()
 	static_assert(sizeof(ZX80Head) == 0x28, "sizeof(ZX80Head) wrong!");
 	using ZX80HeadPtr = ZX80Head*;
 
-	const uint i0 = 0;
-
 	CodeSegments segments(this->segments);
 	segments.checkNoFlagsSet();
-	uint32 ramsize = segments.totalCodeSize();
+
+	segments.sortByAddress(0, segments.count());
+	segments.fillGaps(0, segments.count());
+	while (segments.count() && segments.last()->size == 0) { segments.drop(); }
+	if (segments.count() == 0) return setError("no data");
+	uint32 ramsize = uint(segments.last()->address) + segments.last()->outputSize() - 0x4000;
 
 	// valid ram size: 1k, 2k, 3k, 4k, 16k
 	bool ramsize_valid = ramsize >= sizeof(ZX80Head) + 1 && ramsize <= 16 kB;
 	if (!ramsize_valid) setError("total ram size out of range: must be ≥40+1 ($28+1) and ≤16k (size=$%04X", ramsize);
 	if (ramsize < sizeof(ZX80Head)) return;
 
-	CodeSegment& hs = segments[i0];
+	CodeSegment& hs = segments[0];
 	if (hs.address.value != 0x4000) throw SyntaxError("segment %s: first segment must start at $4000", hs.name);
 	if (hs.compressed) throw SyntaxError("segment %s: system variables cannot be compressed", hs.name);
 	if (size_t(hs.size) < sizeof(ZX80Head))
@@ -1544,16 +1547,11 @@ void Z80Assembler::checkZX80File()
 	ZX80Head* head	 = ZX80HeadPtr(vp);
 	uint16	  E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000 + ramsize)
-		setError(
-			"segment %s: E_LINE ($400A) must match ram end address $%04X (E_LINE=$%04X)", hs.name,
-			0x4000 + uint(hs.size), E_LINE);
+		setError("E_LINE ($400A) != ram end address: ram end = $%04X, E_LINE = $%04X", 0x4000 + ramsize, E_LINE);
 
 	if (verbose) // last byte of a (clean) file must be 0x80 (last byte of VARS):
 	{
-		uint i = 0;
-		while (i < segments.count()) { i++; }
-		while (segments[--i]->size.value == 0) {}
-		CodeSegment& ls = segments[i];
+		CodeSegment& ls = segments.last();
 		if (ls.compressed) logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
 		else if (ls[uint(ls.size) - 1] != 0x80)
 			logline("segment %s: last byte (last byte of VARS) is not $80", ls.name);
@@ -1607,26 +1605,25 @@ void Z80Assembler::checkZX81File()
 		uint8 S_POSN_X;			//	Column number for PRINT position.
 		uint8 S_POSN_Y;			//	Line number for PRINT position.
 		uint8 CDFLAG;			//	Various flags. Bit 7 is on (1) during compute and display (SLOW) mode.
-								// PRBUFF ds	33	; Printer buffer (33rd character is ENTER/NEWLINE).
-		// MEMBOT ds	30	; Calculator’s memory area; used to store numbers that cannot be put on the calculator
-		// stack. 		 dw	0	; not used
+								//  PRBUFF ds	33	; Printer buffer (33rd character is ENTER/NEWLINE).
+		//                      //  MEMBOT ds	30	; Calculator’s memory area; used to store numbers …
+		//                      //         dw	0	; not used         ; … that cannot be put on the calculator stack.
 	};
 	static_assert(sizeof(ZX81Head) == 125 - 9 - 65, "sizeof(ZX81Head) wrong!"); // 125 == 0x7D
 	using ZX81HeadPtr = ZX81Head*;
 
-	const uint i0 = 0;
-	uint	   hi = i0;
-
 	segments.checkNoFlagsSet();
-	uint32 ramsize = segments.totalCodeSize() + 9;
+
+	uint hi = 0;
 
 	if (target == ZX81P)
 	{
 		// first segment must contain the program name only:
 		// character set translation must already been done by assembler
 		// => prog name: only characters in range 0..63; last char +$80
-
 	a:
+		if (segments.count() == hi) return setError("no data");
+
 		CodeSegment& s = segments[hi++];
 		if (s.compressed) throw SyntaxError("segment %s: program name cannot be compressed", s.name);
 		if (s.size.value == 0) goto a;
@@ -1637,8 +1634,14 @@ void Z80Assembler::checkZX81File()
 		while (i < uint(s.size) && s[i] < 0x40) i++;
 		if (i == uint(s.size)) throw SyntaxError("segment %s: prog name delimiter on last char missing", s.name);
 		if (s[i] & 0x40) throw SyntaxError("segment %s: ill. character in prog name: (bit6=1)", s.name);
-		ramsize -= i + 1;
 	}
+
+	segments.sortByAddress(hi, segments.count());
+	segments.fillGaps(hi, segments.count());
+	while (segments.count() && segments.last()->size == 0) { segments.drop(); }
+	if (segments.count() == hi) return setError("no data");
+
+	uint32 ramsize = uint(segments.last()->address + int(segments.last()->outputSize()) - 0x4000);
 
 	// valid ram size: sizeof(sysvars)-9+1 .. 16k-9
 	bool ramsize_valid = ramsize >= 125 + 1 && ramsize <= 16 kB;
@@ -1654,9 +1657,7 @@ void Z80Assembler::checkZX81File()
 	ZX81Head* head	 = ZX81HeadPtr(vp);
 	uint16	  E_LINE = peek2Z(&head->E_LINE);
 	if (ramsize_valid && E_LINE != 0x4000 + ramsize)
-		setError(
-			"segment %s: E_LINE must match ram end address $%04X (E_LINE=$%04X)", hs.name, 0x4000 + uint(hs.size),
-			E_LINE);
+		setError("E_LINE ($4014) != ram end address: ram end = $%04X, E_LINE = $%04X", 0x4000 + ramsize, E_LINE);
 
 	if (verbose) // last byte of a (clean) file must be 0x80 (last byte of VARS):
 	{
