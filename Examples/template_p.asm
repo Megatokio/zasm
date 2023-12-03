@@ -1,7 +1,7 @@
 ; ================================================================
 ;       Example source with target 'p' or '81'
 ;       ZX81 tape file / snapshot
-;       Copyright  (c)  Günter Woigk 1994 - 2017
+;       Copyright  (c)  Günter Woigk 1994 - 2023
 ;                                       mailto:kio@little-bat.de
 ; ================================================================
 
@@ -78,14 +78,14 @@
 ; (STKBOT) - (STKEND)   Calculator Stack
 ; (STKEND) - (ERR_SP)   Spare space and Z80 Machine Stack (sp)
 ; (ERR_SP) - (RAMTOP)   Gosub Stack
-; (RAMTOP)              End of memory (address of last byte (incl.))
+; (RAMTOP)              End of memory (address of last byte + 1)
 ;
 ; value of RAMTOP:
-;       $43FF = 17407 For 1k internal ram (ZX81)
-;       $47FF = 18431 For 2k internal ram (TS1000)
-;       $7fff = 32767 for 16k Ram Pack
-;       $bfff = 49151 for 32k Ram Pack
-;       $ffff = 65535 for 64k Ram Pack
+;       $4400 = 17408 For 1k internal ram (ZX81)
+;       $4800 = 18432 For 2k internal ram (TS1000)
+;       $8000 = 32768 for 16k Ram Pack
+;       $c000 = 49152 for 32k Ram Pack
+;       $0000 = 0     for 64k Ram Pack (?)
 
 
 
@@ -220,7 +220,7 @@ _E_LINE:
         ; (STKBOT) - (STKEND)   Calculator Stack
         ; (STKEND) - (ERR_SP)   Spare space and Z80 Machine Stack (sp)
         ; (ERR_SP) - (RAMTOP)   Gosub Stack
-        ; (RAMTOP)              End of memory (address of last byte (incl.))
+        ; (RAMTOP)              End of memory (address of last byte + 1)
 
 #end
 
