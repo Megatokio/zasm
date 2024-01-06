@@ -162,6 +162,7 @@ private:
 	void	   parseBytes(SourceLine&, Array<uint8>&);
 	IoSequence parseIoSequence(SourceLine&);
 	Value	   value(SourceLine&, int prio = 0);
+	Value	   valueInRange(SourceLine&, int32 min, int32 max, int prio = 0);
 	void	   skip_expression(SourceLine&, int prio);
 	void	   asmLabel(SourceLine&);
 	void	   asmDirect(SourceLine&); // #directives

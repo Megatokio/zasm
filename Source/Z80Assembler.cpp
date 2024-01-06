@@ -1316,6 +1316,13 @@ op:
 	}
 }
 
+Value Z80Assembler::valueInRange(SourceLine& q, int32 min, int32 max, int prio)
+{
+	Value n = value(q, prio);
+	if ((n >= min && n <= max) || !n.is_valid()) return n;
+	throw SyntaxError("value (%i) out of range %i..%i", n.value, min, max);
+}
+
 Value Z80Assembler::value(SourceLine& q, int prio)
 {
 	// evaluate expression
@@ -2008,22 +2015,22 @@ op:
 	gg:
 		if (c1 == '<' && c2 == c1)
 		{
-			n = n << value(q += 2, pRot);
+			n = n << valueInRange(q += 2, 0, 31, pRot);
 			goto op;
 		}
 		if (c1 == '>' && c2 == c1)
 		{
-			n = n >> value(q += 2, pRot);
+			n = n >> valueInRange(q += 2, 0, 31, pRot);
 			goto op;
 		}
 		if (c1 == 's' && q.testWord("shr"))
 		{
-			n = n >> value(q, pRot);
+			n = n >> valueInRange(q, 0, 31, pRot);
 			goto op;
 		}
 		if (c1 == 's' && q.testWord("shl"))
 		{
-			n = n << value(q, pRot);
+			n = n << valueInRange(q, 0, 31, pRot);
 			goto op;
 		}
 

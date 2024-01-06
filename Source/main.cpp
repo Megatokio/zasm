@@ -34,7 +34,6 @@
 	4.4.0 2020: testcode runner
 */
 
-#include "Z80/goodies/z80_goodies.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
 #include "kio/kio.h"
@@ -52,14 +51,14 @@
 
 
 // static const char appl_name[] = "zasm";
-#define VERSION "4.4.13"
+#define VERSION "4.4.14"
 
 // Help text:
 // optimized for 80 characters / column
 //
 static const char version[] =
 	"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2023 Günter Woigk.\n"
+	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2024 Günter Woigk.\n"
 	"  version " VERSION ", %s, for " _PLATFORM
 	".\n" // version, date, platform
 	"  homepage: https://k1.spdns.de/zasm/\n"
