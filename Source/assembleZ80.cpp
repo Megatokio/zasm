@@ -8,21 +8,6 @@
 
 static cValue N2(2);
 
-static bool lceq(cptr w, cptr s)
-{
-	// compare word w with string literal s
-	// s must be lower case
-	// w may be mixed case
-
-	assert(s && w);
-	while (*s)
-	{
-		if ((*w++ | 0x20) != *s++) return false;
-	}
-	return *w == 0;
-}
-
-
 void Z80Assembler::storeEDopcode(int n)
 {
 	if (target_z80_or_z180) return store(PFX_ED, n);
