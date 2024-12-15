@@ -11,7 +11,7 @@ QT       -= gui
 
 CONFIG += console
 CONFIG -= app_bundle
-CONFIG += c++11
+CONFIG += c++20
 CONFIG += precompiled_header
 CONFIG(release,debug|release) { DEFINES += NDEBUG RELEASE } # ATTN: curly brace must start in same line!
 CONFIG(debug,debug|release) { DEFINES += DEBUG } # ATTN: curly brace must start in same line!

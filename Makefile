@@ -16,7 +16,7 @@ STRIP       = strip
 DEFINES     = -DNDEBUG -DRELEASE
 
 CFLAGS      = -pipe -Os -Wall -W -fPIE $(DEFINES)
-CXXFLAGS    = $(CFLAGS) -Wno-multichar -std=c++11
+CXXFLAGS    = $(CFLAGS) -Wno-multichar -std=c++20
 INCPATH     = -I. -ISource -ILibraries
 ifeq ($(OS),Windows_NT)
 	# static linking for Cygwin:
