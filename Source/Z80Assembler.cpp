@@ -117,20 +117,6 @@ static bool doteq(cptr w, cptr s) noexcept
 	return *w == 0;
 }
 
-static bool lceq(cptr w, cptr s) noexcept
-{
-	// compare word w with string literal s
-	// s must be lower case
-	// w may be mixed case
-
-	assert(s && w);
-	while (*s)
-	{
-		if ((*w++ | 0x20) != *s++) return false;
-	}
-	return *w == 0;
-}
-
 static bool cfeq(cstr s1, cstr s2, bool casefold) noexcept
 {
 	// compare case-sensitive or case-folding
