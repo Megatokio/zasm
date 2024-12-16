@@ -1180,7 +1180,7 @@ void Z80Assembler::checkTzxFile()
 
 		try
 		{
-			uint minsz = s->no_checksum + s->no_flagbyte;
+			uint minsz = !s->no_checksum + !s->no_flagbyte;
 			if (size <= minsz) throw SyntaxError("size = 0");
 			if (size > minsz + 0xfeff) throw SyntaxError("size = %u (max = 0xfeff)", size - minsz);
 			size = 0;
