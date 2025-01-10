@@ -257,7 +257,7 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 		assert(cpu.registers.pc == stop_pc);
 		cpu.core[stop_pc] = orig_byte;
 
-		if (verbose >= 2) logline("          cc = %u", total_cc + cpu.cc);
+		if (verbose >= 2) logline("          cc = %i", total_cc + cpu.cc);
 
 		// test expectations:
 		while (expectation_index < expectations.count() && expectations[expectation_index].pc == stop_pc)
@@ -275,17 +275,17 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 			else if (eq(e.name, "cc_min"))
 			{
 				if (total_cc + cpu.cc < e.value)
-					setError(e.sourceline, "cpu cycles %u < min %u", total_cc + cpu.cc, e.value);
+					setError(e.sourceline, "cpu cycles %i < min %i", total_cc + cpu.cc, e.value);
 			}
 			else if (eq(e.name, "cc_max"))
 			{
 				if (total_cc + cpu.cc > e.value)
-					setError(e.sourceline, "cpu cycles %u > max %u", total_cc + cpu.cc, e.value);
+					setError(e.sourceline, "cpu cycles %i > max %i", total_cc + cpu.cc, e.value);
 			}
 			else if (eq(e.name, "cc"))
 			{
 				if (total_cc + cpu.cc != e.value)
-					setError(e.sourceline, "cpu cycles %u != %u", total_cc + cpu.cc, e.value);
+					setError(e.sourceline, "cpu cycles %i != %i", total_cc + cpu.cc, e.value);
 			}
 			else if (Z80Registers::isaQuadRegister(e.name)) // e.name is a quad register name?
 			{

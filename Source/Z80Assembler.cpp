@@ -701,7 +701,7 @@ void Z80Assembler::assemble(StrArray& sourcelines, cstr sourcepath) noexcept
 	do {
 		if (pass > 99) break;
 		assembleOnePass(pass + 1);
-		if (verbose > 1) log("pass %u: %u labels resolved\n", pass, labels_resolved);
+		if (verbose > 1) log("pass %u: %i labels resolved\n", pass, labels_resolved);
 		if (validity == valid || errors.count()) return;
 	}
 	while (labels_resolved > 0);
@@ -728,7 +728,7 @@ void Z80Assembler::assemble(StrArray& sourcelines, cstr sourcepath) noexcept
 	for (int i = 0; i < 25 && labels_changed > 0; i++)
 	{
 		assembleOnePass(pass + 1);
-		if (verbose > 1) log("pass %u: %u labels changed value\n", pass, labels_changed);
+		if (verbose > 1) log("pass %u: %i labels changed value\n", pass, labels_changed);
 		if (validity == valid || errors.count()) return;
 	}
 
@@ -773,7 +773,7 @@ void Z80Assembler::assemble(StrArray& sourcelines, cstr sourcepath) noexcept
 	}
 
 	assembleOnePass(pass + 1);
-	if (verbose > 1) log("pass %u: %u labels changed value\n", pass, labels_changed);
+	if (verbose > 1) log("pass %u: %i labels changed value\n", pass, labels_changed);
 	if (errors.count() || validity != valid)
 	{
 		uint fi = 0;
@@ -1165,6 +1165,7 @@ void Z80Assembler::skip_expression(SourceLine& q, int prio)
 			goto op; // brackets
 		case '.':
 		case '$': goto op; // $ = "logical" address at current code position
+		default: break;
 		}
 	}
 	else
@@ -1277,6 +1278,7 @@ op:
 		if (q.p[1] == '>' || q.p[1] == '=') ++q;
 		skip_expression(++q, pCmp);
 		goto op;
+	default: break;
 	}
 }
 
@@ -1321,6 +1323,7 @@ w:
 		case '$': n = dollar(); goto op;
 		case '<': q.expect('('); goto lo; // SDASZ80: low byte of word
 		case '>': q.expect('('); goto hi; // SDASZ80: high byte of word
+		default: break;
 		}
 	}
 	else // multi-char word:
@@ -2361,7 +2364,7 @@ void Z80Assembler::compressSegments()
 		cstr name	  = multiple ? catstr(s1->name, "_to_", s2->name) : s1->name;
 
 		if (usize.value > 0x10000 && usize.is_valid())
-			throw FatalError("%s_size exceeds $10000 bytes (size=%u)", name, int32(usize));
+			throw FatalError("%s_size exceeds $10000 bytes (size=%u)", name, uint32(usize));
 
 		if (ucore.count() == s1->ucore.count() && memcmp(ucore.getData(), s1->ucore.getData(), ucore.count()) == 0)
 		{
@@ -2752,8 +2755,8 @@ void Z80Assembler::asmMacroCall(SourceLine& q, Macro& m)
 
 	// get arguments in macro definition:
 	Array<cstr>& args = m.args;
-	if (rpl.count() < args.count()) throw SyntaxError("not enough arguments: required=%i", args.count());
-	if (rpl.count() > args.count()) throw SyntaxError("too many arguments: required=%i", args.count());
+	if (rpl.count() < args.count()) throw SyntaxError("not enough arguments: required=%u", args.count());
+	if (rpl.count() > args.count()) throw SyntaxError("too many arguments: required=%u", args.count());
 
 	// get text of macro definition:
 	uint32				i = m.mdef;
@@ -3071,7 +3074,7 @@ void Z80Assembler::asmIf(SourceLine& q)
 		if_pending = no;
 		if (!f.is_valid()) throw FatalError("condition not evaluatable in pass1");
 		else if (pass == 1) if_values.append(f.value);
-		else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%i", pass);
+		else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%u", pass);
 	}
 
 	memmove(cond + 1, cond, sizeof(cond) - sizeof(*cond));
@@ -3107,7 +3110,7 @@ void Z80Assembler::asmElif(SourceLine& q)
 			if_pending = no;
 			if (!f.is_valid()) throw FatalError("condition must be evaluatable in pass1");
 			else if (pass == 1) if_values.append(f.value);
-			else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%i", pass);
+			else if (if_values[if_values_idx++] != !!f.value) throw FatalError("condition changed in pass%u", pass);
 		}
 
 		cond_off -= !!f.value; // if f==1 then clear bit 0 => enable #elif clause
@@ -3396,10 +3399,9 @@ cstr Z80Assembler::compileFile(cstr fqn)
 			c_flags.insertat(2, "-S");	  // compile only, don't link
 		}
 
-		using cpp = char**;
-		execve(c_compiler, cpp(c_flags.getData()), environ); // exec cmd
-		exit(errno);										 // exec failed: return errno: will be printed in error msg,
-															 //				but is ambiguous with cc exit code
+		execve(c_compiler, const_cast<char**>(c_flags.getData()), environ); // exec cmd
+		exit(errno); // exec failed: return errno: will be printed in error msg,
+					 //				but is ambiguous with cc exit code
 	}
 	else // parent process:
 	{
@@ -3475,7 +3477,7 @@ void Z80Assembler::asmInsert(SourceLine& q)
 	off_t sz = fd.file_size();												// file size
 	if (sz > 0x10000) throw FatalError("file is larger than $10000 bytes"); // max. possible size in any case
 
-	std::unique_ptr<char[]> bu(new char[sz]);
+	std::unique_ptr<char[]> bu(new char[size_t(sz)]);
 	fd.read_bytes(bu.get(), uint32(sz));
 	storeBlock(bu.get(), uint(sz));
 }

@@ -1700,7 +1700,7 @@ void Z80Assembler::checkZ80File()
 
 	int n = head.h2lenl + 256 * head.h2lenh; // length of header extension
 	if (32 + n != hs.size.value)
-		throw SyntaxError("header v2++: wrong header extension length at offset 30: %u + 32 != %u", n, hs.size.value);
+		throw SyntaxError("header v2++: wrong header extension length at offset 30: %i + 32 != %i", n, hs.size.value);
 
 	Model model = head.getZxspModel();
 	if (model == unknown_model) throw SyntaxError("header: illegal model");
