@@ -19,8 +19,8 @@ enum S19Type // type ids for S-Records:
 
 extern uint32 compressed_page_size_z80(const uint8* data, uint size);
 extern void	  write_compressed_page_z80(FD&, int page_id, const uint8* data, uint32 size);
-extern void	  write_intel_hex(FD&, uint32 address, const uint8* data, uint32 size);
-extern uint	  write_motorola_s19(FD&, uint32 address, const uint8* data, uint32 size);
+extern void	  write_intel_hex(FD&, uint32 address, const uint8* data, const uint8* wflags, uint32 size);
+extern uint	  write_motorola_s19(FD&, uint32 address, const uint8* data, const uint8* wflags, uint32 size);
 extern void	  write_srecord(FD&, S19Type, uint32 address, const uint8* data, uint size);
 extern void	  write_compressed_page_ace(FD&, const uint8* data, uint size);
 extern void	  write_segment(FD&, const CodeSegment&);

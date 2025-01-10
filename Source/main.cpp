@@ -29,14 +29,14 @@
 
 
 // static const char appl_name[] = "zasm";
-#define VERSION "4.4.15"
+#define VERSION "4.4.16"
 
 // Help text:
 // optimized for 80 characters / column
 //
 static const char version[] =
 	"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
-	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2024 Günter Woigk.\n"
+	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2025 Günter Woigk.\n"
 	"  version " VERSION ", %s, for " _PLATFORM
 	".\n" // version, date, platform
 	"  homepage: https://k1.spdns.de/zasm/\n"
@@ -593,7 +593,7 @@ static int doit(Array<cstr> argv)
 		if (verbose)
 		{
 			log("\ntotal time: %3.4f sec.\n", now() - start);
-			if (errors > 1) log("\nzasm: %u errors\n\n", errors);
+			if (errors > 1) log("\nzasm: %i errors\n\n", errors);
 			else log(errors ? "\nzasm: 1 error\n\n" : "zasm: no errors\n");
 		}
 		return errors > 0;

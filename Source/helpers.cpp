@@ -116,7 +116,40 @@ void write_compressed_page_z80(FD& fd, int page_id, const uint8* q, uint32 qsize
 	fd.write_bytes(zbu, zsize);
 }
 
-void write_intel_hex(FD& fd, uint32 addr, const uint8* bu, uint32 sz)
+void write_intel_hex_line(FD& fd, uint32 addr, const uint8* bu, const uint8* wflags, uint32 n)
+{
+	// wflags tell which bytes were actually written by the assembler:
+	if (wflags)
+	{
+		while (n && wflags[n - 1] == 0) n--;
+
+		uint a = n;
+		while (a > 0 && wflags[a - 1] != 0) a--;
+
+		if (a != 0)
+		{
+			write_intel_hex_line(fd, addr, bu, wflags, a);
+			addr += a;
+			bu += a;
+			wflags += a;
+			n -= a;
+		}
+	}
+	if (n == 0) return;
+
+	fd.write_fmt(":%02X%04X00", n, uint(uint16(addr)));	 // ":", len, address, type
+	uint8 checksum = uint8(-n - addr - (addr >> 8) - 0); // checksum
+
+	while (n--) // write data bytes
+	{
+		fd.write_fmt("%02X", uint(*bu));
+		checksum -= *bu++;
+	}
+
+	fd.write_fmt("%02X\r\n", uint(checksum)); // write 2's complement of checksum
+}
+
+void write_intel_hex(FD& fd, uint32 addr, const uint8* bu, const uint8* wflags, uint32 sz)
 {
 	// write block of data in intel hex file format
 	// format of one line:
@@ -138,7 +171,7 @@ void write_intel_hex(FD& fd, uint32 addr, const uint8* bu, uint32 sz)
 	{
 		uint16 n = /*0x10000*/ -uint16(addr); // bytes left in current 16-bit address block
 
-		write_intel_hex(fd, addr, bu, n);
+		write_intel_hex(fd, addr, bu, wflags, n);
 
 		addr += n;
 		bu += n;
@@ -162,61 +195,12 @@ void write_intel_hex(FD& fd, uint32 addr, const uint8* bu, uint32 sz)
 	{
 		uint n = min(sz, 32u); // bytes dumped in this line
 
-		fd.write_fmt(":%02X%04X00", n, uint(uint16(addr)));	 // ":", len, address, type
-		uint8 checksum = uint8(-n - addr - (addr >> 8) - 0); // checksum
-
+		write_intel_hex_line(fd, addr, bu, wflags, n);
 		addr += n;
+		bu += n;
+		if (wflags) wflags += n;
 		sz -= n;
-
-		while (n--) // write data bytes
-		{
-			fd.write_fmt("%02X", uint(*bu));
-			checksum -= *bu++;
-		}
-
-		fd.write_fmt("%02X\r\n", uint(checksum)); // write 2's complement of checksum
 	}
-}
-
-uint write_motorola_s19(FD& fd, uint32 address, const uint8* data, uint32 count)
-{
-	// write block of data in motorola s-record file format
-	// format of one line:
-	// 	 ttllaaaaddd…cc\r\n
-	// where
-	// 	 tt = 'S0' -> data = module_name + version + revision + comment  (recommended)
-	// 	 tt = 'S1' -> 2-byte address + data
-	// 	 tt = 'S2' -> 3-byte address + data
-	// 	 tt = 'S3' -> 4-byte address + data
-	// 	 tt = 'S5' -> 2-byte address = number of S1/2/3 lines transmitted before this record
-	// 	 tt = 'S6' -> 3-byte address = number of S1/2/3 lines transmitted before this record (inofficial?)
-	// 	 tt = 'S7' -> end of block marker: 4-byte address = 0 or program entry address
-	// 	 tt = 'S8' -> end of block marker: 3-byte address = 0 or program entry address
-	// 	 tt = 'S9' -> end of block marker: 2-byte address = 0 or program entry address
-	//
-	// 	 ll = number of bytes following (address + data + checksum)
-	// 	 	 note: number of hexchars following = ll*2
-	//
-	// 	 aa = 2, 3 or 4 byte address (4, 6 or 8 hexchars) acc. to type tt
-	// 	 dd = data, at most 64 bytes (128 hexchars)
-	// 	 cc = 1 byte (2 chars) checksum = 0xFF ^ SUM(llaaaaddd…)
-	// 	 \r\n line end
-	//
-	// return: the number of s-records written: required by caller for the final S5-record
-
-	uint cnt = 0;
-
-	while (count)
-	{
-		uint n = min(count, 64u);
-		write_srecord(fd, S19_Data, address, data, n);
-		data += n;
-		address += n;
-		count -= n;
-		cnt += 1;
-	}
-
-	return cnt;
 }
 
 void write_srecord(FD& fd, S19Type type, uint32 address, const uint8* data, uint count)
@@ -255,6 +239,77 @@ void write_srecord(FD& fd, S19Type type, uint32 address, const uint8* data, uint
 	}
 	fd.write_bytes(bu, count * 2);
 	fd.write_fmt("%02X\r\n", ~checksum & 0xff); // write 1's complement of checksum
+}
+
+uint write_motorola_s19(FD& fd, uint32 address, const uint8* data, uint32 count)
+{
+	// write block of data in motorola s-record file format
+	// format of one line:
+	// 	 ttllaaaaddd…cc\r\n
+	// where
+	// 	 tt = 'S0' -> data = module_name + version + revision + comment  (recommended)
+	// 	 tt = 'S1' -> 2-byte address + data
+	// 	 tt = 'S2' -> 3-byte address + data
+	// 	 tt = 'S3' -> 4-byte address + data
+	// 	 tt = 'S5' -> 2-byte address = number of S1/2/3 lines transmitted before this record
+	// 	 tt = 'S6' -> 3-byte address = number of S1/2/3 lines transmitted before this record (inofficial?)
+	// 	 tt = 'S7' -> end of block marker: 4-byte address = 0 or program entry address
+	// 	 tt = 'S8' -> end of block marker: 3-byte address = 0 or program entry address
+	// 	 tt = 'S9' -> end of block marker: 2-byte address = 0 or program entry address
+	//
+	// 	 ll = number of bytes following (address + data + checksum)
+	// 	 	 note: number of hexchars following = ll*2
+	//
+	// 	 aa = 2, 3 or 4 byte address (4, 6 or 8 hexchars) acc. to type tt
+	// 	 dd = data, at most 64 bytes (128 hexchars)
+	// 	 cc = 1 byte (2 chars) checksum = 0xFF ^ SUM(llaaaaddd…)
+	// 	 \r\n line end
+	//
+	// return: the number of s-records written: required by caller for the final S5-record
+
+	uint num_srecords = 0;
+
+	while (count)
+	{
+		uint n = min(count, 64u);
+		write_srecord(fd, S19_Data, address, data, n);
+		data += n;
+		address += n;
+		count -= n;
+		num_srecords += 1;
+	}
+
+	return num_srecords;
+}
+
+uint write_motorola_s19(FD& fd, uint32 address, const uint8* data, const uint8* wflags, uint32 count)
+{
+	// write block of data in motorola s-record file format
+	// write only data which was actually written by the assembler
+
+	if (wflags == nullptr) return write_motorola_s19(fd, address, data, count);
+
+	uint num_srecords = 0;
+
+	while (count)
+	{
+		uint a = 0;
+		while (a < count && wflags[a] == 0) a++;
+		address += a;
+		data += a;
+		wflags += a;
+		count -= a;
+
+		uint n = 0;
+		while (n < count && wflags[n] != 0) n++;
+		if (n) num_srecords += write_motorola_s19(fd, address, data, n);
+		address += n;
+		data += n;
+		wflags += n;
+		count -= n;
+	}
+
+	return num_srecords;
 }
 
 void write_compressed_page_ace(FD& fd, const uint8* q, uint qsize)

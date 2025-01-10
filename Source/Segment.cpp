@@ -99,6 +99,7 @@ CodeSegment::CodeSegment(cstr _name, SegmentType _type, uint8 _fillbyte) :
 	checksum_ace(no),
 	compressed(0),
 	core(0x10000),
+	core_wflags(0x10000),
 	ccore(0),
 	ucore(0),
 	pilotsym(),
@@ -134,6 +135,7 @@ void CodeSegment::rewind()
 {
 	pilotsym_idx = datasym_idx = 0;
 	memset(core.getData(), fillbyte.value, core.count());
+	memset(core_wflags.getData(), 0, core_wflags.count());
 	DataSegment::rewind();
 }
 
@@ -355,7 +357,11 @@ void DataSegment::storeSpace(cValue& sz, int c)
 
 void CodeSegment::store(int byte)
 {
-	if (dpos.value < 0x10000) core[dpos.value] = uint8(byte);
+	if (dpos.value < 0x10000)
+	{
+		core[dpos.value]		= uint8(byte);
+		core_wflags[dpos.value] = 1;
+	}
 
 	dpos.value++;
 	lpos.value++;
@@ -370,7 +376,11 @@ void CodeSegment::storeBlock(cptr data, uint n)
 
 	if (n > 0x10000) throw SyntaxError("size > 0x10000");
 
-	if (dpos.value < 0x10000) memcpy(&core[dpos.value], data, min(n, 0x10000u - uint(dpos)));
+	if (dpos.value < 0x10000)
+	{
+		memcpy(&core[dpos.value], data, min(n, 0x10000u - uint(dpos)));
+		memset(&core_wflags[dpos.value], 1, min(n, 0x10000u - uint(dpos)));
+	}
 
 	lpos.value += n;
 	dpos.value += n;
@@ -405,7 +415,11 @@ void CodeSegment::storeSpace(cValue& sz, int c)
 		return;
 	}
 
-	if (dpos.value < 0x10000) memset(&core[dpos.value], c, uint32(min(sz.value, 0x10000 - dpos.value)));
+	if (dpos.value < 0x10000)
+	{
+		memset(&core[dpos.value], c, uint32(min(sz.value, 0x10000 - dpos.value)));
+		memset(&core_wflags[dpos.value], 1, uint32(min(sz.value, 0x10000 - dpos.value)));
+	}
 
 	lpos += sz;
 	dpos += sz;
@@ -421,27 +435,30 @@ void CodeSegment::storeSpace(cValue& sz)
 	CodeSegment::storeSpace(sz, fillbyte.value);
 }
 
-void DataSegment::storeSpaceUpToAddress(cValue& addr)
-{
-	storeSpace(addr - lpos);
-	lpos = addr; // set value and validity
-}
-
 void DataSegment::storeSpaceUpToAddress(cValue& addr, int c)
 {
+	if (physicalAddress() != logicalAddress() && physicalAddress().is_valid() && logicalAddress().is_valid())
+		throw SyntaxError(".org moved while .phase active");
+
 	storeSpace(addr - lpos, c);
 	lpos = addr; // set value and validity
 }
 
 void DataSegment::moveToAddress(cValue& addr)
 {
+	if (physicalAddress() != logicalAddress() && physicalAddress().is_valid() && logicalAddress().is_valid())
+		throw SyntaxError(".org moved while .phase active");
+
 	check_value(addr, "addr", 0, 0x10000);
 
-	Value sz = addr - lpos;
-	lpos	 = addr;
-	dpos += sz;
-	if (dpos > max_dpos) max_dpos = dpos;
+	if (addr < address && addr.is_valid() && address.is_valid()) throw SyntaxError("org set before segment start");
+	if (addr > address + size && (addr + size).is_valid() && address.is_valid())
+		throw SyntaxError("org set behind segment end");
 
+	lpos = addr;
+	dpos = addr - address;
+
+	if (dpos > max_dpos) max_dpos = dpos;
 	if (max_dpos > size && max_dpos.is_valid() && size.is_valid()) throw SyntaxError("segment overflow");
 }
 

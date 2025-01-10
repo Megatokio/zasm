@@ -151,7 +151,6 @@ public:
 	void storeSpace(cValue& sz) override;
 
 	void moveToAddress(cValue&);
-	void storeSpaceUpToAddress(cValue&);
 	void storeSpaceUpToAddress(cValue&, int);
 	void skipExistingData(uint sz);
 
@@ -181,9 +180,11 @@ public:
 	bool  no_pilot;		// TZX:
 	bool  checksum_ace; // TZX: calculate checksum for Jupiter Ace and write ACE-style tape block
 	uint  compressed;	// ZX7 compression flags
+	int	  _padding;
 	Core  core;
-	Core  ccore; // ZX7: if this is compressed & first_cseg_mask: compressed data of compressed range
-	Core  ucore; // ZX7: if this is compressed & first_cseg_mask: uncompressed data of compressed range
+	Core  core_wflags; // flags for bytes actually written to
+	Core  ccore;	   // ZX7: if this is compressed & first_cseg_mask: compressed data of compressed range
+	Core  ucore;	   // ZX7: if this is compressed & first_cseg_mask: uncompressed data of compressed range
 
 	Array<Values> pilotsym;		// TZX: custom pulse timing and encoding
 	Values		  pilot;		// TZX
