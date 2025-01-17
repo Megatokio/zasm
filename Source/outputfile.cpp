@@ -596,6 +596,7 @@ void Z80Assembler::writeTzxFile(FD& fd)
 		default: IERR();
 
 		case TZX_STANDARD:
+		{
 			if (verbose >= 2) logline("write TZX STANDARD block %s", s->name);
 			//	dw	Pause after this block (ms.) {1000}
 			//	dw	Length of data that follow
@@ -604,8 +605,9 @@ void Z80Assembler::writeTzxFile(FD& fd)
 			fd.write_uint16_z(pause);
 			fd.write_uint16_z(uint16(sizepp));
 			break;
-
+		}
 		case TZX_TURBO:
+		{
 			if (verbose >= 2) logline("write TZX TURBO block %s", s->name);
 			// WORD	Length of PILOT pulse {2168}
 			// WORD	Length of SYNC first pulse {667}
@@ -630,8 +632,9 @@ void Z80Assembler::writeTzxFile(FD& fd)
 			fd.write_uint16_z(pause);
 			fd.write_uint24_z(sizepp);
 			break;
-
+		}
 		case TZX_PURE_DATA:
+		{
 			if (verbose >= 2) logline("write TZX PURE DATA block %s", s->name);
 			// WORD	Length of ZERO bit pulse
 			// WORD	Length of ONE bit pulse
@@ -648,8 +651,9 @@ void Z80Assembler::writeTzxFile(FD& fd)
 			fd.write_uint16_z(pause);
 			fd.write_uint24_z(sizepp);
 			break;
-
+		}
 		case TZX_GENERALIZED:
+		{
 			if (verbose >= 2) logline("write TZX GENERALIZED block %s", s->name);
 			// DWORD	TOTL = Block length (without these four bytes)
 			// WORD		pause = Pause after this block (ms)
@@ -724,10 +728,11 @@ void Z80Assembler::writeTzxFile(FD& fd)
 
 			break;
 		}
+		} // switch
 
 		// write flagbyte
 		if (!no_flagbyte) fd.write_uint8(flagbyte);
-		uint8 checksum = no_flagbyte || checksum_ace ? 0 : flagbyte;
+		uint8 checksum = (no_flagbyte || checksum_ace) ? 0 : flagbyte; // checksum start value
 
 		// write data and calc checksum
 		i = a;
@@ -1182,9 +1187,23 @@ void Z80Assembler::checkTzxFile()
 
 		try
 		{
-			uint minsz = !s->no_checksum + !s->no_flagbyte;
-			if (size <= minsz) throw SyntaxError("size = 0");
-			if (size > minsz + 0xfeff) throw SyntaxError("size = %u (max = 0xfeff)", size - minsz);
+			if (s->type == TZX_STANDARD)
+			{
+				// the block is assumed to be read by the standard tape loading routine
+				// this expects a flag byte and a checksum and at least 1 and at most 0xfeff data bytes
+				size += !s->no_checksum + !s->no_flagbyte;
+				if (size < 1 + 2) throw SyntaxError("effective data size < 1");
+				if (size > 0xfeff + 2) throw SyntaxError("effective data size = %u (max = 0xfeff)", size);
+			}
+			else
+			{
+				// the block is read by an arbitrary routine
+				// we expect at least 1 byte (actually 1 bit) to be stored.
+				// 0xffff is the limit which can be stored in this block.
+				size += !s->no_checksum + !s->no_flagbyte;
+				if (size < 1) throw SyntaxError("total data size < 1");
+				if (size > 0xffff) throw SyntaxError("total data size = %u (max = 0xffff)", size);
+			}
 			size = 0;
 
 			assert(s->lastbits.value >= 1 && s->lastbits.value <= 8);
