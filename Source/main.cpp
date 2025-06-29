@@ -37,8 +37,8 @@
 static const char version[] =
 	"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
 	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2025 Günter Woigk.\n"
-	"  version " VERSION ", %s, for " _PLATFORM
-	".\n" // version, date, platform
+	"  version " VERSION ", %s, for " _PLATFORM " with " _COMPILER
+	".\n" // version, date, platform, compiler
 	"  homepage: https://k1.spdns.de/zasm/\n"
 	"  git repo: https://github.com/Megatokio/zasm\n\n";
 
@@ -82,7 +82,7 @@ static const char options[] =
 	"  --ixcbxh        enable illegal instructions like 'set b,xh'\n"
 	"  --dotnames      allow label names starting with a dot '.'\n"
 	"  --reqcolon      require colon ':' after program label definitions\n"
-	"                  => label definitions and instructions may start in any column\n"
+	"                  => label definitions and instructions can start in any column\n"
 	"  --casefold      label names are case insensitive (implied if --asm8080)\n"
 	"  --flatops       no operator precedence: evaluate strictly from left to right\n"
 	"  -c [path/to/]cc declare or set path to c compiler (search in $PATH)\n"
