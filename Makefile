@@ -40,6 +40,7 @@ OBJECTS = \
 		tmp/z80_opcode_length.o \
 		tmp/z80_disass.o \
 		tmp/kio.o \
+		tmp/log_to_console.o \
 		tmp/WavFile.o \
 		tmp/convert_audio.o \
 		$(OBJS)
@@ -94,6 +95,9 @@ tmp/z80_disass.o:
 
 tmp/kio.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/kio.o Libraries/kio/kio.cpp
+
+tmp/log_to_console.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/log_to_console.o Libraries/unix/log_to_console.cpp
 
 tmp/WavFile.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/WavFile.o Libraries/audio/WavFile.cpp

@@ -313,7 +313,7 @@ void Z80Assembler::writeTzxFile(FD& fd)
 
 	for (uint a = i; i < segments.count(); a = i)
 	{
-		xlogline("TZX fpos = 0x%04llX", fd.file_position());
+		xlogline("TZX fpos = 0x%04llX", ullong(fd.file_position()));
 		switch (segments[i]->type)
 		{
 		case TEST:
