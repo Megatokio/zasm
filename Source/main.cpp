@@ -37,7 +37,7 @@
 static const char version[] =
 	"–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n"
 	"  zasm - 8080/z80/z180 assembler (c) 1994 - 2025 Günter Woigk.\n"
-	"  version " VERSION ", %s, for " _PLATFORM " with " _COMPILER
+	"  version " VERSION ", %s, for " _platform_str " with " _compiler_str
 	".\n" // version, date, platform, compiler
 	"  homepage: https://k1.spdns.de/zasm/\n"
 	"  git repo: https://github.com/Megatokio/zasm\n\n";
@@ -522,7 +522,8 @@ static int doit(Array<cstr> argv)
 		// assemble a bunch of sources from a test directory
 		// and compare them to old versions found in the original/ subdirectories.
 		if (verbose) logline("zasm: +++ Regression Test +++");
-		if (verbose) logline("zasm: version " VERSION ", %s, for " _PLATFORM " on " _PROCESSOR ".", compiledatestr());
+		if (verbose)
+			logline("zasm: version " VERSION ", %s, for " _platform_str " on " _processor_str ".", compiledatestr());
 
 		// if no path to the $TESTDIR directory is given, then the current working directory is used.
 		// ".asm" source files which start with "#!" will be assembled and compared to the original output file.

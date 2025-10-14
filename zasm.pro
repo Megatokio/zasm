@@ -60,6 +60,7 @@ SOURCES += \
 	Libraries/Z80/goodies/z80_opcode_length.cpp \
 	Libraries/audio/convert_audio.cpp \
 	Libraries/audio/WavFile.cpp \
+	Libraries/unix/log_to_file.cpp \
 
 HEADERS += \
 	Libraries/Templates/RCArray.h \
