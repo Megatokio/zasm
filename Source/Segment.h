@@ -4,7 +4,6 @@
 
 #pragma once
 #include "SyntaxError.h"
-#include "Templates/RCObject.h"
 #include "Templates/RCPtr.h"
 using Core = Array<uint8>;
 #include "Label.h"
@@ -56,7 +55,7 @@ extern bool isTest(SegmentType);
 
 // ---- Base Class ---------------------
 
-class Segment : public RCObject
+class Segment : public RCObjectNoWeak
 {
 public:
 	SegmentType type; // DATA => no actual code storing allowed

@@ -63,8 +63,6 @@ SOURCES += \
 	Libraries/unix/log_to_file.cpp \
 
 HEADERS += \
-	Libraries/Templates/RCArray.h \
-	Libraries/Templates/RCObject.h \
 	Libraries/Templates/RCPtr.h \
 	Libraries/Templates/relational_operators.h \
 	Libraries/Templates/sort.h \
