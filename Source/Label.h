@@ -4,25 +4,16 @@
 
 #pragma once
 #include "Templates/HashMap.h"
-#include "Templates/RCObject.h"
-#include "Templates/RCPtr.h"
+#include "Templates/RCArray.h"
 #include "Value.h"
-#include "cstrings/cstrings.h"
 
 
 class Segment;
 
 
-class Label
+class Label final
 {
-	template<class T>
-	friend class RCPtr;
-	mutable uint cnt = 0;
-	void		 retain() const noexcept { ++cnt; }
-	void		 release() const noexcept
-	{
-		if (--cnt == 0) delete this;
-	}
+	RCDATA_NOWEAK
 
 public:
 	cstr	 name;
@@ -40,7 +31,7 @@ public:
 	Label(cstr name, Segment*, uint sourceline, int32 value, Validity, bool is_global, bool is_defined, bool is_used);
 	Label(cstr name, Segment*, uint sourceline, cValue&, bool is_global, bool is_defined, bool is_used);
 	Label(const Label&);
-	~Label() noexcept { assert(cnt == 0); }
+	~Label() noexcept { assert(refcnt() == 0); }
 
 	int32 get_value() { return value.value; }
 	bool  is_invalid() { return value.is_invalid(); }

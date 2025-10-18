@@ -4,7 +4,6 @@
 
 #pragma once
 #include "SyntaxError.h"
-#include "Templates/RCObject.h"
 #include "Templates/RCPtr.h"
 using Core = Array<uint8>;
 #include "Label.h"
@@ -56,8 +55,10 @@ extern bool isTest(SegmentType);
 
 // ---- Base Class ---------------------
 
-class Segment : public RCObject
+class Segment
 {
+	RCDATA_NOWEAK
+
 public:
 	SegmentType type; // DATA => no actual code storing allowed
 	cstr		name;
@@ -112,6 +113,7 @@ public:
 
 protected:
 	Segment(SegmentType, cstr name = nullptr);
+	virtual ~Segment() = default;
 	static void throw_data_segment_required() __attribute__((noreturn));
 	static void throw_code_segment_required() __attribute__((noreturn));
 };

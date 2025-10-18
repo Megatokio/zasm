@@ -4,9 +4,7 @@
 
 #pragma once
 #include "SyntaxError.h"
-#include "Templates/Array.h"
-#include "Templates/RCObject.h"
-#include "Templates/RCPtr.h"
+#include "Templates/RCArray.h"
 
 class Label;
 class Segment;
@@ -16,16 +14,9 @@ inline bool is_idf(char c) { return is_letter(c) || is_dec_digit(c) || c == '_';
 inline char lc(char c) { return c | 0x20; }
 
 
-class SourceLine
+class SourceLine final
 {
-	template<class T>
-	friend class RCPtr;
-	mutable uint cnt = 0;
-	void		 retain() const noexcept { ++cnt; }
-	void		 release() const noexcept
-	{
-		if (--cnt == 0) delete this;
-	}
+	RCDATA_NOWEAK
 
 public:
 	cstr text;			   // tempmem / shared
