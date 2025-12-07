@@ -27,9 +27,11 @@
   #include <sys/cygwin.h>
 #endif
 
+using namespace z80;
+
 
 // static const char appl_name[] = "zasm";
-#define VERSION "4.4.17"
+#define VERSION "4.5.0"
 
 // Help text:
 // optimized for 80 characters / column
@@ -75,6 +77,7 @@ static const char options[] =
 	"  --8080          target Intel 8080 (default if --asm8080)\n"
 	"  --z80           target Zilog Z80  (default except if --asm8080)\n"
 	"  --z180          target Zilog Z180 / Hitachi HD64180\n"
+	"  --z80n          target Z80 Next CPU (ZX Spectrum Next)\n"
 	"  --asm8080       use 8080 assembler syntax\n"
 	"  --convert8080   convert 8080 assembler source to Z80\n"
 	"  -v[0,1,2]       verbosity of messages to stderr (0=off, 1=default, 2=more)\n"
@@ -248,6 +251,7 @@ static int doit(Array<cstr> argv)
 	bool   targetZ80   = no;
 	bool   target8080  = no;
 	bool   targetZ180  = no;
+	bool   targetZ80n  = no;
 	bool   syntax8080  = no;
 	bool   dotnames	   = no;
 	bool   reqcolon	   = no;
@@ -384,6 +388,11 @@ static int doit(Array<cstr> argv)
 			if (eq(s, "--z180"))
 			{
 				targetZ180 = 1;
+				continue;
+			}
+			if (eq(s, "--z80n"))
+			{
+				targetZ80n = 1;
 				continue;
 			}
 			if (eq(s, "--dotnames"))
@@ -601,7 +610,7 @@ static int doit(Array<cstr> argv)
 	}
 
 	// check options:
-	if ((targetZ80 + target8080 + targetZ180) > 1)
+	if ((targetZ80 + target8080 + targetZ180 + targetZ80n) > 1)
 	{
 		log("--> %s\nzasm: 1 error\n", "multiple cpu targets selected.");
 		return 1;
@@ -715,6 +724,7 @@ static int doit(Array<cstr> argv)
 
 	// DO IT!
 	Z80Assembler ass;
+	if (targetZ80n) ass.cpu = CpuZ80n;
 	if (targetZ180) ass.cpu = CpuZ180;
 	if (target8080) ass.cpu = Cpu8080;
 	if (targetZ80) ass.cpu = CpuZ80;

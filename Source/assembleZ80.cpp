@@ -5,26 +5,27 @@
 #include "Z80/goodies/z80_opcodes.h"
 #include "Z80Assembler.h"
 
+using namespace z80;
 
 static cValue N2(2);
 
 void Z80Assembler::storeEDopcode(int n)
 {
-	if (target_z80_or_z180) return store(PFX_ED, n);
+	if (target_z80_or_variant) return store(PFX_ED, n);
 	throw SyntaxError(
 		syntax_8080 ? "no i8080 opcode (use option --asm8080 and --z80)" : "no i8080 opcode (option --8080)");
 }
 
 void Z80Assembler::storeIXopcode(int n)
 {
-	if (target_z80_or_z180) return store(PFX_IX, n);
+	if (target_z80_or_variant) return store(PFX_IX, n);
 	throw SyntaxError(
 		syntax_8080 ? "no i8080 opcode (use option --asm8080 and --z80)" : "no i8080 opcode (option --8080)");
 }
 
 void Z80Assembler::storeIYopcode(int n)
 {
-	if (target_z80_or_z180) return store(PFX_IY, n);
+	if (target_z80_or_variant) return store(PFX_IY, n);
 	throw SyntaxError(
 		syntax_8080 ? "no i8080 opcode (use option --asm8080 and --z80)" : "no i8080 opcode (option --8080)");
 }
@@ -105,8 +106,8 @@ int Z80Assembler::getRegister(SourceLine& q, Value& n, bool with_qreg)
 {
 	// test and skip over register or value
 	// returns register enum:
-	//   normal register:     n and v are void (not modified)
-	//   NN, XNN, XIX or XIY: n and v are set
+	//   normal register:     v is void (not modified)
+	//   NN, XNN, XIX or XIY: v is set
 	//   does not return i, r, (c), ix, iy or related if target_8080
 	// throws on error
 	// throws at end of line
@@ -130,10 +131,10 @@ int Z80Assembler::getRegister(SourceLine& q, Value& n, bool with_qreg)
 		case 'h': return RH;
 		case 'l': return RL;
 		case 'i':
-			if (target_z80_or_z180) return RI;
+			if (target_z80_or_variant) return RI;
 			else goto no_8080;
 		case 'r':
-			if (target_z80_or_z180) return RR;
+			if (target_z80_or_variant) return RR;
 			else goto no_8080;
 
 		case '(':
@@ -251,12 +252,12 @@ int Z80Assembler::getRegister(SourceLine& q, Value& n, bool with_qreg)
 		case 'i':
 			if (c2 == 'x')
 			{
-				if (target_z80_or_z180) return IX;
+				if (target_z80_or_variant) return IX;
 				else goto no_8080;
 			}
 			if (c2 == 'y')
 			{
-				if (target_z80_or_z180) return IY;
+				if (target_z80_or_variant) return IY;
 				else goto no_8080;
 			}
 			else break;
@@ -430,23 +431,12 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 			storeWord(n);
 			return;
 		}
-		if (r == HL || r == XHL)
-		{
-			store(JP_HL);
-			return;
-		}
+		if (r == HL || r == XHL) { return store(JP_HL); }
 		// note: getRegister() returns XIX|XIY and n=0 for jp (ix|iy):
 		// validity test not required: 'jp (ix+dis) will fail when 'dis' becomes valid.
-		if (r == IX || (r == XIX && n.value == 0))
-		{
-			store(PFX_IX, JP_HL);
-			return;
-		}
-		if (r == IY || (r == XIY && n.value == 0))
-		{
-			store(PFX_IY, JP_HL);
-			return;
-		}
+		if (r == IX || (r == XIX && n.value == 0)) { return store(PFX_IX, JP_HL); }
+		if (r == IY || (r == XIY && n.value == 0)) { return store(PFX_IY, JP_HL); }
+		if (r == XC && target_z80n) { return store(PFX_ED, 0x98); }
 		goto ill_dest;
 
 	case ' ret':
@@ -510,6 +500,10 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		if (r == AF) return store(instr + 16);
 		if (r == IX) return store(PFX_IX, instr);
 		if (r == IY) return store(PFX_IY, instr);
+
+		if (target_z80n && r == NN && instr == PUSH_HL)
+			return store(PFX_ED, 0x8A, (n.value >> 8) & 0xff, n.value & 0xff);
+
 		if (instr == POP_HL) goto ill_target;
 		else goto ill_source;
 
@@ -608,6 +602,13 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		}
 		goto ill_target;
 
+	case ' mul':
+		if (!target_z80n) goto misc;
+		if (getRegister(q, n) != RD) throw SyntaxError("register D expected");
+		q.expectComma();
+		if (getRegister(q, n) != RE) throw SyntaxError("register E expected");
+		return store(PFX_ED, 0x30);
+
 	case ' add':
 		//	add	a,xxx
 		//	add hl,rr	bc de hl sp
@@ -621,6 +622,14 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		depp = q.p;
 		q.expectComma();
 		r2 = getRegister(q, n2);
+
+		if (target_z80n && r >= BC && r <= HL && (r2 == NN || r2 == RA))
+		{
+			if (r2 == RA) return store(PFX_ED, 0x31 + HL - r);
+			store(PFX_ED, 0x34 + HL - r);
+			storeWord(n2);
+			return;
+		}
 
 		if (r2 < BC || (r2 > SP && r2 != r)) goto ill_source;
 		if (r == HL)
@@ -1658,6 +1667,38 @@ void Z80Assembler::asmZ80Instr(SourceLine& q, cstr w)
 		}
 		goto ill_source;
 
+	case 'test':
+		if (!target_z80n) goto misc;
+		store(PFX_ED, 0x27);
+		storeByte(value(q));
+		return;
+
+	case 'bsla': instr = 0x28; goto bs;
+	case 'bsra': instr = 0x29; goto bs;
+	case 'bsrl': instr = 0x2A; goto bs;
+	case 'bsrf': instr = 0x2B; goto bs;
+	case 'brlc':
+		instr = 0x2C;
+		goto bs;
+	bs:
+		if (!target_z80n) goto misc;
+		r = getRegister(q, n);
+		if (r != DE) throw SyntaxError("register DE expected");
+		q.expectComma();
+		r = getRegister(q, n);
+		if (r != RB) throw SyntaxError("register B expected");
+		return store(PFX_ED, instr);
+
+	case 'ldix':
+		if (!target_z80n) goto misc;
+		return store(PFX_ED, 0xA4);
+	case 'ldws':
+		if (!target_z80n) goto misc;
+		return store(PFX_ED, 0xA5);
+	case 'lddx':
+		if (!target_z80n) goto misc;
+		return store(PFX_ED, 0xAC);
+
 	default: goto misc;
 	}
 
@@ -1714,5 +1755,96 @@ ill_opcode:
 
 // try macro and pseudo instructions
 misc:
+	if (target_z80n)
+	{
+		if (lceq(w, "setae")) return store(PFX_ED, 0x95);
+		if (lceq(w, "ldirx")) return store(PFX_ED, 0xB4);
+		if (lceq(w, "lddrx")) return store(PFX_ED, 0xBC); // ED BC that's good! >:-]
+		if (lceq(w, "swapnib")) return store(PFX_ED, 0x23);
+		if (lceq(w, "outinb")) return store(PFX_ED, 0x90);
+		if (lceq(w, "pixeldn")) return store(PFX_ED, 0x93);
+		if (lceq(w, "pixelad")) return store(PFX_ED, 0x94);
+		if (lceq(w, "ldpirx")) return store(PFX_ED, 0xb7);
+		if (lceq(w, "mirror"))
+		{
+			r = getRegister(q, n);
+			if (r != RA) throw SyntaxError("register A expected");
+			return store(PFX_ED, 0x24);
+		}
+		if (lceq(w, "nextreg"))
+		{
+			n = value(q);
+			// validate here because this opcode has 2 numeric arguments and we want the correct error position.
+			// we can also check that it's only a positive byte value:
+			if (n.is_valid() && (uint16(n) != uint8(n))) throw SyntaxError("byte value out of range");
+			q.expectComma();
+			r2 = getRegister(q, n2);
+			if (r2 == RA)
+			{
+				store(PFX_ED, 0x92);
+				storeByte(n);
+				return;
+			}
+			else if (r2 == NN)
+			{
+				store(PFX_ED, 0x91);
+				storeByte(n);
+				storeByte(n2);
+				return;
+			}
+			else throw SyntaxError("register A or Next register expected");
+		}
+	}
 	asmPseudoInstr(q, w);
 }
+
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/

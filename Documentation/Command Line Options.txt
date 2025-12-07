@@ -35,6 +35,7 @@ pre	-u  --opcodes   include object code in list file
 	-l0             don't write list file
 	--z80           target Zilog Z80 (default except if --asm8080)
 	--z180          enable Z180 / HD64180 instructions
+	--z80n          enable Z80 Next instructions (ZX Spectrum Next)
 	--8080          restrict to Intel 8080 (default if --asm8080)
 	--asm8080       use 8080 assembler syntax
     --convert8080   convert source from 8080 to Z80 mnemonics
@@ -203,6 +204,11 @@ H5	--z180
 p	Set the target cpu to Z180 / HD64180. This enables additional instructions and disables all illegal instructions, because the Z180 traps them.
 	Alternative: Use the pseudo instruction '.z180' at the start of the source file.
 p	If target Z180 is set with --z180 or .z180, then the label _z180_ is defined and can be tested with 'defined(_z180_)' in expressions.
+
+H5	--z80n
+p	Set the target cpu to Z80 Next. This enables the additional instructions of the Z80 Next cpu emulation in the ZX Spectrum Next.
+	Alternative: Use the pseudo instruction '.z80n' at the start of the source file.
+p	If target z80n is set with --z80n or .z80n, then the label _z80n_ is defined and can be tested with 'defined(_z80n_)' in expressions.
 
 H5	--8080
 	i8080

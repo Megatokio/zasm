@@ -49,32 +49,33 @@ enum Target {
 class Z80Assembler
 {
 public:
-	int	   verbose		  = 1;
-	uint   max_errors	  = 30;
-	double timestamp	  = now(); // for __date__ and __time__
-	CpuID  cpu			  = CpuDefault;
-	Target default_target = ROM;	 // if target == UNSET
-	bool   ixcbr2_enabled = no;		 // enable ixcb illegals: e.g. set b,(ix+d),r2
-	bool   ixcbxh_enabled = no;		 // enable ixcb illegals: e.g. bit b,xh
-	bool   syntax_8080	  = no;		 // use 8080 assembler syntax
-	bool   convert_8080	  = no;		 // convert 8080 mnemonics to Z80 style
-	bool   allow_dotnames = no;		 // allow label names starting with a dot '.'
-	bool   require_colon  = no;		 // program labels must be followed by a colon ':'
-	bool   casefold		  = no;		 // label names are not case sensitive
-	bool   flat_operators = no;		 // no operator precedence: evaluate strictly from left to right
-	bool   cgi_mode		  = no;		 // disallow escaping from sourcefile's directory
-	bool   compare_to_old = no;		 // compare own output file to existing reference file
-	cstr   c_compiler	  = nullptr; // -c: fqn to sdcc or vcc or NULL
-	cstr   c_includes	  = nullptr; // -I: fqn to custom include dir or NULL
-	cstr   stdlib_dir	  = nullptr; // -L: fqn to custom library dir or NULL (not only c but any .globl)
-	Errors errors;
+	int		   verbose		  = 1;
+	uint	   max_errors	  = 30;
+	double	   timestamp	  = now(); // for __date__ and __time__
+	z80::CpuID cpu			  = z80::CpuDefault;
+	Target	   default_target = ROM;	 // if target == UNSET
+	bool	   ixcbr2_enabled = no;		 // enable ixcb illegals: e.g. set b,(ix+d),r2
+	bool	   ixcbxh_enabled = no;		 // enable ixcb illegals: e.g. bit b,xh
+	bool	   syntax_8080	  = no;		 // use 8080 assembler syntax
+	bool	   convert_8080	  = no;		 // convert 8080 mnemonics to Z80 style
+	bool	   allow_dotnames = no;		 // allow label names starting with a dot '.'
+	bool	   require_colon  = no;		 // program labels must be followed by a colon ':'
+	bool	   casefold		  = no;		 // label names are not case sensitive
+	bool	   flat_operators = no;		 // no operator precedence: evaluate strictly from left to right
+	bool	   cgi_mode		  = no;		 // disallow escaping from sourcefile's directory
+	bool	   compare_to_old = no;		 // compare own output file to existing reference file
+	cstr	   c_compiler	  = nullptr; // -c: fqn to sdcc or vcc or NULL
+	cstr	   c_includes	  = nullptr; // -I: fqn to custom include dir or NULL
+	cstr	   stdlib_dir	  = nullptr; // -L: fqn to custom library dir or NULL (not only c but any .globl)
+	Errors	   errors;
 
 private:
 	// set by checkCpuOptions():
-	bool target_z180; // Z180 / HD64180
-	bool target_8080; // I8080
-	bool target_z80;  // Z80
-	bool target_z80_or_z180;
+	bool target_z180;			// Z180 / HD64180
+	bool target_z80n;			// Z80n (ZX Spectrum Next)
+	bool target_8080;			// I8080
+	bool target_z80;			// Z80
+	bool target_z80_or_variant; // Z80, Z180 or Z80n
 
 	// performance:
 	double starttime; // of assembly

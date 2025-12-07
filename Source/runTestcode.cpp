@@ -9,6 +9,7 @@
 #include "kio/kio.h"
 
 using namespace zasm;
+using namespace z80;
 
 void handleOutput(Z80::CpuCycle, uint16, uint8) {}
 
@@ -241,10 +242,9 @@ void Z80Assembler::runTestcode(TestSegment& test_segment, class Z80& cpu)
 			{
 				ushort pc	 = cpu.registers.pc;
 				CpuID  cpuid = cpu.cpu_type;
-				if (cpuid == Cpu8080) throw AnyError("%s", disassemble_8080(cpu.core, pc, syntax_8080));
 				if (ixcbr2_enabled) cpuid = CpuZ80_ixcbr2;
 				if (ixcbxh_enabled) cpuid = CpuZ80_ixcbxh;
-				throw AnyError("%s", disassemble(cpuid, cpu.core, pc));
+				throw AnyError("%s", disassemble(cpuid, cpu.core, pc, syntax_8080));
 			}
 			else assert(rval == Z80::BreakPoint);
 		}

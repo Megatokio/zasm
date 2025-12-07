@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 extern char** environ;
+using namespace z80;
 
 
 // hints may be set by caller:
@@ -279,15 +280,17 @@ void Z80Assembler::checkCpuOptions()
 		target_8080 = syntax_8080;
 		target_z80	= !syntax_8080; // default = Z80 except if asm8080 is set
 		target_z180 = no;
+		target_z80n = no;
 	}
 	else
 	{
 		target_z80	= cpu == CpuZ80;
 		target_z180 = cpu == CpuZ180;
+		target_z80n = cpu == CpuZ80n;
 		target_8080 = cpu == Cpu8080;
 	}
 
-	target_z80_or_z180 = target_z80 || target_z180;
+	target_z80_or_variant = target_z80 || target_z180 || target_z80n;
 
 	if (target_z80)
 	{
@@ -299,6 +302,12 @@ void Z80Assembler::checkCpuOptions()
 		if (syntax_8080) throw FatalError("8080 syntax: Z180 opcodes not supported.");
 		if (ixcbr2_enabled || ixcbxh_enabled)
 			throw FatalError("ixcbr2 and ixcbxh not allowed: the Z180 traps illegal instructions");
+	}
+
+	if (target_z80n)
+	{
+		if (syntax_8080) throw FatalError("8080 syntax: Z80n opcodes not supported.");
+		if (ixcbxh_enabled) throw FatalError("The ZX Spectrum Next emulates option ixcbr2 behaviour");
 	}
 
 	if (target_8080)
@@ -316,9 +325,10 @@ void Z80Assembler::checkCpuOptions()
 
 Z80Assembler::Z80Assembler() :
 	target_z180(no),
+	target_z80n(no),
 	target_8080(no),
 	target_z80(yes),
-	target_z80_or_z180(yes),
+	target_z80_or_variant(yes),
 	starttime(0.0),
 	source_directory(nullptr),
 	source_filename(nullptr),
@@ -446,14 +456,19 @@ void Z80Assembler::assembleFile(
 		while (source.count() && source.last()[0] == 0x1A) source.drop(); // remove CP/M file padding
 
 		// include options after shebang in line 1:
-		// note: this my come as a surprise to the user
+		// note: this may come as a surprise to the user
 		if (source.count() && startswith(source[0], "#!"))
 		{
 			cstr s = source[0];
 			cstr m = nullptr;
 
 			// override cpu only if not set on command line:
-			if (cpu == CpuDefault && find(s, "--z80"))
+			if (cpu == CpuDefault && find(s, "--z80n"))
+			{
+				cpu = CpuZ80n;
+				m	= " --z80n";
+			}
+			else if (cpu == CpuDefault && find(s, "--z80"))
 			{
 				cpu = CpuZ80;
 				m	= " --z80";
@@ -654,6 +669,7 @@ void Z80Assembler::assemble(StrArray& sourcelines, cstr sourcepath) noexcept
 
 	// add labels for options:
 	if (cpu == CpuZ80) global_labels().add(new Label("_z80_", nullptr, 0, 1, valid, yes, yes, no));
+	if (cpu == CpuZ80n) global_labels().add(new Label("_z80n_", nullptr, 0, 1, valid, yes, yes, no));
 	if (cpu == CpuZ180) global_labels().add(new Label("_z180_", nullptr, 0, 1, valid, yes, yes, no));
 	if (cpu == Cpu8080) global_labels().add(new Label("_8080_", nullptr, 0, 1, valid, yes, yes, no));
 	// if (syntax_8080)	global_labels().add(new Label("_asm8080_",	nullptr,0,1,valid,yes,yes,no));
@@ -1179,7 +1195,7 @@ void Z80Assembler::skip_expression(SourceLine& q, int prio)
 	{
 		q.test_char('$');
 		goto op;
-	}																				 // decimal number or reusable label
+	} // decimal number or reusable label
 	if (!is_letter(*w) && *w != '_' && *w != '.') throw SyntaxError("syntax error"); // last chance: plain idf
 
 	if (q.testChar('(')) // test for built-in function
@@ -1262,7 +1278,7 @@ op:
 			if (pCmp <= prio) break;
 			skip_expression(q += 2, pCmp);
 			goto op;
-		}	   // !=
+		} // !=
 		break; // error
 
 	case '<':
@@ -1388,7 +1404,7 @@ w:
 				{
 					w += 2;
 					goto hex_number;
-				}																// 0xABCD
+				} // 0xABCD
 				if (to_lower(w[1]) == 'b' && w[2] && is_bin_digit(lastchar(w))) // caveat e.g.: 0B0h
 				{
 					w += 2;
@@ -1570,7 +1586,7 @@ w:
 				}
 				if (lceq(w, "af") && *q == '\'') q += 1;
 			}
-			n = syntax_8080 ? major_opcode_8080(substr(a, q.p - 1)) : major_opcode(substr(a, q.p - 1));
+			n = major_opcode(cpu, substr(a, q.p - 1), syntax_8080);
 			goto op;
 		}
 		else if (lceq(w, "target"))
@@ -4557,6 +4573,17 @@ void Z80Assembler::asmNoSegmentInstr(SourceLine& q, cstr w)
 
 		cpu = CpuZ180;
 		global_labels().add(new Label("_z180_", nullptr, current_sourceline_index, 1, valid, yes, yes, no));
+		checkCpuOptions();
+		return;
+	}
+	if (lceq(w, ".z80n"))
+	{
+		if (cpu == CpuZ80n) return;
+		if (cpu != CpuDefault) throw FatalError("can't redefine target cpu: already set");
+		if (current_segment_ptr) throw FatalError("this statement must occur before ORG, #CODE or #DATA");
+
+		cpu = CpuZ80n;
+		global_labels().add(new Label("_z80n_", nullptr, current_sourceline_index, 1, valid, yes, yes, no));
 		checkCpuOptions();
 		return;
 	}

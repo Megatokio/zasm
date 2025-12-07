@@ -13,15 +13,17 @@
 #include "kio/kio.h"
 #include "z80macros.h"
 
+using namespace z80;
+
 namespace zasm
 {
 
 const uint8 Z80::zlog_flags[256] = {
 // conversion table: A -> Z80-flags with S, Z, V=parity and C=0
 // 2013-06-12:		 A -> Z80-flags with S, Z, V=parity and C=0, bits 3 and 5 verbatim from A
-#define FLAGS0(A)                \
-  (A & 0xA8) + ((A == 0) << 6) + \
-	  (((~A + (A >> 1) + (A >> 2) + (A >> 3) + (A >> 4) + (A >> 5) + (A >> 6) + (A >> 7)) & 1) << 2)
+#define FLAGS0(A)                  \
+	(A & 0xA8) + ((A == 0) << 6) + \
+		(((~A + (A >> 1) + (A >> 2) + (A >> 3) + (A >> 4) + (A >> 5) + (A >> 6) + (A >> 7)) & 1) << 2)
 #define FLAGS2(A) FLAGS0(A), FLAGS0((A + 1)), FLAGS0((A + 2)), FLAGS0((A + 3))
 #define FLAGS4(A) FLAGS2(A), FLAGS2((A + 4)), FLAGS2((A + 8)), FLAGS2((A + 12))
 #define FLAGS6(A) FLAGS4(A), FLAGS4((A + 16)), FLAGS4((A + 32)), FLAGS4((A + 48))
@@ -49,96 +51,96 @@ void Z80::reset() noexcept
 
 
 // read byte from memory
-#define PEEK(DEST, ADDR) \
-  do {                   \
-	cc += 3;             \
-	DEST = peek(ADDR);   \
-  }                      \
-  while (0)
+#define PEEK(DEST, ADDR)   \
+	do {                   \
+		cc += 3;           \
+		DEST = peek(ADDR); \
+	}                      \
+	while (0)
 
 // write byte into memory
-#define POKE(ADDR, BYTE) \
-  do {                   \
-	cc += 3;             \
-	poke(ADDR, BYTE);    \
-  }                      \
-  while (0)
+#define POKE(ADDR, BYTE)  \
+	do {                  \
+		cc += 3;          \
+		poke(ADDR, BYTE); \
+	}                     \
+	while (0)
 
 // read instruction byte at PC (M1 cycle)
-#define GET_INSTR(R) \
-  do {               \
-	cc += 4;         \
-	r += 1;          \
-	R = peek(pc++);  \
-  }                  \
-  while (0)
+#define GET_INSTR(R)    \
+	do {                \
+		cc += 4;        \
+		r += 1;         \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // read 2nd instruction byte after 0xCB opcode
-#define GET_CB_OP(R) \
-  do {               \
-	cc += 4;         \
-	r += 1;          \
-	R = peek(pc++);  \
-  }                  \
-  while (0)
+#define GET_CB_OP(R)    \
+	do {                \
+		cc += 4;        \
+		r += 1;         \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // read 2nd instruction byte after 0xED opcode
-#define GET_ED_OP(R) \
-  do {               \
-	cc += 4;         \
-	r += 1;          \
-	R = peek(pc++);  \
-  }                  \
-  while (0)
+#define GET_ED_OP(R)    \
+	do {                \
+		cc += 4;        \
+		r += 1;         \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // read 2nd instruction byte after IX or IY opcode prefix
-#define GET_XY_OP(R) \
-  do {               \
-	cc += 4;         \
-	r += 1;          \
-	R = peek(pc++);  \
-  }                  \
-  while (0)
+#define GET_XY_OP(R)    \
+	do {                \
+		cc += 4;        \
+		r += 1;         \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // read 3rd instruction byte after IX or IY prefix and 0xCB opcode
-#define GET_XYCB_OP(R) \
-  do {                 \
-	cc += 5;           \
-	R = peek(pc++);    \
-  }                    \
-  while (0)
+#define GET_XYCB_OP(R)  \
+	do {                \
+		cc += 5;        \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // read byte at PC
-#define GET_N(R)    \
-  do {              \
-	cc += 3;        \
-	R = peek(pc++); \
-  }                 \
-  while (0)
+#define GET_N(R)        \
+	do {                \
+		cc += 3;        \
+		R = peek(pc++); \
+	}                   \
+	while (0)
 
 // dummy read byte at PC
-#define SKIP_N() \
-  do {           \
-	cc += 3;     \
-	peek(pc++);  \
-  }              \
-  while (0)
+#define SKIP_N()    \
+	do {            \
+		cc += 3;    \
+		peek(pc++); \
+	}               \
+	while (0)
 
 // output byte to address
-#define OUTPUT(A, B)      \
-  do {                    \
-	cc += 4;              \
-	output(cc - 2, A, B); \
-  }                       \
-  while (0)
+#define OUTPUT(A, B)          \
+	do {                      \
+		cc += 4;              \
+		output(cc - 2, A, B); \
+	}                         \
+	while (0)
 
 // input byte from address
-#define INPUT(A, B)       \
-  do {                    \
-	cc += 4;              \
-	B = input(cc - 2, A); \
-  }                       \
-  while (0)
+#define INPUT(A, B)           \
+	do {                      \
+		cc += 4;              \
+		B = input(cc - 2, A); \
+	}                         \
+	while (0)
 
 
 Z80::RVal Z80::run(CpuCycle ccx)
@@ -155,25 +157,25 @@ Z80::RVal Z80::run(CpuCycle ccx)
 	uint8  rf; // z80 flags
 	uint8  r;  // z80 r register bit 0...6
 
-#define LOAD_REGISTERS                          \
-  do {                                          \
-	r  = registers.r;  /* refresh counter R	*/  \
-	cc = this->cc;	   /* cpu cycle counter	*/  \
-	pc = registers.pc; /* program counter PC */ \
-	ra = registers.a;  /* register A */         \
-	rf = registers.f;  /* register F */         \
-  }                                             \
-  while (0)
+#define LOAD_REGISTERS                              \
+	do {                                            \
+		r  = registers.r;  /* refresh counter R	*/  \
+		cc = this->cc;	   /* cpu cycle counter	*/  \
+		pc = registers.pc; /* program counter PC */ \
+		ra = registers.a;  /* register A */         \
+		rf = registers.f;  /* register F */         \
+	}                                               \
+	while (0)
 
-#define SAVE_REGISTERS                                \
-  do {                                                \
-	registers.r	 = (registers.r & 0x80) | (r & 0x7f); \
-	this->cc	 = cc; /* cpu cycle counter	*/        \
-	registers.pc = pc; /* program counter PC */       \
-	registers.a	 = ra; /* register A */               \
-	registers.f	 = rf; /* register F */               \
-  }                                                   \
-  while (0)
+#define SAVE_REGISTERS                                    \
+	do {                                                  \
+		registers.r	 = (registers.r & 0x80) | (r & 0x7f); \
+		this->cc	 = cc; /* cpu cycle counter	*/        \
+		registers.pc = pc; /* program counter PC */       \
+		registers.a	 = ra; /* register A */               \
+		registers.f	 = rf; /* register F */               \
+	}                                                     \
+	while (0)
 
 	uint8  c;		// general purpose byte register
 	uint16 w;		// general purpose word register
@@ -196,19 +198,19 @@ Z80::RVal Z80::run(CpuCycle ccx)
 
 	// looping & jumping:
 #define LOOP goto nxtcmnd // LOOP to next instruction
-#define POKE_AND_LOOP(W, C) \
-  do {                      \
-	w = W;                  \
-	c = C;                  \
-	goto poke_and_nxtcmd;   \
-  }                         \
-  while (0) // POKE(w,c) and goto next instr.
+#define POKE_AND_LOOP(W, C)   \
+	do {                      \
+		w = W;                \
+		c = C;                \
+		goto poke_and_nxtcmd; \
+	}                         \
+	while (0) // POKE(w,c) and goto next instr.
 #define EXIT(RESULT) \
-  do {               \
-	w = RESULT;      \
-	goto x;          \
-  }                  \
-  while (0)
+	do {             \
+		w = RESULT;  \
+		goto x;      \
+	}                \
+	while (0)
 
 	// load local variables from data members:
 	LOAD_REGISTERS;
@@ -240,7 +242,7 @@ slow_loop:
 	{
 		ccx = min(int_start, ccx);
 		LOOP;
-	}							// interrupt not yet asserted
+	} // interrupt not yet asserted
 	if (IFF1 == disabled) LOOP; // int disabled in cpu
 
 	if (int_start == int_end) // automatic switch-off mode?
@@ -1673,7 +1675,7 @@ nxtcmnd:
 				{
 					pc -= 2;
 					cc += 5;
-				}								 // LOOP not yet finished
+				} // LOOP not yet finished
 				rf = N_FLAG + (RB ? 0 : Z_FLAG); // TODO: INIR etc.: flags checken
 				LOOP;
 

@@ -5,6 +5,7 @@
 #include "Z80/goodies/z80_opcodes.h"
 #include "Z80Assembler.h"
 
+using namespace z80;
 
 int Z80Assembler::get8080Register(SourceLine& q)
 {
@@ -33,7 +34,7 @@ int Z80Assembler::get8080Register(SourceLine& q)
 		}
 	}
 
-	if (target_z80_or_z180) // n(X) or n(Y)
+	if (target_z80_or_variant) // n(X) or n(Y)
 	{
 		q.p		= p0;
 		Value n = value(q);
@@ -71,7 +72,7 @@ int Z80Assembler::get8080WordRegister(SourceLine& q, uint what)
 		if (what > BD)
 		{
 			if (c1 == 'h') return 32; // HL
-			if (target_z80_or_z180)
+			if (target_z80_or_variant)
 			{
 				if (c1 == 'x') return PFX_IX; // IX
 				if (c1 == 'y') return PFX_IY; // IY

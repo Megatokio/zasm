@@ -7,8 +7,11 @@
 #include "Z80Registers.h"
 #include <functional>
 
+
 namespace zasm
 {
+
+using CpuID = z80::CpuID;
 
 class Z80
 {
