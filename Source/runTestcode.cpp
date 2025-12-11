@@ -3,7 +3,7 @@
 // https://opensource.org/licenses/BSD-2-Clause
 
 #include "Z80.h"
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "Z80/goodies/z80_opcodes.h"
 #include "Z80Assembler.h"
 #include "kio/kio.h"

@@ -1,5 +1,5 @@
 
-## zasm - Z80, 8080 and Z180 assembler
+## zasm - Z80, 8080, Z180 and Z80next assembler
 
 #### Features
 

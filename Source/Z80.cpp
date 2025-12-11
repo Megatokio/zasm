@@ -8,7 +8,7 @@
 */
 
 #include "Z80.h"
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "Z80/goodies/z80_opcodes.h"
 #include "kio/kio.h"
 #include "z80macros.h"

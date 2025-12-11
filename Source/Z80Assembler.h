@@ -10,7 +10,7 @@
 #include "Source.h"
 #include "SyntaxError.h"
 #include "Templates/Array.h"
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "kio/kio.h"
 
 

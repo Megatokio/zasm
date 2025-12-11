@@ -37,8 +37,7 @@ OBJECTS = \
 		tmp/tempmem.o \
 		tmp/files.o \
 		tmp/z80_clock_cycles.o \
-		tmp/z80_opcode_length.o \
-		tmp/z80_disass.o \
+		tmp/z80_DisAss.o \
 		tmp/kio.o \
 		tmp/log_to_console.o \
 		tmp/WavFile.o \
@@ -87,11 +86,8 @@ tmp/files.o:
 tmp/z80_clock_cycles.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_clock_cycles.o Libraries/Z80/goodies/z80_clock_cycles.cpp
 
-tmp/z80_opcode_length.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_opcode_length.o Libraries/Z80/goodies/z80_opcode_length.cpp
-
-tmp/z80_disass.o:
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_disass.o Libraries/Z80/goodies/z80_disass.cpp
+tmp/z80_DisAss.o:
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/z80_DisAss.o Libraries/Z80/goodies/z80_DisAss.cpp
 
 tmp/kio.o:
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o tmp/kio.o Libraries/kio/kio.cpp

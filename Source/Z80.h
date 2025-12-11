@@ -3,7 +3,7 @@
 // https://opensource.org/licenses/BSD-2-Clause
 
 #pragma once
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "Z80Registers.h"
 #include <functional>
 

@@ -2,7 +2,7 @@
 // BSD-2-Clause license
 // https://opensource.org/licenses/BSD-2-Clause
 
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "Z80Assembler.h"
 #include "helpers.h"
 #include "kio/peekpoke.h"
@@ -183,7 +183,7 @@ static uint write_line_with_objcode_and_cycles(
 	count -= offset;
 
 	// special handling for compound opcodes:
-	if (count > 1 && !is_data && count > opcode_length(variant, bytes))
+	if (count > 1 && !is_data && int(count) > opcode_length(variant, bytes))
 	{
 		if (count > 4) // limit number of accounted bytes to 4; break on opcode boundary:
 		{

@@ -10,7 +10,7 @@
 #include "Segment.h"
 #include "Templates/HashMap.h"
 #include "Templates/StrArray.h"
-#include "Z80/goodies/z80_goodies.h"
+#include "Z80/goodies/z80_DisAss.h"
 #include "Z80/goodies/z80_opcodes.h"
 #include "Z80Assembler.h"
 #include "Z80Registers.h"

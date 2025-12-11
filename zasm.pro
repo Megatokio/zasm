@@ -55,9 +55,8 @@ SOURCES += \
 	Libraries/unix/FD.cpp \
 	Libraries/cstrings/tempmem.cpp \
 	Libraries/unix/files.cpp \
-	Libraries/Z80/goodies/z80_disass.cpp \
+	Libraries/Z80/goodies/z80_DisAss.cpp \
 	Libraries/Z80/goodies/z80_clock_cycles.cpp \
-	Libraries/Z80/goodies/z80_opcode_length.cpp \
 	Libraries/audio/convert_audio.cpp \
 	Libraries/audio/WavFile.cpp \
 	Libraries/unix/log_to_console.cpp \
@@ -102,7 +101,7 @@ HEADERS += \
 	Libraries/Templates/HashMap.h \
 	Libraries/Z80/goodies/CpuID.h \
 	Libraries/Z80/goodies/z80_opcodes.h \
-	Libraries/Z80/goodies/z80_goodies.h \
+	Libraries/Z80/goodies/z80_DisAss.h \
 	Libraries/hash/sdbm_hash.h \
 	Libraries/audio/convert_audio.h \
 	Libraries/audio/WavFile.h \
